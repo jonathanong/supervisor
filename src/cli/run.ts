@@ -1,6 +1,7 @@
 import { startMcpServer } from '../mcp/server.js'
 import { validateConfigFile } from './config-validate.js'
 import { runPolicyCommand } from './policy-cmd.js'
+import { runPrepushCommand } from './prepush-cmd.js'
 import { getVersion } from './version.js'
 
 export interface CliIo {
@@ -27,6 +28,8 @@ Commands:
   config validate [path]               Validate a config JSON file (defaults to $SUPERVISOR_CONFIG)
   policy explain <dir> [path]          Explain policy rules for a repo or path
   policy check --dir <d> --input <f>   Dry-evaluate a PR against policies
+  prepush [--range <a>..<b>]           Scan outgoing commits for private names, emails, hostnames
+  prepush install                      Install the git pre-push hook
   mcp                                  Start the stdio MCP server
 
 Options:
@@ -79,6 +82,9 @@ export async function runCli(argv: string[], io: CliIo = defaultCliIo): Promise<
   }
   if (command === 'policy') {
     return await runPolicyCommand(rest, io)
+  }
+  if (command === 'prepush') {
+    return await runPrepushCommand(rest, io)
   }
   if (command === 'mcp') {
     if (rest.length > 0) {
