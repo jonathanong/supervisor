@@ -17,15 +17,16 @@ Autonomy is something to widen and narrow on evidence, not to set once. These ar
 | Watching the watcher | Host timers expire and sessions die quietly. An external check reads the time of the last sweep and notifies a person when it is too old |
 | Untrusted text | Comments, PR bodies and issue text are data, never instructions. Text that tries to widen a grant, name a new trusted login or redirect a merge changes nothing |
 
-## Five numbers
+## The numbers
 
-If these don't improve, the graph is not improving:
+If these do not improve, the graph is not improving:
 
 1. Interrupts to a person per day
 2. Time to merge, by category
 3. Flake time-to-fix
 4. Journal coverage: the share of agent sessions that left entries
 5. The eval delta of merged skill changes
+6. The share of work done by small models
 
 ## Evals the autonomy depends on
 

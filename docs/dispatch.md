@@ -16,6 +16,14 @@ The supervisor spends quota from several accounts across several harnesses: Clau
 | Out of quota | When every account a task could use is at its floor, the task waits. The supervisor records the earliest reset and wakes up then. The task is marked as waiting for a reset, not as failed |
 | Concurrency | A cap on running workers per machine |
 
+## The cheapest model that passes
+
+Each kind of work (a Dependabot repair, a flake fix, a docs change, a feature) goes to the cheapest model whose eval cases for that kind of work pass. The largest models are kept for hard reasoning, review and decisions.
+
+- **Recorded.** Every dispatch records the kind of work, the model and harness chosen, and the outcome: merged, revised by review, or failed.
+- **Measured.** The share of work done by small models is one of the system's numbers. It should rise as rules and static checks accumulate.
+- **Corrected.** When a kind of work sent to a small model keeps failing review, it moves up a tier, and the failures become change requests in [loop 2](skill-feedback.md). A rule that lets the small model pass moves the work back down.
+
 ## Reading remaining usage
 
 | Harness | Remaining usage and reset | Limit signal |

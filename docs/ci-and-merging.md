@@ -48,6 +48,13 @@ Superseded runs on PR branches may be cancelled without asking. Runs on the defa
 
 The supervisor merges only once the repository's required checks pass, through [pr-shepherd](https://github.com/jonathanong/pr-shepherd), and only what the [merge policy](merge-policy.md) allows on the current head. A re-queue of the same head after an ejection is covered by the approval that head already has. A new head needs a fresh final review.
 
+## Stacks
+
+- **Merge the whole stack at once,** so one command lands every ready layer. Merge only the ready lower layers when the layers above will clearly take much longer, and say why.
+- **Gate every layer.** Each layer a merge would land needs its own final review on its current head. When one layer fails, none above it merge.
+- **Read the stack from GitHub each time,** never from a cache, so a new session does not start a rival stack.
+- **Cap open layers** (default 10). Beyond the cap, independent work opens as its own PR, and dependent work waits.
+
 ## When the default branch breaks anyway
 
 With a merge queue this should not happen. When it does, the cause is usually a skipped queue, a flaky check, or two changes that pass apart and fail together. The supervisor dispatches a forward fix first. It reverts only a merge it made itself, and only when no forward fix is ready within the time two CI runs take. A revert reopens the work as an issue, with the failing run linked.

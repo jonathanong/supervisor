@@ -45,6 +45,8 @@ A worker in the owning repository:
 
 **Rules are encoded even when the model already follows them.** A rule that scores equal to no rule is still added, as a guard: the next model, or a switch to another model or harness, may not follow it unaided. The eval case stays too, so it catches a later model that regresses.
 
+**Which model runs the evals.** Today the evals run on Claude Sonnet only, since the eval harness is Claude-based. A case Sonnet already passes at 100% is kept for the same reason as its rule: it is the test a smaller or different model must also pass. Running the same cases on other models and harnesses is still to do; it is what will show which tier each kind of work needs.
+
 ## The merge gate
 
 | Result | Outcome |

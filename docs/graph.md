@@ -5,6 +5,21 @@ supervisor is an autonomous, self-improving graph of coding agents. Its goals ar
 1. **Autonomous.** Work goes from an event to a merged PR with no prompt to a person, wherever the merge policy allows it.
 2. **Self-improving.** Friction an agent records becomes a rule, a skill change or an issue, so the same mistake costs less next time.
 
+## Why
+
+- **People focus on business outcomes and customer satisfaction,** not on babysitting agents.
+- **Engineers focus on principles.** Their work is the rules that let agents build well-designed systems without supervision. So principled rules, with feedback loops that keep them true, are a key part of this system.
+- **Engineers architect principles, not features.** Engineers should not need to design each feature. They design the principles that let agents design features well.
+- **A prototype is most of the way to production.** In the ideal case, a product manager prototypes a working feature with an agent, and an engineer ships it to production with minimal changes.
+- **Speed never costs quality.** More autonomy must not mean more incidents, reverts or regressions. Autonomy widens one category at a time, and only on evidence.
+- **Knowledge outlives models and sessions.** Lessons live in rules, eval cases and static checks, not in one model's habits or one session's memory. A new model, harness or vendor starts with everything learned so far.
+- **A lesson learned once helps everywhere.** A mistake found in one repository becomes a principle every repository gets, public ones included, without private details.
+- **People are interrupted only for real decisions,** in batches, each with the evidence and a recommended answer. The same question is never asked twice.
+- **Work is visible on GitHub.** Anyone can read who is doing what, and why, from the forge, not only the person running the agents.
+- **Smaller models do most of the work.** Principles in skills and guardrails such as static checks ([no-mistakes](https://github.com/jonathanong/no-mistakes)) carry the knowledge, so smaller, cheaper models can do the bulk of the work well. The largest models are saved for hard reasoning, review and decisions. Eval cases show which tier a kind of work needs, and each rule that lets a smaller model pass moves more work down a tier.
+- **Capacity is spent deliberately.** Usage limits and CI minutes go where they matter most, and none sits idle while ready work waits.
+- **Every goal has a number.** The measures in [guardrails.md](guardrails.md#the-numbers) show whether the system is improving, rather than assuming it is.
+
 This page is the overview. Each part of the graph has its own page, linked below.
 
 ## Who does what
@@ -51,8 +66,16 @@ The dotted edge and the decision record are what make it self-improving. Merges,
 | 4. Claims and taxonomy | Agents picking up work | Ownership, milestones and labels on GitHub | [claims-and-taxonomy.md](claims-and-taxonomy.md) |
 | 5. Escalations | Questions the supervisor brings a person | Rules, so the question is not asked again | [escalations.md](escalations.md) |
 | 6. Backlog | Ready issues in open milestones | Dispatched work | [backlog.md](backlog.md) |
+| 7. Late reviews | Review comments after merge, or unresolved at merge | Follow-up issues | [late-reviews.md](late-reviews.md) |
+| 8. Maintenance | Scheduled prompt files in each repository | Draft PRs or verified no-ops, and housekeeping | [maintenance.md](maintenance.md) |
+| 9. CI performance | Timings, queue time, cache hits and cost of passing CI | Measured speed-ups | [ci-performance.md](ci-performance.md) |
 
-Loop 1 feeds loop 2: a distilled theme whose fix is a rule becomes a skill change request. Loop 5 feeds loop 2 the same way. Loops 2, 3 and 6 produce PRs, and all of them pass the same merge gate.
+Loops 1, 5 and 7 feed loop 2: a distilled theme, a repeated answer, or a recurring review finding whose fix is a rule becomes a skill change request. Loops 2, 3, 6, 8 and 9 produce PRs, and all of them pass the same merge gate.
+
+## Other ways work arrives
+
+- [intake.md](intake.md): reports from other agents, comment commands (`/shepherd`, `/plan`, `/fix`), handing a PR to the supervisor, and the triage of open automation PRs.
+- [dependency-updates.md](dependency-updates.md): dependency-bot PRs, from patch bumps to major migrations.
 
 ## Cross-cutting parts
 
