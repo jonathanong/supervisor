@@ -51,8 +51,16 @@ The dotted edge and the decision record are what make it self-improving. Merges,
 | 4. Claims and taxonomy | Agents picking up work | Ownership, milestones and labels on GitHub | [claims-and-taxonomy.md](claims-and-taxonomy.md) |
 | 5. Escalations | Questions the supervisor brings a person | Rules, so the question is not asked again | [escalations.md](escalations.md) |
 | 6. Backlog | Ready issues in open milestones | Dispatched work | [backlog.md](backlog.md) |
+| 7. Late reviews | Review comments after merge, or unresolved at merge | Follow-up issues | [late-reviews.md](late-reviews.md) |
+| 8. Maintenance | Scheduled prompt files in each repository | Draft PRs or verified no-ops, and housekeeping | [maintenance.md](maintenance.md) |
+| 9. CI performance | Timings, queue time, cache hits and cost of passing CI | Measured speed-ups | [ci-performance.md](ci-performance.md) |
 
-Loop 1 feeds loop 2: a distilled theme whose fix is a rule becomes a skill change request. Loop 5 feeds loop 2 the same way. Loops 2, 3 and 6 produce PRs, and all of them pass the same merge gate.
+Loops 1, 5 and 7 feed loop 2: a distilled theme, a repeated answer, or a recurring review finding whose fix is a rule becomes a skill change request. Loops 2, 3, 6, 8 and 9 produce PRs, and all of them pass the same merge gate.
+
+## Other ways work arrives
+
+- [intake.md](intake.md): reports from other agents, comment commands (`/shepherd`, `/plan`, `/fix`), handing a PR to the supervisor, and the triage of open automation PRs.
+- [dependency-updates.md](dependency-updates.md): dependency-bot PRs, from patch bumps to major migrations.
 
 ## Cross-cutting parts
 

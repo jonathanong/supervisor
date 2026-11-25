@@ -44,7 +44,7 @@ The generic procedure for both lives in the `github-issue` and `github-repositor
 
 ## Audit
 
-Each sweep checks PRs and issues for a milestone, labels, a closing reference and an owner, and fixes what is missing. A periodic taxonomy audit reports:
+Each sweep checks PRs and issues for a milestone, labels, a closing reference and an owner, and fixes what is missing. It closes duplicates and issues already fixed, after checking each against the current default branch, with a comment and the right close reason. Every open issue should be in a milestone or a project, or be in progress; a flake is always in progress. A periodic taxonomy audit reports:
 - near-duplicate and unused labels
 - labels made for one-off work
 - labels on GitHub that are missing from the declared label source
