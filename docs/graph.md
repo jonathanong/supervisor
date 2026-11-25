@@ -5,6 +5,12 @@ supervisor is an autonomous, self-improving graph of coding agents. Its goals ar
 1. **Autonomous.** Work goes from an event to a merged PR with no prompt to a person, wherever the merge policy allows it.
 2. **Self-improving.** Friction an agent records becomes a rule, a skill change or an issue, so the same mistake costs less next time.
 
+## Why
+
+- **People focus on business outcomes and customer satisfaction,** not on babysitting agents.
+- **Engineers focus on principles.** Their work is the rules that let agents build well-designed systems without supervision. So principled rules, with feedback loops that keep them true, are a key part of this system.
+- **A prototype is most of the way to production.** In the ideal case, a product manager prototypes a working feature with an agent, and an engineer ships it to production with minimal changes.
+
 This page is the overview. Each part of the graph has its own page, linked below.
 
 ## Who does what
