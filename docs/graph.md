@@ -10,7 +10,7 @@ _Coding harnesses are the commodity. Business impact is what we build the harnes
 ## What we don't build
 
 - **A coding harness.** Claude Code, Codex, Grok and Antigravity are a commodity, and they improve on their own. We don't build or tune one. We build workflows around them, and switch between them as they change.
-- **A dispatcher or runtime.** Everything runs locally. Sessions, panes and workers belong to a terminal multiplexer for agents, today [herdr](https://herdr.dev). The supervisor drives it rather than replacing it, and it is just as replaceable: if a better one appears, we switch.
+- **A dispatcher or runtime.** Everything runs locally. Sessions, panes and workers belong to a terminal multiplexer for agents, today [herdr](https://herdr.dev). The supervisor is designed to drive it rather than replace it (that integration is not built yet), and it is just as replaceable: if a better one appears, we switch.
 
 A change that adds a custom dispatcher, or works around a harness bug instead of reporting it upstream, is out of scope by design.
 
