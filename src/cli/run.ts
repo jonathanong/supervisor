@@ -1,5 +1,6 @@
 import { startMcpServer } from '../mcp/server.js'
 import { validateConfigFile } from './config-validate.js'
+import { runPolicyCommand } from './policy-cmd.js'
 import { getVersion } from './version.js'
 
 export interface CliIo {
@@ -23,12 +24,14 @@ export const defaultCliIo: CliIo = {
 const HELP_TEXT = `Usage: supervisor <command> [options]
 
 Commands:
-  config validate [path]  Validate a config JSON file (defaults to $SUPERVISOR_CONFIG)
-  mcp                     Start the stdio MCP server
+  config validate [path]               Validate a config JSON file (defaults to $SUPERVISOR_CONFIG)
+  policy explain <dir> [path]          Explain policy rules for a repo or path
+  policy check --dir <d> --input <f>   Dry-evaluate a PR against policies
+  mcp                                  Start the stdio MCP server
 
 Options:
-  -h, --help              Show help
-  -V, --version           Show version
+  -h, --help                           Show help
+  -V, --version                        Show version
 `
 
 async function runConfigCommand(args: string[], io: CliIo): Promise<number> {
@@ -73,6 +76,9 @@ export async function runCli(argv: string[], io: CliIo = defaultCliIo): Promise<
   }
   if (command === 'config') {
     return await runConfigCommand(rest, io)
+  }
+  if (command === 'policy') {
+    return await runPolicyCommand(rest, io)
   }
   if (command === 'mcp') {
     if (rest.length > 0) {
