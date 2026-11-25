@@ -6,15 +6,15 @@ The supervisor spends quota from several accounts across several harnesses: Clau
 
 ## Rules
 
-| Rule | What the supervisor does |
-| --- | --- |
-| Accounts are config | Each account lists its harness, plan, machines, a floor, and its place in the spending order |
-| Spending order | Large work spends the accounts in a configured order. Quick tasks go straight to a small, fast model |
-| Floors | An account gets no new work once its remaining usage reaches its floor |
-| A reserve for the supervisor | The supervisor itself, and every merge, need the merging account. Workers spend the other accounts first and stop at a reserve, so the supervisor is never left without quota |
-| Manual resets | Used only when the next automatic reset is several days away, since a manual reset restarts the clock |
-| Out of quota | When every account a task could use is at its floor, the task waits. The supervisor records the earliest reset and wakes up then. The task is marked as waiting for a reset, not as failed |
-| Concurrency | A cap on running workers per machine |
+| Rule                         | What the supervisor does                                                                                                                                                                   |
+| ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Accounts are config          | Each account lists its harness, plan, machines, a floor, and its place in the spending order                                                                                               |
+| Spending order               | Large work spends the accounts in a configured order. Quick tasks go straight to a small, fast model                                                                                       |
+| Floors                       | An account gets no new work once its remaining usage reaches its floor                                                                                                                     |
+| A reserve for the supervisor | The supervisor itself, and every merge, need the merging account. Workers spend the other accounts first and stop at a reserve, so the supervisor is never left without quota              |
+| Manual resets                | Used only when the next automatic reset is several days away, since a manual reset restarts the clock                                                                                      |
+| Out of quota                 | When every account a task could use is at its floor, the task waits. The supervisor records the earliest reset and wakes up then. The task is marked as waiting for a reset, not as failed |
+| Concurrency                  | A cap on running workers per machine                                                                                                                                                       |
 
 ## The cheapest model that passes
 
@@ -26,12 +26,12 @@ Each kind of work (a Dependabot repair, a flake fix, a docs change, a feature) g
 
 ## Reading remaining usage
 
-| Harness | Remaining usage and reset | Limit signal |
-| --- | --- | --- |
+| Harness     | Remaining usage and reset                                                                                                                                                           | Limit signal                                  |
+| ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------- |
 | Claude Code | The status-line input carries five-hour and seven-day windows, each with a used percentage and a reset time. A status-line command writes them to a cache file the supervisor reads | A `StopFailure` hook with `error: rate_limit` |
-| Codex | Each session log records the rate-limit window, its used percentage and its reset time | The same record |
-| Grok | `grok usage`, on some routes only | A `StopFailure` hook with `error: rate_limit` |
-| Antigravity | None found | None found |
+| Codex       | Each session log records the rate-limit window, its used percentage and its reset time                                                                                              | The same record                               |
+| Grok        | `grok usage`, on some routes only                                                                                                                                                   | A `StopFailure` hook with `error: rate_limit` |
+| Antigravity | None found                                                                                                                                                                          | None found                                    |
 
 So the adapters read what each harness exposes, and treat a harness with no signal as available until it fails. A failure marks the account exhausted until the reset it names, or for a default wait.
 

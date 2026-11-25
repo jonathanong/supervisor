@@ -19,17 +19,17 @@ flowchart LR
 
 ## Signals
 
-| Signal | Points at |
-| --- | --- |
-| Queue time per runner label | Too few runners of one kind, or jobs that could use another label |
-| Slowest jobs and steps, and the critical path | Where time goes; what to split, cache or parallelise |
-| Cache hit rate | Cache keys that miss, or caches that are never restored |
-| Minutes per workflow | Cost, and workflows that grew |
-| Merge-queue wait | Checks that hold the queue |
-| Runs cancelled by a newer run | Time wasted by concurrency groups |
-| Unbalanced test shards | Shards to rebalance |
-| Jobs that run on unrelated paths | Missing path filters |
-| Required checks that never report | PRs stuck waiting on a check no workflow produces |
+| Signal                                        | Points at                                                         |
+| --------------------------------------------- | ----------------------------------------------------------------- |
+| Queue time per runner label                   | Too few runners of one kind, or jobs that could use another label |
+| Slowest jobs and steps, and the critical path | Where time goes; what to split, cache or parallelise              |
+| Cache hit rate                                | Cache keys that miss, or caches that are never restored           |
+| Minutes per workflow                          | Cost, and workflows that grew                                     |
+| Merge-queue wait                              | Checks that hold the queue                                        |
+| Runs cancelled by a newer run                 | Time wasted by concurrency groups                                 |
+| Unbalanced test shards                        | Shards to rebalance                                               |
+| Jobs that run on unrelated paths              | Missing path filters                                              |
+| Required checks that never report             | PRs stuck waiting on a check no workflow produces                 |
 
 Every finding names the repository, the workflow and the job, with links to the runs it was measured from.
 

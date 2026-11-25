@@ -11,7 +11,7 @@ Some work is not triggered by an event: periodic audits, clean-ups, documentatio
    - a draft PR, at most one
    - a verified no-op, with the scope it checked
    - incomplete
-   Workers never shepherd or merge their own PR.
+     Workers never shepherd or merge their own PR.
 3. **Review.** A separate reviewer, never the author, checks each run against the prompt's scope, and checks that it changes no business behaviour and stays bounded. A claimed no-op gets a spot check.
 4. **Decide.** A passing PR is marked ready and triaged like any other [automation PR](intake.md#triage-of-open-automation-prs). A failing one goes back to its author or to a person.
 5. **Record.** The rotation advances even when a run is incomplete. Each run is kept in a bounded history and listed in the sweep summary.
@@ -21,6 +21,7 @@ A prompt can also produce issues instead of a PR, when its wrapper says so.
 ## Housekeeping
 
 Each sweep also:
+
 - removes worktrees whose PR merged or closed, when nothing in them is unpushed
 - deletes large build folders past a size limit
 - reports runs stuck in `queued`, and cancels runs older than a limit, never on the default branch

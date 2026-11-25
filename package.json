@@ -1,0 +1,42 @@
+{
+  "name": "@jongleberry/supervisor",
+  "version": "0.0.0",
+  "description": "Autonomous supervisor for coding agents across GitHub repositories.",
+  "license": "MIT",
+  "repository": "github:jonathanong/supervisor",
+  "bin": {
+    "supervisor": "./dist/cli/index.js"
+  },
+  "files": [
+    "dist",
+    "schemas",
+    "README.md",
+    "LICENSE"
+  ],
+  "type": "module",
+  "scripts": {
+    "lint": "oxlint",
+    "format": "oxfmt",
+    "format:check": "oxfmt --check",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:coverage": "vitest run --coverage",
+    "build": "tsc -p tsconfig.build.json && node -e \"import('node:fs').then(f=>f.chmodSync('dist/cli/index.js',0o755))\""
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.32.2",
+    "ajv": "^8.20.0"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.6",
+    "@vitest/coverage-v8": "^5.1.1",
+    "oxfmt": "^0.79.0",
+    "oxlint": "^1.94.0",
+    "typescript": "^7.0.2",
+    "vitest": "^5.1.1"
+  },
+  "engines": {
+    "node": ">=24"
+  },
+  "packageManager": "pnpm@12.23.0"
+}

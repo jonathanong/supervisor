@@ -6,9 +6,9 @@ What may merge without a person is written in the format of Claude Approvals' `a
 
 ## Two places a policy can live
 
-| File | Where | Role |
-| --- | --- | --- |
-| Supervisor policy | A private file, named in the config | The root. Its rules apply in every repository of every scope |
+| File                         | Where                                         | Role                                                         |
+| ---------------------------- | --------------------------------------------- | ------------------------------------------------------------ |
+| Supervisor policy            | A private file, named in the config           | The root. Its rules apply in every repository of every scope |
 | Repository policy (optional) | `.supervisor/approvals.yml` in the repository | Below the root, like a directory's policy file in the format |
 
 They combine the way the format combines a root file and a directory's file. Where a repository has its own file, that file decides. Of the supervisor's rules, only those marked `nested: inherit` still hold there. So the always-human rules and the final-review seat are inherited rules. A repository file can add its own carve-outs or ask for more, and cannot remove them.
@@ -24,19 +24,20 @@ A PR that changes a policy file is judged by the default branch's copy, and an i
 
 ## How the supervisor reads the format
 
-| Key | In Claude Approvals | In the supervisor |
-| --- | --- | --- |
-| `claude: approves` | Claude may approve | The supervisor may merge once the seats are filled |
-| `claude: comments` | Claude does not approve | The supervisor does not merge; the PR goes to a person |
-| `claude: blocks` | Nothing merges | Nothing merges |
-| `seats` | Who must approve | The same |
-| `pr/*`, `rule/*` facts | As documented | The same, computed from the GitHub API |
-| `repo/<name>` | Custom classifiers | The same definitions, run by the supervisor's model |
-| `claude/code_review` | Anthropic's Code Review | Mapped to a review request to [code-reviewer](https://github.com/jonathanong/code-reviewer) at the matching depth |
+| Key                    | In Claude Approvals     | In the supervisor                                                                                                 |
+| ---------------------- | ----------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| `claude: approves`     | Claude may approve      | The supervisor may merge once the seats are filled                                                                |
+| `claude: comments`     | Claude does not approve | The supervisor does not merge; the PR goes to a person                                                            |
+| `claude: blocks`       | Nothing merges          | Nothing merges                                                                                                    |
+| `seats`                | Who must approve        | The same                                                                                                          |
+| `pr/*`, `rule/*` facts | As documented           | The same, computed from the GitHub API                                                                            |
+| `repo/<name>`          | Custom classifiers      | The same definitions, run by the supervisor's model                                                               |
+| `claude/code_review`   | Anthropic's Code Review | Mapped to a review request to [code-reviewer](https://github.com/jonathanong/code-reviewer) at the matching depth |
 
 **Extensions, in the supervisor policy only:** the facts `pr/repository`, because one file covers many repositories, and `pr/labels`.
 
 **Outside the policy:**
+
 - **Required CI:** the supervisor merges only once required checks pass, as the format leaves CI to GitHub.
 - **Host, model and attended session:** these decide who may merge at all, so they live in the config.
 
@@ -55,6 +56,7 @@ The format takes no new keys, so full versus light review is expressed with what
 ## What the evaluator tells an agent
 
 `supervisor policy check <repo> <pr>` prints:
+
 - the rules that apply
 - the verdict
 - the seats and who must fill them
@@ -71,23 +73,23 @@ Placeholders are in angle brackets; a real file cannot hold them.
 ```yaml
 version: 1
 locals:
-  reviewed: [{ count: 1, from: "bot:<review app>" }]
+  reviewed: [{ count: 1, from: 'bot:<review app>' }]
 rules:
-  - purpose: "Nothing merges on its own unless a carve-out applies."
-    paths: ["**", "!**/test/**", "!docs/**"]
+  - purpose: 'Nothing merges on its own unless a carve-out applies.'
+    paths: ['**', '!**/test/**', '!docs/**']
     verdict: { claude: comments, seats: 1 }
     override:
-      - { if: "ALL pr/authors = bot:dependabot", verdict: { claude: approves, seats: "@reviewed" } }
-      - { if: "repo/flake_fix = yes", verdict: { claude: approves, seats: "@reviewed" } }
-  - purpose: "Test-only and docs-only changes merge once the reviewer approves."
-    paths: ["**/test/**", "docs/**"]
-    verdict: { claude: approves, seats: "@reviewed" }
-  - purpose: "Always a person: CI workflows, migrations, payments."
-    paths: [".github/workflows/**", "**/migrations/**", "**/payments/**"]
+      - { if: 'ALL pr/authors = bot:dependabot', verdict: { claude: approves, seats: '@reviewed' } }
+      - { if: 'repo/flake_fix = yes', verdict: { claude: approves, seats: '@reviewed' } }
+  - purpose: 'Test-only and docs-only changes merge once the reviewer approves.'
+    paths: ['**/test/**', 'docs/**']
+    verdict: { claude: approves, seats: '@reviewed' }
+  - purpose: 'Always a person: CI workflows, migrations, payments.'
+    paths: ['.github/workflows/**', '**/migrations/**', '**/payments/**']
     nested: inherit
     verdict: { claude: comments, seats: 1 }
-  - purpose: "A change to merge rules always goes to a person."
-    paths: [".supervisor/**", ".claude/approvals.yml", ".claude/classifiers/**"]
+  - purpose: 'A change to merge rules always goes to a person.'
+    paths: ['.supervisor/**', '.claude/approvals.yml', '.claude/classifiers/**']
     nested: inherit
     verdict: { claude: comments, seats: 1 }
 ```

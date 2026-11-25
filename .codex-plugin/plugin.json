@@ -1,0 +1,23 @@
+{
+  "name": "supervisor",
+  "description": "Autonomous supervisor for coding agents across GitHub repositories.",
+  "author": {
+    "name": "Jonathan Ong",
+    "url": "https://github.com/jonathanong"
+  },
+  "homepage": "https://github.com/jonathanong/supervisor",
+  "repository": "https://github.com/jonathanong/supervisor",
+  "license": "MIT",
+  "keywords": ["agents", "github", "mcp", "supervisor", "automation"],
+  "mcpServers": "./.mcp.json",
+  "interface": {
+    "displayName": "supervisor",
+    "shortDescription": "Autonomous supervisor for coding agents across GitHub repositories.",
+    "longDescription": "Supervises coding agents across GitHub repositories and owners.",
+    "developerName": "Jonathan Ong",
+    "category": "Productivity",
+    "capabilities": [],
+    "websiteURL": "https://github.com/jonathanong/supervisor",
+    "defaultPrompt": ["Validate the supervisor config."]
+  }
+}

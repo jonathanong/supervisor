@@ -28,9 +28,9 @@ flowchart LR
 4. **Promote.** A theme becomes an action item when it recurs in two or more sessions, or once when its severity is high.
 5. **Route by destination.** Each action item carries a destination:
 
-| Destination | Goes to |
-| --- | --- |
-| `ticket` | An issue in the repository it concerns |
+| Destination                                  | Goes to                                                                                    |
+| -------------------------------------------- | ------------------------------------------------------------------------------------------ |
+| `ticket`                                     | An issue in the repository it concerns                                                     |
 | `skill`, `AGENTS.md`, `lint`, `test`, `docs` | A change request in [loop 2](skill-feedback.md), against the repository that owns the rule |
 
 A finding about a private repository stays in that repository. See [privacy.md](privacy.md).

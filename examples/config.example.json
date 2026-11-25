@@ -1,0 +1,38 @@
+{
+  "$schema": "../schemas/config.json",
+  "scopes": [
+    {
+      "owner": "example-org",
+      "kind": "org",
+      "repos": "*",
+      "excludeForks": true,
+      "excludedRepos": ["archived-repo"],
+      "mode": "enforce",
+      "provenance": {
+        "fields": ["agent", "model", "session"]
+      },
+      "taxonomy": {}
+    },
+    {
+      "owner": "example-user",
+      "kind": "user",
+      "repos": ["demo-repo"],
+      "mode": "report"
+    }
+  ],
+  "provenance": {
+    "fields": ["agent", "model"]
+  },
+  "mergeAuthority": {
+    "policy": "./merge-policy.json",
+    "policyEngine": "supervisor",
+    "attendedOnly": true,
+    "hosts": ["workstation-1"],
+    "models": ["claude-sonnet", "gpt-5"]
+  },
+  "finalReview": {
+    "request": ["session", "label"],
+    "label": "ready-for-review"
+  },
+  "harness": "claude-code"
+}

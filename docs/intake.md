@@ -18,12 +18,12 @@ An incomplete report goes back to its sender with the missing fields. A complete
 
 People in a configured list of trusted logins can comment a command on an issue or PR. Bots and everyone else are ignored.
 
-| Command | On | Does |
-| --- | --- | --- |
-| `/shepherd` | A PR | The supervisor takes the PR over and drives it to merge or to a person |
-| `/plan` | An issue or PR | A worker drafts a plan. A person reviews it before it is posted |
-| `/fix` | An issue | A worker opens a PR that links the issue |
-| `/fix` | A PR | A worker pushes a fix to the PR's branch, never to a fork |
+| Command     | On             | Does                                                                   |
+| ----------- | -------------- | ---------------------------------------------------------------------- |
+| `/shepherd` | A PR           | The supervisor takes the PR over and drives it to merge or to a person |
+| `/plan`     | An issue or PR | A worker drafts a plan. A person reviews it before it is posted        |
+| `/fix`      | An issue       | A worker opens a PR that links the issue                               |
+| `/fix`      | A PR           | A worker pushes a fix to the PR's branch, never to a fork              |
 
 The supervisor acknowledges each accepted command with an `eyes` reaction. A backstop in each sweep finds commands with no reaction, posted while it was down, and handles them. No command grants a merge.
 
@@ -34,6 +34,7 @@ An agent that has finished its part of a PR can hand it to the supervisor by pos
 ## Triage of open automation PRs
 
 Each sweep reviews the open PRs agents opened. For each PR:
+
 - **Merge or close.** A PR that would merge must change no business behaviour and stay a focused fix, with no new abstractions or broad rewrites. Anything else goes to a person, and so does every close.
 - **Steering.** Where a PR needs direction, such as "prefer the general fix over a narrow band-aid", the supervisor posts it as a comment, and the PR waits a sweep before merging.
 - **Feedback on the PR itself.** A weak agent-written PR is evidence about the skills that produced it. It becomes a change request in [loop 2](skill-feedback.md). Feedback PRs are themselves excluded from this triage, so the loop cannot feed on itself.

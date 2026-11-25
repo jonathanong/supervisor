@@ -1,0 +1,13 @@
+{
+  "name": "supervisor",
+  "description": "Autonomous supervisor for coding agents across GitHub repositories.",
+  "author": {
+    "name": "Jonathan Ong",
+    "url": "https://github.com/jonathanong"
+  },
+  "homepage": "https://github.com/jonathanong/supervisor",
+  "repository": "https://github.com/jonathanong/supervisor",
+  "license": "MIT",
+  "keywords": ["agents", "github", "mcp", "supervisor", "automation"],
+  "mcpServers": "./.mcp.json"
+}

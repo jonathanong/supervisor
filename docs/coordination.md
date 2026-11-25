@@ -6,14 +6,14 @@ The supervisor owns coordination. It is the one place that knows who is working 
 
 ## What it checks
 
-| Source | Tells it |
-| --- | --- |
-| [Claims](claims-and-taxonomy.md#claims) on issues and PRs | Who said they are working on what, and from which session |
-| Live agents | Which sessions, workers and panes are running, idle, errored or gone, on every machine |
-| Its own in-flight work | Workers it dispatched, and PRs it is shepherding |
-| The flake ledger | Which flakes are tracked, and who has the fix |
-| The intake queue | Reports from other agents that are queued but not yet filed |
-| Open PRs | Fixes already in review for the same failure or issue |
+| Source                                                    | Tells it                                                                               |
+| --------------------------------------------------------- | -------------------------------------------------------------------------------------- |
+| [Claims](claims-and-taxonomy.md#claims) on issues and PRs | Who said they are working on what, and from which session                              |
+| Live agents                                               | Which sessions, workers and panes are running, idle, errored or gone, on every machine |
+| Its own in-flight work                                    | Workers it dispatched, and PRs it is shepherding                                       |
+| The flake ledger                                          | Which flakes are tracked, and who has the fix                                          |
+| The intake queue                                          | Reports from other agents that are queued but not yet filed                            |
+| Open PRs                                                  | Fixes already in review for the same failure or issue                                  |
 
 ## Example: a flake
 

@@ -4,12 +4,12 @@ Dependency-bot PRs are the most routine work the supervisor merges. It triages t
 
 [Back to the graph](graph.md)
 
-| Update | Action |
-| --- | --- |
-| Patch or minor, green | Merge, as the [merge policy](merge-policy.md) allows |
+| Update                                 | Action                                                                                                       |
+| -------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| Patch or minor, green                  | Merge, as the [merge policy](merge-policy.md) allows                                                         |
 | Patch or minor, failing or conflicting | A fixer repairs it, then it merges as usual. A person is asked only when the fix takes it outside the policy |
-| Major | Assess first, as below |
-| A lockfile-dedupe PR | Handled first in its repository |
+| Major                                  | Assess first, as below                                                                                       |
+| A lockfile-dedupe PR                   | Handled first in its repository                                                                              |
 
 ## Major updates
 

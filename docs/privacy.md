@@ -4,12 +4,12 @@ The supervisor reads private repositories and private session data. Its outputs 
 
 [Back to the graph](graph.md)
 
-| Material | Rule |
-| --- | --- |
-| Loop data: journals, snapshots, state, merge records, escalations | Private. It never appears in a public repository |
-| Distilled findings | Filed in the repository they concern. A finding about a private repository stays there |
-| Learnings bound for shared skills | Allowed from private repositories, as principles only: no code, paths or names from the source |
-| Eval cases | Recreated, never copied. A worker writes a fresh case that shows the same mistake; the private case is not reused, even redacted |
+| Material                                                          | Rule                                                                                                                             |
+| ----------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| Loop data: journals, snapshots, state, merge records, escalations | Private. It never appears in a public repository                                                                                 |
+| Distilled findings                                                | Filed in the repository they concern. A finding about a private repository stays there                                           |
+| Learnings bound for shared skills                                 | Allowed from private repositories, as principles only: no code, paths or names from the source                                   |
+| Eval cases                                                        | Recreated, never copied. A worker writes a fresh case that shows the same mistake; the private case is not reused, even redacted |
 
 ## Enforced before a push, not at review
 

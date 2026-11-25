@@ -1,0 +1,11 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "supervisor",
+  "description": "Autonomous supervisor for coding agents across GitHub repositories.",
+  "author": {
+    "name": "Jonathan Ong"
+  },
+  "repository": "https://github.com/jonathanong/supervisor",
+  "license": "MIT",
+  "mcpServers": "./.mcp.json"
+}
