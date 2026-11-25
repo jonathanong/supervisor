@@ -69,8 +69,9 @@ The dotted edge and the decision record are what make it self-improving. Merges,
 | 7. Late reviews | Review comments after merge, or unresolved at merge | Follow-up issues | [late-reviews.md](late-reviews.md) |
 | 8. Maintenance | Scheduled prompt files in each repository | Draft PRs or verified no-ops, and housekeeping | [maintenance.md](maintenance.md) |
 | 9. CI performance | Timings, queue time, cache hits and cost of passing CI | Measured speed-ups | [ci-performance.md](ci-performance.md) |
+| 10. Workarounds | Pins, overrides and exemptions added for a CVE or an upstream bug | Removed once the fix ships | [workarounds.md](workarounds.md) |
 
-Loops 1, 5 and 7 feed loop 2: a distilled theme, a repeated answer, or a recurring review finding whose fix is a rule becomes a skill change request. Loops 2, 3, 6, 8 and 9 produce PRs, and all of them pass the same merge gate.
+Loops 1, 5 and 7 feed loop 2: a distilled theme, a repeated answer, or a recurring review finding whose fix is a rule becomes a skill change request. Loops 2, 3, 6, 8, 9 and 10 produce PRs, and all of them pass the same merge gate.
 
 ## Other ways work arrives
 
@@ -79,6 +80,7 @@ Loops 1, 5 and 7 feed loop 2: a distilled theme, a repeated answer, or a recurri
 
 ## Cross-cutting parts
 
+- [coordination.md](coordination.md): the supervisor owns coordination. It knows who is working on what, so two agents never fix the same flake.
 - [merge-policy.md](merge-policy.md): what may merge without a person, written in the Claude Approvals `approvals.yml` format.
 - [dispatch.md](dispatch.md): where work runs, and how usage limits across several accounts and harnesses shape it.
 - [privacy.md](privacy.md): what may leave a private repository, and how that is enforced before a push.
@@ -97,7 +99,7 @@ Loops 1, 5 and 7 feed loop 2: a distilled theme, a repeated answer, or a recurri
 | Surface | Holds |
 | --- | --- |
 | `supervisor` CLI | The supervisor's own steps: `policy check` and `policy explain`, distill classify and route, claim reconciliation, `prepush` |
-| MCP server | Tools for agents: `pr_create`, `pr_update`, `pr_validate`, `session_facts`, `policy_check` |
+| MCP server | Tools for agents: `pr_create`, `pr_update`, `pr_validate`, `session_facts`, `policy_check`, `coordination_check` |
 | Skills | Procedures that are not code: the supervisor loop, the skill-feedback procedure, claims |
 | JSON Schemas | Journal entry shapes, registered in agent-blackboard |
 | Config | One JSON file per installation, kept private. Scopes, provenance fields, who may merge, how to request the final review |

@@ -21,7 +21,7 @@ A claim is a provenance comment an agent posts when it opens a PR or picks up an
 - a second claim on the same issue or PR is refused
 - work in a repository that another session owns goes to that session
 
-The claims answer "who owns this?".
+The claims answer "who owns this?". The supervisor uses them, with the live agent list and its own work, to [coordinate](coordination.md).
 
 ## Milestones and projects
 
