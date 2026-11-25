@@ -1,0 +1,25 @@
+{
+  "scopes": [
+    {
+      "owner": "example-org",
+      "kind": "team",
+      "repos": "*"
+    }
+  ],
+  "provenance": {
+    "fields": ["agent"]
+  },
+  "mergeAuthority": {
+    "policy": "./policy.json",
+    "policyEngine": "supervisor",
+    "attendedOnly": true,
+    "hosts": [],
+    "models": [],
+    "extraField": true
+  },
+  "finalReview": {
+    "request": ["invalid"]
+  },
+  "harness": "claude-code",
+  "unexpectedRoot": 123
+}

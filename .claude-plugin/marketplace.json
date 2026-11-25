@@ -1,0 +1,18 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "supervisor",
+  "description": "Autonomous supervisor for coding agents across GitHub repositories.",
+  "owner": {
+    "name": "Jonathan Ong",
+    "url": "https://github.com/jonathanong"
+  },
+  "plugins": [
+    {
+      "name": "supervisor",
+      "description": "Autonomous supervisor for coding agents across GitHub repositories.",
+      "source": "./",
+      "category": "productivity",
+      "homepage": "https://github.com/jonathanong/supervisor"
+    }
+  ]
+}

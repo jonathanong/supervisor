@@ -1,0 +1,140 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/jonathanong/supervisor/schemas/config.json",
+  "title": "supervisor configuration",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["scopes", "provenance", "mergeAuthority", "finalReview", "harness"],
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "minLength": 1
+    },
+    "scopes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["owner", "kind", "repos"],
+        "properties": {
+          "owner": {
+            "type": "string",
+            "minLength": 1
+          },
+          "kind": {
+            "type": "string",
+            "enum": ["org", "user"]
+          },
+          "repos": {
+            "oneOf": [
+              {
+                "const": "*"
+              },
+              {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              }
+            ]
+          },
+          "excludeForks": {
+            "type": "boolean"
+          },
+          "excludedRepos": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "mode": {
+            "type": "string",
+            "enum": ["enforce", "report"]
+          },
+          "provenance": {
+            "$ref": "#/$defs/provenance"
+          },
+          "taxonomy": {
+            "type": "object"
+          }
+        }
+      }
+    },
+    "provenance": {
+      "$ref": "#/$defs/provenance"
+    },
+    "mergeAuthority": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["policy", "policyEngine", "attendedOnly", "hosts", "models"],
+      "properties": {
+        "policy": {
+          "type": "string",
+          "minLength": 1
+        },
+        "policyEngine": {
+          "type": "string",
+          "enum": ["supervisor", "claude-approvals", "compare"]
+        },
+        "attendedOnly": {
+          "type": "boolean"
+        },
+        "hosts": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "models": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    },
+    "finalReview": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["request"],
+      "properties": {
+        "request": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "enum": ["session", "label"]
+          }
+        },
+        "label": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "harness": {
+      "type": "string",
+      "minLength": 1
+    }
+  },
+  "$defs": {
+    "provenance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["fields"],
+      "properties": {
+        "fields": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    }
+  }
+}

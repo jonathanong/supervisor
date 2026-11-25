@@ -1,0 +1,54 @@
+cli:
+  - changed-files:
+      - any-glob-to-any-file: 'src/cli/**'
+
+mcp:
+  - changed-files:
+      - any-glob-to-any-file: 'src/mcp/**'
+
+schemas:
+  - changed-files:
+      - any-glob-to-any-file:
+          - 'schemas/**'
+          - 'examples/**'
+
+tests:
+  - changed-files:
+      - any-glob-to-any-file: 'test/**'
+
+evals:
+  - changed-files:
+      - any-glob-to-any-file: 'evals/**'
+
+plugin:
+  - changed-files:
+      - any-glob-to-any-file:
+          - 'plugin.json'
+          - '.mcp.json'
+          - '.claude-plugin/**'
+          - '.codex-plugin/**'
+          - '.agents/**'
+
+docs:
+  - changed-files:
+      - any-glob-to-any-file:
+          - 'README.md'
+          - 'AGENTS.md'
+          - 'CLAUDE.md'
+          - 'docs/**'
+
+ci:
+  - changed-files:
+      - any-glob-to-any-file:
+          - '.github/**'
+          - 'codecov.yml'
+
+config:
+  - changed-files:
+      - any-glob-to-any-file:
+          - 'package.json'
+          - 'pnpm-lock.yaml'
+          - 'tsconfig*.json'
+          - 'vitest.config.ts'
+          - '.oxlintrc.json'
+          - '.oxfmtrc.json'
