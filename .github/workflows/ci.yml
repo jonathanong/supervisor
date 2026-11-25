@@ -33,6 +33,7 @@ jobs:
       - run: pnpm run typecheck
       - run: pnpm run test:coverage
       - run: pnpm run build
+      - run: pnpm run pack:check
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1
         with:
