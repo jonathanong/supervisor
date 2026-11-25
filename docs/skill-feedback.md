@@ -11,13 +11,11 @@ flowchart LR
   R[Review findings] --> CR
   CR --> W[Worker in the owning repo]
   W --> C[Write the eval case]
-  C --> F{Fails without the rule?}
-  F -->|yes| RU[Add the rule]
-  F -->|no| X[Close: already followed]
+  C --> RU[Add the rule]
   RU --> S[Score with and without]
   S --> P{Delta}
-  P -->|better| M[Merge after final review]
-  P -->|equal or worse| H[Person]
+  P -->|better or equal| M[Merge after final review]
+  P -->|worse| H[Person]
   M --> K[Recurrence check]
 ```
 
@@ -33,7 +31,7 @@ Every source files the same kind of issue in the repository that owns the rule:
 
 **Routing:**
 - general principles go to the shared skills repository, [harness-plugins](https://github.com/jonathanong/harness-plugins)
-- hard "must not" rules go to a static checker such as [no-mistakes](https://github.com/jonathanong/no-mistakes)
+- anything a static checker can check is enforced by one (a lint rule, a CI guard, or [no-mistakes](https://github.com/jonathanong/no-mistakes)). The rule also gets a short line of prose, a SHOULD or MUST NOT, in the skill an agent loads for that work, so the agent writes it right the first time instead of looping on a failing check
 - an organization's or repository's own policy goes to that repository's `AGENTS.md`
 
 ## Case first, then rule
@@ -41,23 +39,22 @@ Every source files the same kind of issue in the repository that owns the rule:
 A worker in the owning repository:
 
 1. writes the eval case
-2. confirms the model fails it without the rule
-3. adds the rule
-4. runs both arms, with and without the rule
-5. puts both scores in the PR description
+2. adds the rule
+3. runs both arms, with and without the rule
+4. puts both scores in the PR description
 
-Rules a model already follows unaided are not added. Later, rules a newer model follows unaided are candidates for removal.
+**Rules are encoded even when the model already follows them.** A rule that scores equal to no rule is still added, as a guard: the next model, or a switch to another model or harness, may not follow it unaided. The eval case stays too, so it catches a later model that regresses.
 
 ## The merge gate
 
 | Result | Outcome |
 | --- | --- |
 | Better with the rule | May merge once the final reviewer approves the head |
-| Equal | Goes to a person |
+| Equal | May merge once the final reviewer approves the head, as a guard |
 | Worse | Goes to a person |
 | Changes the eval runner or its scripts | Always goes to a person |
 
-Shared skills reach every session as soon as they merge, so the eval delta is the only thing between a bad rule and every agent. That is why changes to the eval runner are never merged autonomously.
+Shared skills reach every session as soon as they merge, so the eval delta is the only thing between a harmful rule and every agent. That is why changes to the eval runner are never merged autonomously.
 
 ## Recurrence check
 

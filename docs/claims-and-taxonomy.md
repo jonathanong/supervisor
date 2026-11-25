@@ -27,7 +27,8 @@ The claims answer "who owns this?".
 
 - **PRs inherit.** A PR that closes an issue takes that issue's milestone and project.
 - **One project per issue,** by default. Before adding an issue to a project, the agent checks that the project's auto-add won't pull a sub-issue into a second project. A repository can override this in its `AGENTS.md`.
-- **Milestones are created and completed.** A milestone with nothing open is proposed for closing. A closed milestone is never reopened: new work gets a new milestone.
+- **Agents may create milestones.** A milestone is an epic within one repository: created for a piece of work and completed with it, so it needs no approval. A milestone with nothing open is proposed for closing. A closed milestone is never reopened: new work gets a new milestone.
+- **Projects need a person's approval to create.** A project spans repositories and is high-level, so an agent proposes one and waits. Agents may add issues to existing projects.
 - **Progress in the sweep summary.** For each open milestone: open and closed counts, items with no claim and no linked PR, and items claimed but idle.
 
 ## Labels
