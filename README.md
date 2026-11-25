@@ -39,4 +39,9 @@ pnpm run typecheck     # typecheck with TypeScript
 pnpm run test          # run unit tests
 pnpm run test:coverage # run tests with 100% coverage enforcement
 pnpm run build         # compile TypeScript to dist/
+pnpm run pack:check    # verify pnpm pack --dry-run file list
 ```
+
+## Release
+
+Bump `version` in `package.json` on `main`, then publish a GitHub Release tagged `v<version>` (`release.yml` tests, packs, and publishes to npm via OIDC).
