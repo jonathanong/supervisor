@@ -1,0 +1,72 @@
+import type { ClaudeAction, ReviewDepth, SeatSet, Verdict } from './types.js'
+
+export interface EvaluationFacts {
+  filesChanged?: number
+  filesAdded?: number
+  filesRemoved?: number
+  diffLines?: number
+  authors?: string[]
+  approvedBy?: string[]
+  openedBy?: string
+  base?: string
+  repository?: string
+  labels?: string[]
+  teams?: Record<string, string[]>
+  bots?: string[]
+}
+
+export interface ClassifierResult {
+  status: 'complete' | 'error' | 'incomplete'
+  value?: string | number
+  level?: ReviewDepth
+  severity?: 'none' | 'minimal' | 'low' | 'medium' | 'high' | 'critical'
+  outputs?: Record<string, string | number>
+}
+
+export interface EvaluationInput {
+  changedFiles: string[]
+  facts?: EvaluationFacts
+  classifiers?: Record<string, ClassifierResult>
+}
+
+export interface EvaluatedSeat extends SeatSet {
+  filledBy: string[]
+  remaining: number
+  authorOnly: boolean
+}
+
+export interface AppliedRuleResult {
+  purpose: string
+  sourceFile: string
+  verdict: Verdict
+  overrideIndex: number | null
+  waitingOnClassifier: boolean
+  authorOnlySeats: boolean
+}
+
+export interface FileEvaluation {
+  file: string
+  decidingPolicy: string | null
+  covered: boolean
+  noRuleApplies: boolean
+  unresolvedRuleIf: boolean
+  rules: AppliedRuleResult[]
+  verdict: ClaudeAction | null
+  seats: EvaluatedSeat[]
+  reviewDepth: ReviewDepth | null
+}
+
+export type NextStep =
+  | { action: 'merge' }
+  | { action: 'request_review'; depth: ReviewDepth }
+  | { action: 'escalate'; reason: string }
+
+export interface EvaluationResult {
+  files: FileEvaluation[]
+  uncoveredFiles: string[]
+  verdict: ClaudeAction | null
+  seats: EvaluatedSeat[]
+  reviewDepth: ReviewDepth | null
+  authorOnlyWarnings: string[]
+  nextStep: NextStep
+}

@@ -1,0 +1,15 @@
+{
+  "changedFiles": ["src/auth/login.ts"],
+  "facts": {
+    "openedBy": "dev-one",
+    "authors": ["dev-one"]
+  },
+  "classifiers": {
+    "claude/code_review": {
+      "status": "complete",
+      "value": "pass",
+      "level": "deep",
+      "severity": "none"
+    }
+  }
+}

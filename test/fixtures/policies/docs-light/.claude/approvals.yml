@@ -1,0 +1,18 @@
+version: 1
+rules:
+  - purpose: Docs changes need only a quick AI review
+    paths:
+      - 'docs/**/*.md'
+      - '*.md'
+    verdict:
+      claude: comments
+      seats:
+        - count: 1
+          from:
+            - humans
+            - '!pr/authors'
+    override:
+      - if: 'claude/code_review(level=quick) = pass'
+        verdict:
+          claude: approves
+          seats: 0

@@ -1,0 +1,9 @@
+version: 1
+rules:
+  - purpose: Invalid rule with an unknown key
+    paths:
+      - '**'
+    bogus_key: true
+    verdict:
+      claude: approves
+      seats: 0
