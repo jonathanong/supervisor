@@ -18,12 +18,12 @@ flowchart LR
 
 ## What counts
 
-| Kind | Examples |
-| --- | --- |
-| Package pins and overrides | `pnpm.overrides`, `resolutions`, a `[patch]` in `Cargo.toml`, an exact version where a range would do |
+| Kind                         | Examples                                                                                                      |
+| ---------------------------- | ------------------------------------------------------------------------------------------------------------- |
+| Package pins and overrides   | `pnpm.overrides`, `resolutions`, a `[patch]` in `Cargo.toml`, an exact version where a range would do         |
 | Audit and scanner exemptions | Ignored CVEs in `pnpm audit` config, `.trivyignore`, osv-scanner ignores, a dependency bot's `ignore` entries |
-| Image and system packages | A pinned `apt-get install pkg=version` in a Dockerfile, a pinned base image digest held back for a CVE |
-| Code workarounds | A shim, a disabled feature or a patched copy kept until an upstream fix ships |
+| Image and system packages    | A pinned `apt-get install pkg=version` in a Dockerfile, a pinned base image digest held back for a CVE        |
+| Code workarounds             | A shim, a disabled feature or a patched copy kept until an upstream fix ships                                 |
 
 ## The marker
 

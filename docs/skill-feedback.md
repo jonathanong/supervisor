@@ -30,6 +30,7 @@ Every source files the same kind of issue in the repository that owns the rule:
 - a sketch of the eval case
 
 **Routing:**
+
 - general principles go to the shared skills repository, [harness-plugins](https://github.com/jonathanong/harness-plugins)
 - anything a static checker can check is enforced by one (a lint rule, a CI guard, or [no-mistakes](https://github.com/jonathanong/no-mistakes)). The rule also gets a short line of prose, a SHOULD or MUST NOT, in the skill an agent loads for that work, so the agent writes it right the first time instead of looping on a failing check
 - an organization's or repository's own policy goes to that repository's `AGENTS.md`
@@ -49,12 +50,12 @@ A worker in the owning repository:
 
 ## The merge gate
 
-| Result | Outcome |
-| --- | --- |
-| Better with the rule | May merge once the final reviewer approves the head |
-| Equal | May merge once the final reviewer approves the head, as a guard |
-| Worse | Goes to a person |
-| Changes the eval runner or its scripts | Always goes to a person |
+| Result                                 | Outcome                                                         |
+| -------------------------------------- | --------------------------------------------------------------- |
+| Better with the rule                   | May merge once the final reviewer approves the head             |
+| Equal                                  | May merge once the final reviewer approves the head, as a guard |
+| Worse                                  | Goes to a person                                                |
+| Changes the eval runner or its scripts | Always goes to a person                                         |
 
 Shared skills reach every session as soon as they merge, so the eval delta is the only thing between a harmful rule and every agent. That is why changes to the eval runner are never merged autonomously.
 

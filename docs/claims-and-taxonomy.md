@@ -17,6 +17,7 @@ A claim is a provenance comment an agent posts when it opens a PR or picks up an
 **One writer.** The MCP tools `pr_create` and `pr_update` render the comment, so its format cannot drift between repositories.
 
 **Reconciliation.** Each sweep matches claims against the live agents:
+
 - a claim whose session is gone is marked stale and the work is re-dispatched
 - a second claim on the same issue or PR is refused
 - work in a repository that another session owns goes to that session
@@ -45,6 +46,7 @@ The generic procedure for both lives in the `github-issue` and `github-repositor
 ## Audit
 
 Each sweep checks PRs and issues for a milestone, labels, a closing reference and an owner, and fixes what is missing. It closes duplicates and issues already fixed, after checking each against the current default branch, with a comment and the right close reason. Every open issue should be in a milestone or a project, or be in progress; a flake is always in progress. A periodic taxonomy audit reports:
+
 - near-duplicate and unused labels
 - labels made for one-off work
 - labels on GitHub that are missing from the declared label source

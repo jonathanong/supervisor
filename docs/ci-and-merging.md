@@ -22,10 +22,10 @@ flowchart LR
 
 Diagnosis follows the [review-ci-logs](https://github.com/jonathanong/harness-plugins) skill: find the first error the repository owns, in the failing step, rather than reading whole logs. Each failure is classed as:
 
-| Class | Action |
-| --- | --- |
-| The PR's own failure | The PR's owner fixes it, then rebases and re-queues |
-| Flake | Ledger, issue, fixer in the same tick |
+| Class                    | Action                                                                                             |
+| ------------------------ | -------------------------------------------------------------------------------------------------- |
+| The PR's own failure     | The PR's owner fixes it, then rebases and re-queues                                                |
+| Flake                    | Ledger, issue, fixer in the same tick                                                              |
 | Infrastructure or outage | When a third-party status page reports an outage at the failure time, record it and skip the fixer |
 
 ## Flake ledger
