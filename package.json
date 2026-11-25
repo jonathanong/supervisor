@@ -3,15 +3,23 @@
   "version": "0.0.0",
   "description": "Autonomous supervisor for coding agents across GitHub repositories.",
   "license": "MIT",
-  "repository": "github:jonathanong/supervisor",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jonathanong/supervisor.git"
+  },
   "bin": {
-    "supervisor": "./dist/cli/index.js"
+    "supervisor": "dist/cli/index.js"
   },
   "files": [
     "dist",
+    "!dist/**/*.map",
     "schemas",
-    "README.md",
-    "LICENSE"
+    "plugin.json",
+    ".mcp.json",
+    ".claude-plugin/plugin.json",
+    ".claude-plugin/marketplace.json",
+    ".codex-plugin/plugin.json",
+    ".agents/plugins/marketplace.json"
   ],
   "type": "module",
   "scripts": {
@@ -21,7 +29,8 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
-    "build": "tsc -p tsconfig.build.json && node -e \"import('node:fs').then(f=>f.chmodSync('dist/cli/index.js',0o755))\""
+    "build": "tsc -p tsconfig.build.json && node -e \"import('node:fs').then(f=>f.chmodSync('dist/cli/index.js',0o755))\"",
+    "pack:check": "node scripts/check-pack.ts"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.32.2",
