@@ -31,7 +31,7 @@ Every source files the same kind of issue in the repository that owns the rule:
 
 **Routing:**
 - general principles go to the shared skills repository, [harness-plugins](https://github.com/jonathanong/harness-plugins)
-- hard "must not" rules go to a static checker such as [no-mistakes](https://github.com/jonathanong/no-mistakes)
+- anything a static checker can check is enforced by one (a lint rule, a CI guard, or [no-mistakes](https://github.com/jonathanong/no-mistakes)) rather than written as prose
 - an organization's or repository's own policy goes to that repository's `AGENTS.md`
 
 ## Case first, then rule
