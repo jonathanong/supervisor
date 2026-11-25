@@ -25,3 +25,4 @@ Each sweep also:
 - deletes large build folders past a size limit
 - reports runs stuck in `queued`, and cancels runs older than a limit, never on the default branch
 - proposes closing milestones with nothing open
+- checks every temporary workaround, and removes the ones that are no longer needed: see [workarounds.md](workarounds.md)

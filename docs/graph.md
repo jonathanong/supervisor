@@ -69,8 +69,9 @@ The dotted edge and the decision record are what make it self-improving. Merges,
 | 7. Late reviews | Review comments after merge, or unresolved at merge | Follow-up issues | [late-reviews.md](late-reviews.md) |
 | 8. Maintenance | Scheduled prompt files in each repository | Draft PRs or verified no-ops, and housekeeping | [maintenance.md](maintenance.md) |
 | 9. CI performance | Timings, queue time, cache hits and cost of passing CI | Measured speed-ups | [ci-performance.md](ci-performance.md) |
+| 10. Workarounds | Pins, overrides and exemptions added for a CVE or an upstream bug | Removed once the fix ships | [workarounds.md](workarounds.md) |
 
-Loops 1, 5 and 7 feed loop 2: a distilled theme, a repeated answer, or a recurring review finding whose fix is a rule becomes a skill change request. Loops 2, 3, 6, 8 and 9 produce PRs, and all of them pass the same merge gate.
+Loops 1, 5 and 7 feed loop 2: a distilled theme, a repeated answer, or a recurring review finding whose fix is a rule becomes a skill change request. Loops 2, 3, 6, 8, 9 and 10 produce PRs, and all of them pass the same merge gate.
 
 ## Other ways work arrives
 
