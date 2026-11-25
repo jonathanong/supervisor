@@ -5,6 +5,19 @@ supervisor is an autonomous, self-improving graph of coding agents. Its goals ar
 1. **Autonomous.** Work goes from an event to a merged PR with no prompt to a person, wherever the merge policy allows it.
 2. **Self-improving.** Friction an agent records becomes a rule, a skill change or an issue, so the same mistake costs less next time.
 
+*Coding harnesses are the commodity. Business impact is what we build the harness around.*
+
+## What we don't build
+
+- **A coding harness.** Claude Code, Codex, Grok and Antigravity are a commodity, and they improve on their own. We don't build or tune one. We build workflows around them, and switch between them as they change.
+- **A dispatcher or runtime.** Everything runs locally. Sessions, panes and workers belong to a terminal multiplexer for agents, today [herdr](https://herdr.dev). The supervisor drives it rather than replacing it, and it is just as replaceable: if a better one appears, we switch.
+
+A change that adds a custom dispatcher, or works around a harness bug instead of reporting it upstream, is out of scope by design.
+
+## What we do build
+
+- **A harness around business impact.** The path from a business need to a shipped change that works: deciding which work matters, getting it done well with whichever coding harness is best that month, and checking whether it moved the outcome.
+
 ## Why
 
 - **People focus on business outcomes and customer satisfaction,** not on babysitting agents.
