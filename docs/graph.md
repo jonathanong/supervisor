@@ -16,6 +16,7 @@ supervisor is an autonomous, self-improving graph of coding agents. Its goals ar
 - **A lesson learned once helps everywhere.** A mistake found in one repository becomes a principle every repository gets, public ones included, without private details.
 - **People are interrupted only for real decisions,** in batches, each with the evidence and a recommended answer. The same question is never asked twice.
 - **Work is visible on GitHub.** Anyone can read who is doing what, and why, from the forge, not only the person running the agents.
+- **Smaller models do most of the work.** Principles in skills and guardrails such as static checks ([no-mistakes](https://github.com/jonathanong/no-mistakes)) carry the knowledge, so smaller, cheaper models can do the bulk of the work well. The largest models are saved for hard reasoning, review and decisions. Eval cases show which tier a kind of work needs, and each rule that lets a smaller model pass moves more work down a tier.
 - **Capacity is spent deliberately.** Usage limits and CI minutes go where they matter most, and none sits idle while ready work waits.
 - **Every goal has a number.** The measures in [guardrails.md](guardrails.md#five-numbers) show whether the system is improving, rather than assuming it is.
 
