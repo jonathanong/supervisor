@@ -5,7 +5,7 @@ supervisor is an autonomous, self-improving graph of coding agents. Its goals ar
 1. **Autonomous.** Work goes from an event to a merged PR with no prompt to a person, wherever the merge policy allows it.
 2. **Self-improving.** Friction an agent records becomes a rule, a skill change or an issue, so the same mistake costs less next time.
 
-*Coding harnesses are the commodity. Business impact is what we build the harness around.*
+_Coding harnesses are the commodity. Business impact is what we build the harness around._
 
 ## What we don't build
 
