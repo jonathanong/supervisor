@@ -9,7 +9,15 @@ supervisor is an autonomous, self-improving graph of coding agents. Its goals ar
 
 - **People focus on business outcomes and customer satisfaction,** not on babysitting agents.
 - **Engineers focus on principles.** Their work is the rules that let agents build well-designed systems without supervision. So principled rules, with feedback loops that keep them true, are a key part of this system.
+- **Engineers architect principles, not features.** Engineers should not need to design each feature. They design the principles that let agents design features well.
 - **A prototype is most of the way to production.** In the ideal case, a product manager prototypes a working feature with an agent, and an engineer ships it to production with minimal changes.
+- **Speed never costs quality.** More autonomy must not mean more incidents, reverts or regressions. Autonomy widens one category at a time, and only on evidence.
+- **Knowledge outlives models and sessions.** Lessons live in rules, eval cases and static checks, not in one model's habits or one session's memory. A new model, harness or vendor starts with everything learned so far.
+- **A lesson learned once helps everywhere.** A mistake found in one repository becomes a principle every repository gets, public ones included, without private details.
+- **People are interrupted only for real decisions,** in batches, each with the evidence and a recommended answer. The same question is never asked twice.
+- **Work is visible on GitHub.** Anyone can read who is doing what, and why, from the forge, not only the person running the agents.
+- **Capacity is spent deliberately.** Usage limits and CI minutes go where they matter most, and none sits idle while ready work waits.
+- **Every goal has a number.** The measures in [guardrails.md](guardrails.md#five-numbers) show whether the system is improving, rather than assuming it is.
 
 This page is the overview. Each part of the graph has its own page, linked below.
 
