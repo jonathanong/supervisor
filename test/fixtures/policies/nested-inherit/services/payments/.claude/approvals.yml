@@ -1,0 +1,17 @@
+version: 1
+rules:
+  - purpose: Payments service requires deep review
+    paths:
+      - 'src/**'
+    verdict:
+      claude: comments
+      seats:
+        - count: 1
+          from:
+            - example-org/payments
+            - '!pr/authors'
+    override:
+      - if: 'claude/code_review(level=deep) = pass'
+        verdict:
+          claude: approves
+          seats: 0

@@ -1,0 +1,8 @@
+version: 1
+rules:
+  - purpose: Single human seat that the author fills alone
+    paths:
+      - 'src/**'
+    verdict:
+      claude: approves
+      seats: 1

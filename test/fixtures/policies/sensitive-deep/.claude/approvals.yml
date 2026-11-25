@@ -1,0 +1,28 @@
+version: 1
+locals:
+  security_reviewers:
+    count: 1
+    from:
+      - example-org/security
+      - '!pr/authors'
+rules:
+  - purpose: Sensitive auth and billing paths need deep review plus security approval
+    paths:
+      - 'src/auth/**'
+      - 'src/billing/**'
+    verdict:
+      claude: blocks
+    override:
+      - if: 'claude/code_review = error'
+        verdict:
+          claude: comments
+          seats:
+            - count: 2
+              from:
+                - humans
+                - '!pr/authors'
+      - if: 'claude/code_review(level=deep) = pass AND claude/code_review.severity <= low'
+        verdict:
+          claude: comments
+          seats:
+            - '@security_reviewers'
