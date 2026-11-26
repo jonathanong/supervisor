@@ -88,7 +88,8 @@ Other fields of the JSON:
   `pending`, `notRequired`, `mergeState`). Only checks GitHub requires for the PR hold the merge;
   `notRequired` lists failing or pending checks that do not. `mergeState` is GitHub's merge state;
   BLOCKED (a required check has not reported, a required review, or another branch rule) and UNKNOWN
-  (not worked out yet) each add a blocker.
+  (not worked out yet) each add a blocker. An UNKNOWN state is read once more over REST before
+  the supervisor holds on it.
 
 Rules around the check:
 

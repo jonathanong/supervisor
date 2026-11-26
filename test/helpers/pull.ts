@@ -28,6 +28,8 @@ export interface GhFixture {
   checksMore: boolean
   /** GitHub's `mergeStateStatus` of the pull request. */
   mergeState: unknown
+  /** The pull request's `mergeable_state` over REST, read at the end; `undefined` leaves it out. */
+  restMergeState: unknown
   teams: Record<string, unknown[]>
   /** The head the pull request has when it is read again at the end. */
   headAfter: unknown
@@ -73,6 +75,7 @@ export function fixture(overrides: Partial<GhFixture> = {}): GhFixture {
     checksHead: HEAD,
     checksMore: false,
     mergeState: 'CLEAN',
+    restMergeState: 'clean',
     teams: {},
     headAfter: HEAD,
     raw: {},
@@ -108,7 +111,11 @@ function reply(endpoint: string, jq: string, gh: GhFixture): string {
   if (endpoint.includes('/commits?')) return lines(gh.commits)
   if (endpoint.includes('/reviews?')) return lines(gh.reviews)
   if (endpoint !== `repos/${REPO}/pulls/7`) throw new Error(`unexpected endpoint: ${endpoint}`)
-  return lines([jq === '{head: .head.sha}' ? { head: gh.headAfter } : gh.pull])
+  return lines([
+    jq === '{head: .head.sha, mergeState: .mergeable_state}'
+      ? { head: gh.headAfter, mergeState: gh.restMergeState }
+      : gh.pull,
+  ])
 }
 
 /** A fake `gh api` that answers from a fixture and records each call's arguments. */

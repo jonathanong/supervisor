@@ -1,5 +1,5 @@
 import type { RunProcess } from '../state/process.js'
-import { collectChecks, type CheckState } from './facts-checks.js'
+import { collectChecks, resolveMergeState, type CheckState } from './facts-checks.js'
 import { accountName, commitSha, count, FactsError, ghObjects, text } from './facts-gh.js'
 import { collectTeams } from './facts-teams.js'
 import type { ClassifierResult, EvaluationFacts, EvaluationInput } from './types.js'
@@ -117,7 +117,16 @@ export async function collectPullFacts(
     labels: labels as string[],
   }
   if (options.teams.length > 0) facts.teams = await collectTeams(run, options.teams)
-  const checks = await collectChecks(run, repository, number, head)
+  const graphqlChecks = await collectChecks(run, repository, number, head)
+
+  const [after] = await ghObjects(run, endpoint, '{head: .head.sha, mergeState: .mergeable_state}')
+  if (after?.head !== head) {
+    throw new FactsError(`${repository}#${number} got a new head while its facts were read`)
+  }
+  const checks = {
+    ...graphqlChecks,
+    mergeState: resolveMergeState(graphqlChecks.mergeState, after.mergeState),
+  }
   if (checks.mergeState === 'BLOCKED') {
     blockers.push(
       'GitHub blocks the merge: a required check has not reported, or a branch rule is not met',
@@ -125,11 +134,6 @@ export async function collectPullFacts(
   }
   if (checks.mergeState === 'UNKNOWN') {
     blockers.push('GitHub has not worked out the merge state yet')
-  }
-
-  const [after] = await ghObjects(run, endpoint, '{head: .head.sha}')
-  if (after?.head !== head) {
-    throw new FactsError(`${repository}#${number} got a new head while its facts were read`)
   }
   return {
     changedFiles: changedFiles(files),
