@@ -1,0 +1,101 @@
+[
+  {
+    "id": "scope-01",
+    "group": "repository-scope",
+    "priority": "critical",
+    "description": "A reviewed docs change in a repository outside the reviewed scopes.",
+    "input": {
+      "changedFiles": ["docs/guide.md"],
+      "facts": {
+        "repository": "example-other/site",
+        "openedBy": "example-dev",
+        "authors": ["example-dev"],
+        "approvedBy": ["bot:example-reviewer"],
+        "labels": []
+      }
+    },
+    "label": "person",
+    "reason": "Carve-outs hold only inside the reviewed scopes."
+  },
+  {
+    "id": "scope-02",
+    "group": "repository-scope",
+    "priority": "critical",
+    "description": "A reviewed dependency bot bump in an organization whose name starts like the reviewed one.",
+    "input": {
+      "changedFiles": ["package.json"],
+      "facts": {
+        "repository": "example-org-labs/app",
+        "openedBy": "bot:dependabot",
+        "authors": ["bot:dependabot"],
+        "approvedBy": ["bot:example-reviewer"],
+        "labels": []
+      }
+    },
+    "label": "person",
+    "reason": "A look-alike organization is outside the scope."
+  },
+  {
+    "id": "scope-03",
+    "group": "repository-scope",
+    "priority": "critical",
+    "description": "A docs change for which no facts were gathered at all.",
+    "input": {
+      "changedFiles": ["docs/guide.md"]
+    },
+    "label": "person",
+    "reason": "With no facts nothing can be established; fail closed."
+  },
+  {
+    "id": "scope-04",
+    "group": "repository-scope",
+    "priority": "critical",
+    "description": "A reviewed docs change whose repository fact is missing.",
+    "input": {
+      "changedFiles": ["docs/guide.md"],
+      "facts": {
+        "openedBy": "example-dev",
+        "authors": ["example-dev"],
+        "approvedBy": ["bot:example-reviewer"],
+        "labels": []
+      }
+    },
+    "label": "person",
+    "reason": "An unknown repository cannot be shown to be in scope."
+  },
+  {
+    "id": "scope-05",
+    "group": "repository-scope",
+    "priority": "critical",
+    "description": "A reviewed docs change whose labels were not gathered.",
+    "input": {
+      "changedFiles": ["docs/guide.md"],
+      "facts": {
+        "repository": "example-org/app",
+        "openedBy": "example-dev",
+        "authors": ["example-dev"],
+        "approvedBy": ["bot:example-reviewer"]
+      }
+    },
+    "label": "person",
+    "reason": "A hold label cannot be ruled out, so the PR goes to a person."
+  },
+  {
+    "id": "scope-06",
+    "group": "repository-scope",
+    "priority": "critical",
+    "description": "A reviewed PR whose list of changed files came back empty.",
+    "input": {
+      "changedFiles": [],
+      "facts": {
+        "repository": "example-org/app",
+        "openedBy": "example-dev",
+        "authors": ["example-dev"],
+        "approvedBy": ["bot:example-reviewer"],
+        "labels": []
+      }
+    },
+    "label": "person",
+    "reason": "With no files nothing was evaluated; an empty diff is not an approval."
+  }
+]

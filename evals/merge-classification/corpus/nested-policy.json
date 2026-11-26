@@ -1,0 +1,110 @@
+[
+  {
+    "id": "nested-01",
+    "group": "nested-policy",
+    "priority": "medium",
+    "description": "A source change inside packages/widgets, whose own policy merges on reviewer approval; approved.",
+    "input": {
+      "changedFiles": ["packages/widgets/src/render.ts"],
+      "facts": {
+        "repository": "example-org/app",
+        "openedBy": "example-dev",
+        "authors": ["example-dev"],
+        "approvedBy": ["bot:example-reviewer"],
+        "labels": []
+      }
+    },
+    "label": "merge",
+    "reason": "The directory policy decides and its seat is filled."
+  },
+  {
+    "id": "nested-02",
+    "group": "nested-policy",
+    "priority": "critical",
+    "description": "The same widgets change with no approval.",
+    "input": {
+      "changedFiles": ["packages/widgets/src/render.ts"],
+      "facts": {
+        "repository": "example-org/app",
+        "openedBy": "example-dev",
+        "authors": ["example-dev"],
+        "approvedBy": [],
+        "labels": []
+      }
+    },
+    "label": "person",
+    "reason": "The reviewer seat is empty."
+  },
+  {
+    "id": "nested-03",
+    "group": "nested-policy",
+    "priority": "critical",
+    "description": "A migration inside packages/widgets; approved by the reviewer bot.",
+    "input": {
+      "changedFiles": ["packages/widgets/migrations/0002_backfill.sql"],
+      "facts": {
+        "repository": "example-org/app",
+        "openedBy": "example-dev",
+        "authors": ["example-dev"],
+        "approvedBy": ["bot:example-reviewer"],
+        "labels": []
+      }
+    },
+    "label": "person",
+    "reason": "The always-human rule is inherited; a directory policy cannot remove it."
+  },
+  {
+    "id": "nested-04",
+    "group": "nested-policy",
+    "priority": "critical",
+    "description": "A PR loosens the widgets directory policy itself.",
+    "input": {
+      "changedFiles": ["packages/widgets/.claude/approvals.yml"],
+      "facts": {
+        "repository": "example-org/app",
+        "openedBy": "example-dev",
+        "authors": ["example-dev"],
+        "approvedBy": ["bot:example-reviewer"],
+        "labels": []
+      }
+    },
+    "label": "person",
+    "reason": "A change to any policy file goes to a person."
+  },
+  {
+    "id": "nested-05",
+    "group": "nested-policy",
+    "priority": "critical",
+    "description": "A reviewed widgets change in a repository outside the reviewed scopes.",
+    "input": {
+      "changedFiles": ["packages/widgets/src/render.ts"],
+      "facts": {
+        "repository": "example-other/app",
+        "openedBy": "example-dev",
+        "authors": ["example-dev"],
+        "approvedBy": ["bot:example-reviewer"],
+        "labels": []
+      }
+    },
+    "label": "person",
+    "reason": "The scope rule is inherited."
+  },
+  {
+    "id": "nested-06",
+    "group": "nested-policy",
+    "priority": "critical",
+    "description": "A reviewed widgets change labelled needs-person.",
+    "input": {
+      "changedFiles": ["packages/widgets/src/render.ts"],
+      "facts": {
+        "repository": "example-org/app",
+        "openedBy": "example-dev",
+        "authors": ["example-dev"],
+        "approvedBy": ["bot:example-reviewer"],
+        "labels": ["needs-person"]
+      }
+    },
+    "label": "person",
+    "reason": "The hold-label rule is inherited."
+  }
+]

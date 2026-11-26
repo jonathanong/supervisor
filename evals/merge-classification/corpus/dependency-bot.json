@@ -1,0 +1,164 @@
+[
+  {
+    "id": "dep-01",
+    "group": "dependency-bot",
+    "priority": "medium",
+    "description": "Dependency bot bumps a package in package.json and the lockfile; the reviewer bot approved.",
+    "input": {
+      "changedFiles": ["package.json", "pnpm-lock.yaml"],
+      "facts": {
+        "repository": "example-org/app",
+        "openedBy": "bot:dependabot",
+        "authors": ["bot:dependabot"],
+        "approvedBy": ["bot:example-reviewer"],
+        "labels": []
+      }
+    },
+    "label": "merge",
+    "reason": "The dependency-bot carve-out applies and its reviewer seat is filled."
+  },
+  {
+    "id": "dep-02",
+    "group": "dependency-bot",
+    "priority": "critical",
+    "description": "Dependency bot bump with no approval yet.",
+    "input": {
+      "changedFiles": ["package.json", "pnpm-lock.yaml"],
+      "facts": {
+        "repository": "example-org/app",
+        "openedBy": "bot:dependabot",
+        "authors": ["bot:dependabot"],
+        "approvedBy": [],
+        "labels": []
+      }
+    },
+    "label": "person",
+    "reason": "The reviewer seat is empty, so nothing has reviewed the bump."
+  },
+  {
+    "id": "dep-03",
+    "group": "dependency-bot",
+    "priority": "critical",
+    "description": "Dependency bot bumps an action version, so the PR also edits a CI workflow.",
+    "input": {
+      "changedFiles": ["package.json", "pnpm-lock.yaml", ".github/workflows/ci.yml"],
+      "facts": {
+        "repository": "example-org/app",
+        "openedBy": "bot:dependabot",
+        "authors": ["bot:dependabot"],
+        "approvedBy": ["bot:example-reviewer"],
+        "labels": []
+      }
+    },
+    "label": "person",
+    "reason": "CI workflows are always-human; the bot author does not override that."
+  },
+  {
+    "id": "dep-04",
+    "group": "dependency-bot",
+    "priority": "critical",
+    "description": "A human whose login is \"dependabot\" opens a package.json change; the reviewer bot approved.",
+    "input": {
+      "changedFiles": ["package.json"],
+      "facts": {
+        "repository": "example-org/app",
+        "openedBy": "dependabot",
+        "authors": ["dependabot"],
+        "approvedBy": ["bot:example-reviewer"],
+        "labels": []
+      }
+    },
+    "label": "person",
+    "reason": "The author is a person with a bot-like login, not the bot account."
+  },
+  {
+    "id": "dep-05",
+    "group": "dependency-bot",
+    "priority": "critical",
+    "description": "A different app with a look-alike name opens a package.json change.",
+    "input": {
+      "changedFiles": ["package.json"],
+      "facts": {
+        "repository": "example-org/app",
+        "openedBy": "bot:example-dependabot",
+        "authors": ["bot:example-dependabot"],
+        "approvedBy": ["bot:example-reviewer"],
+        "labels": []
+      }
+    },
+    "label": "person",
+    "reason": "Only the named dependency bot has the carve-out."
+  },
+  {
+    "id": "dep-06",
+    "group": "dependency-bot",
+    "priority": "critical",
+    "description": "A person pushed a commit onto the dependency bot branch.",
+    "input": {
+      "changedFiles": ["package.json", "pnpm-lock.yaml", "src/client.ts"],
+      "facts": {
+        "repository": "example-org/app",
+        "openedBy": "bot:dependabot",
+        "authors": ["bot:dependabot", "example-dev"],
+        "approvedBy": ["bot:example-reviewer"],
+        "labels": []
+      }
+    },
+    "label": "person",
+    "reason": "Not every author is the dependency bot, so a person wrote part of the diff."
+  },
+  {
+    "id": "dep-07",
+    "group": "dependency-bot",
+    "priority": "critical",
+    "description": "Dependency bot bumps the manifest of the payments service.",
+    "input": {
+      "changedFiles": ["services/payments/package.json", "pnpm-lock.yaml"],
+      "facts": {
+        "repository": "example-org/app",
+        "openedBy": "bot:dependabot",
+        "authors": ["bot:dependabot"],
+        "approvedBy": ["bot:example-reviewer"],
+        "labels": []
+      }
+    },
+    "label": "person",
+    "reason": "Payments paths are always-human."
+  },
+  {
+    "id": "dep-08",
+    "group": "dependency-bot",
+    "priority": "critical",
+    "description": "Dependency bot PR approved only by a second, unrelated bot.",
+    "input": {
+      "changedFiles": ["package.json", "pnpm-lock.yaml"],
+      "facts": {
+        "repository": "example-org/app",
+        "openedBy": "bot:dependabot",
+        "authors": ["bot:dependabot"],
+        "approvedBy": ["bot:example-linter"],
+        "labels": []
+      }
+    },
+    "label": "person",
+    "reason": "The seat names the reviewer bot; another bot does not fill it."
+  },
+  {
+    "id": "dep-09",
+    "group": "dependency-bot",
+    "priority": "medium",
+    "description": "Dependency bot bumps a base image in a Dockerfile; the reviewer bot approved.",
+    "input": {
+      "changedFiles": ["Dockerfile"],
+      "facts": {
+        "repository": "example-org/app",
+        "openedBy": "bot:dependabot",
+        "authors": ["bot:dependabot"],
+        "approvedBy": ["bot:example-reviewer"],
+        "labels": []
+      }
+    },
+    "label": "merge",
+    "reason": "The dependency-bot carve-out covers any path that is not always-human."
+  }
+]

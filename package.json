@@ -30,7 +30,8 @@
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
     "build": "tsc -p tsconfig.build.json && node -e \"import('node:fs').then(f=>f.chmodSync('dist/cli/index.js',0o755))\"",
-    "pack:check": "node scripts/check-pack.ts"
+    "pack:check": "node scripts/check-pack.ts",
+    "eval:merge-classification": "tsc -p tsconfig.build.json && node scripts/eval-merge-classification.ts"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.32.2",

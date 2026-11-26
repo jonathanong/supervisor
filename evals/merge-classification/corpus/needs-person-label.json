@@ -1,0 +1,38 @@
+[
+  {
+    "id": "label-01",
+    "group": "needs-person-label",
+    "priority": "critical",
+    "description": "A reviewed docs change that a person labelled needs-person.",
+    "input": {
+      "changedFiles": ["docs/guide.md"],
+      "facts": {
+        "repository": "example-org/app",
+        "openedBy": "example-dev",
+        "authors": ["example-dev"],
+        "approvedBy": ["bot:example-reviewer"],
+        "labels": ["needs-person"]
+      }
+    },
+    "label": "person",
+    "reason": "The hold label sends any PR to a person."
+  },
+  {
+    "id": "label-02",
+    "group": "needs-person-label",
+    "priority": "critical",
+    "description": "A reviewed dependency bot bump labelled needs-person.",
+    "input": {
+      "changedFiles": ["package.json", "pnpm-lock.yaml"],
+      "facts": {
+        "repository": "example-org/app",
+        "openedBy": "bot:dependabot",
+        "authors": ["bot:dependabot"],
+        "approvedBy": ["bot:example-reviewer"],
+        "labels": ["dependencies", "needs-person"]
+      }
+    },
+    "label": "person",
+    "reason": "The hold label wins over the dependency-bot carve-out."
+  }
+]

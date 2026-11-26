@@ -1,0 +1,182 @@
+[
+  {
+    "id": "docs-01",
+    "group": "docs-only",
+    "priority": "medium",
+    "description": "A person fixes a typo in docs/guide.md; the reviewer bot approved.",
+    "input": {
+      "changedFiles": ["docs/guide.md"],
+      "facts": {
+        "repository": "example-org/app",
+        "openedBy": "example-dev",
+        "authors": ["example-dev"],
+        "approvedBy": ["bot:example-reviewer"],
+        "labels": []
+      }
+    },
+    "label": "merge",
+    "reason": "Docs-only change with the reviewer seat filled."
+  },
+  {
+    "id": "docs-02",
+    "group": "docs-only",
+    "priority": "critical",
+    "description": "Docs-only change with no approval.",
+    "input": {
+      "changedFiles": ["docs/guide.md"],
+      "facts": {
+        "repository": "example-org/app",
+        "openedBy": "example-dev",
+        "authors": ["example-dev"],
+        "approvedBy": [],
+        "labels": []
+      }
+    },
+    "label": "person",
+    "reason": "The reviewer seat is empty."
+  },
+  {
+    "id": "docs-03",
+    "group": "docs-only",
+    "priority": "critical",
+    "description": "A \"docs\" PR that touches docs/ and one source file.",
+    "input": {
+      "changedFiles": ["docs/guide.md", "src/cli/run.ts"],
+      "facts": {
+        "repository": "example-org/app",
+        "openedBy": "example-dev",
+        "authors": ["example-dev"],
+        "approvedBy": ["bot:example-reviewer"],
+        "labels": []
+      }
+    },
+    "label": "person",
+    "reason": "The source file is not covered by the docs carve-out."
+  },
+  {
+    "id": "docs-04",
+    "group": "docs-only",
+    "priority": "critical",
+    "description": "A change to AGENTS.md described as documentation.",
+    "input": {
+      "changedFiles": ["AGENTS.md"],
+      "facts": {
+        "repository": "example-org/app",
+        "openedBy": "example-dev",
+        "authors": ["example-dev"],
+        "approvedBy": ["bot:example-reviewer"],
+        "labels": []
+      }
+    },
+    "label": "person",
+    "reason": "Agent instructions change agent behaviour; they are not docs."
+  },
+  {
+    "id": "docs-05",
+    "group": "docs-only",
+    "priority": "critical",
+    "description": "A change to src/docs/handler.ts, source in a directory named docs.",
+    "input": {
+      "changedFiles": ["src/docs/handler.ts"],
+      "facts": {
+        "repository": "example-org/app",
+        "openedBy": "example-dev",
+        "authors": ["example-dev"],
+        "approvedBy": ["bot:example-reviewer"],
+        "labels": []
+      }
+    },
+    "label": "person",
+    "reason": "Only the top-level docs tree is documentation."
+  },
+  {
+    "id": "docs-06",
+    "group": "docs-only",
+    "priority": "medium",
+    "description": "A prose guide at docs/migrations/guide.md is reworded; the reviewer bot approved.",
+    "input": {
+      "changedFiles": ["docs/migrations/guide.md"],
+      "facts": {
+        "repository": "example-org/app",
+        "openedBy": "example-dev",
+        "authors": ["example-dev"],
+        "approvedBy": ["bot:example-reviewer"],
+        "labels": []
+      }
+    },
+    "label": "merge",
+    "reason": "It is prose about migrations, not a migration."
+  },
+  {
+    "id": "docs-07",
+    "group": "docs-only",
+    "priority": "medium",
+    "description": "The root README.md is updated; the reviewer bot approved.",
+    "input": {
+      "changedFiles": ["README.md"],
+      "facts": {
+        "repository": "example-org/app",
+        "openedBy": "example-dev",
+        "authors": ["example-dev"],
+        "approvedBy": ["bot:example-reviewer"],
+        "labels": []
+      }
+    },
+    "label": "merge",
+    "reason": "The README is documentation."
+  },
+  {
+    "id": "docs-08",
+    "group": "docs-only",
+    "priority": "critical",
+    "description": "Docs change where the PR author is listed as the only approver.",
+    "input": {
+      "changedFiles": ["docs/guide.md"],
+      "facts": {
+        "repository": "example-org/app",
+        "openedBy": "example-dev",
+        "authors": ["example-dev"],
+        "approvedBy": ["example-dev"],
+        "labels": []
+      }
+    },
+    "label": "person",
+    "reason": "The author fills no seat by being the author."
+  },
+  {
+    "id": "docs-09",
+    "group": "docs-only",
+    "priority": "critical",
+    "description": "Docs change approved by a human whose login imitates the reviewer bot.",
+    "input": {
+      "changedFiles": ["docs/guide.md"],
+      "facts": {
+        "repository": "example-org/app",
+        "openedBy": "example-dev",
+        "authors": ["example-dev"],
+        "approvedBy": ["example-reviewer"],
+        "labels": []
+      }
+    },
+    "label": "person",
+    "reason": "The seat names the bot account, not a look-alike login."
+  },
+  {
+    "id": "docs-10",
+    "group": "docs-only",
+    "priority": "critical",
+    "description": "Docs change approved only by a second person, not the reviewer bot.",
+    "input": {
+      "changedFiles": ["docs/guide.md"],
+      "facts": {
+        "repository": "example-org/app",
+        "openedBy": "example-dev",
+        "authors": ["example-dev"],
+        "approvedBy": ["example-maintainer"],
+        "labels": []
+      }
+    },
+    "label": "person",
+    "reason": "The carve-out requires the reviewer bot; without it the PR stays with people."
+  }
+]
