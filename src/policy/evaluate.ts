@@ -137,6 +137,13 @@ export function evaluatePolicies(policies: PolicyFile[], input: EvaluationInput)
     nextStep = { action: 'request_review', depth: overallDepth ?? 'standard' }
   } else if (overallVerdict === 'blocks') {
     nextStep = { action: 'escalate', reason: 'A matching rule blocks merge' }
+  } else if (overallVerdict !== 'approves' || uncoveredFiles.length > 0) {
+    // Only an `approves` verdict on every changed file lets the supervisor merge: `comments`, a
+    // file no rule covers, and an empty change all go to a person, whatever the seats say.
+    nextStep = {
+      action: 'escalate',
+      reason: 'Not every changed file has a rule that approves the merge',
+    }
   } else if (unmetSeats.length > 0) {
     nextStep = {
       action: 'escalate',

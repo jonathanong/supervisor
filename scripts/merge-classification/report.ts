@@ -99,7 +99,6 @@ export function formatRunReport(results: CaseResult[], summary: Summary): string
     tallyLine("Label 'person'", summary.byLabel.person),
     tallyLine("Label 'merge'", summary.byLabel.merge),
     ...Object.entries(summary.byPriority).map(([p, tally]) => tallyLine(`Priority ${p}`, tally)),
-    `Next step 'merge' without an approves verdict: ${summary.nextStepOnlyMerges.length}${ids(summary.nextStepOnlyMerges)}`,
     `Gate (zero false merges): ${summary.falseMerges.length === 0 ? 'PASS' : 'FAIL'}`,
   ]
   return `${lines.join('\n')}\n`

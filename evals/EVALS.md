@@ -96,22 +96,7 @@ flake-08).
 
 ### Evaluator findings
 
-These are not false merges under this eval's definition of "allows a merge" (see
-[README.md](README.md)). They are places where the evaluator's own next step says `merge` for a PR
-that must go to a person, so anything that trusts `supervisor policy check`'s exit code alone
-would merge it.
-
-| Case     | What the evaluator returns                               | What is wrong                                                                                                                                              |
-| -------- | -------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| human-04 | verdict `comments`, every seat filled, next step `merge` | `docs/merge-policy.md` says a `comments` verdict goes to a person. The next step ignores the verdict unless it is `blocks`; only unmet seats stop a merge. |
-| scope-06 | verdict none, no files evaluated, next step `merge`      | An empty list of changed files yields `merge`. The same happens for a file no rule covers.                                                                 |
-
-A related trap that this corpus cannot hold, because it needs a different policy: the sketch in
-`docs/merge-policy.md` uses `verdict: { claude: comments, seats: 1 }` for its default and
-always-human rules. A bare `seats: 1` means one human, and the PR author counts. So for any PR a
-person authored, the seat is already filled, and the evaluator's next step is `merge` with exit
-code 0 and only a warning. The reference policy here avoids it by excluding the author from every
-seat.
+None open. The first run found two, both fixed in `src/policy/evaluate.ts`: the next step was `merge` for a `comments` verdict whose seats were filled (human-04) and for an empty list of changed files (scope-06). The next step is now `merge` only when every changed file has a rule whose verdict is `approves`. [HISTORY.md](HISTORY.md) has both entries.
 
 ## Agent cases
 

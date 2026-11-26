@@ -67,7 +67,7 @@ describe('merge-classification eval', () => {
     expect(summary.missedMerges).toEqual(KNOWN_MISSED_MERGES)
   })
 
-  it('does not treat a merge next step under a comments verdict as permission to merge', async () => {
+  it('sends a comments verdict to a person even when every seat is filled', async () => {
     const policies = await loadReferencePolicy()
     const corpus = await loadCorpus(CORPUS_DIR)
     const approvedByPerson = corpus.find((c) => c.id === 'human-04')!
@@ -75,6 +75,8 @@ describe('merge-classification eval', () => {
     const result = evaluatePolicies(policies, approvedByPerson.input)
 
     expect(result.verdict).toBe('comments')
+    expect(result.seats.every((seat) => seat.remaining === 0)).toBe(true)
+    expect(result.nextStep.action).toBe('escalate')
     expect(allowsMerge(result)).toBe(false)
   })
 
