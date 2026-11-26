@@ -83,6 +83,9 @@ rules:
       - { if: 'repo/old@2 = yes', verdict: { claude: approves, seats: 0 } }
       - { if: 'repo/withinput(file=a) = yes', verdict: { claude: approves, seats: 0 } }
       - { if: 'repo/missing = no', verdict: { claude: approves, seats: 0 } }
+      - { if: 'repo/old@3 = yes', verdict: { claude: approves, seats: 0 } }
+      - { if: 'repo/mixed = yes', verdict: { claude: approves, seats: 0 } }
+      - { if: 'repo/mixed(file=a) = yes', verdict: { claude: approves, seats: 0 } }
       - { if: 'claude/code_review(level=quick) = pass', verdict: { claude: approves, seats: 0 } }
 `,
     })
@@ -91,10 +94,17 @@ rules:
     const result = await policy(['classify-prepare', ...PR, '--dir', dir, '--out', out], run)
     expect(result.stderr).toBe('')
     const entries = JSON.parse(result.stdout).classifiers
-    expect(entries.map((e: { name: string }) => e.name)).toEqual(['missing', 'old@2', 'withinput'])
+    expect(entries.map((e: { name: string }) => e.name)).toEqual([
+      'missing',
+      'old',
+      'withinput',
+      'mixed',
+    ])
     expect(entries[0].error).toContain('No def.yml')
     expect(entries[1].error).toContain('versioned classifier')
     expect(entries[2].error).toContain('inputs are not supported')
+    // A bare call seen first does not get a result that a later call with inputs would be judged on.
+    expect(entries[3].error).toContain('inputs are not supported')
     expect(entries.every((e: object) => !('input' in e))).toBe(true)
   })
 

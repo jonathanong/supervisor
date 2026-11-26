@@ -4,7 +4,7 @@ import type { PolicyFile } from './types.js'
 
 /** A `repo/<name>` classifier a policy names, and where its definition is, or why it has none. */
 export interface FoundClassifier {
-  /** The name after `repo/`, with `@<version>` when the policy asks for one. */
+  /** The name after `repo/`. */
   name: string
   /** The `.claude/classifiers` directory beside the policy file that names it. */
   classifiers: string
@@ -14,9 +14,10 @@ export interface FoundClassifier {
 
 /**
  * Each `repo/<name>` classifier the policies name, once. A classifier named by several policy
- * files takes the definition beside the first, which is the shallowest. A call with a version or
- * with inputs is listed with an error: this runner reads only the unversioned definition and
- * passes no inputs.
+ * files takes the definition beside the first, which is the shallowest. This runner reads only
+ * the unversioned definition and passes no inputs. So when any call of a name has a version or
+ * inputs, the name is listed with an error and gets no result at all: the evaluator looks a
+ * result up by name, and would judge that call on an answer given without its version or inputs.
  */
 export function findClassifiers(
   policies: PolicyFile[],
@@ -31,16 +32,19 @@ export function findClassifiers(
     ])
     for (const call of calls.filter((c) => c.name.startsWith('repo/'))) {
       const name = call.name.slice('repo/'.length)
-      const key = call.version === undefined ? name : `${name}@${call.version}`
-      if (found.has(key)) continue
-      const classifiers = join(rootOf(policy), policy.dir, '.claude', 'classifiers')
       const unsupported =
         call.version !== undefined
           ? 'a versioned classifier (def.v<N>.yml) is not supported'
           : Object.keys(call.inputs).length > 0
             ? 'classifier inputs are not supported'
             : undefined
-      found.set(key, { name: key, classifiers, ...(unsupported ? { error: unsupported } : {}) })
+      const earlier = found.get(name)
+      if (earlier) {
+        if (unsupported && !earlier.error) earlier.error = unsupported
+        continue
+      }
+      const classifiers = join(rootOf(policy), policy.dir, '.claude', 'classifiers')
+      found.set(name, { name, classifiers, ...(unsupported ? { error: unsupported } : {}) })
     }
   }
   return [...found.values()]
