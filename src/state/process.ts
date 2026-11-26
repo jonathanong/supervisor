@@ -10,6 +10,8 @@ export interface ProcessOptions {
   cwd?: string
   /** Pass the child's stderr through instead of capturing it. */
   inheritStderr?: boolean
+  /** Kill the child after this long; it then resolves with a non-zero code. */
+  timeoutMs?: number
 }
 
 /** Runs one external command from an argument array; never through a shell. */
@@ -23,6 +25,7 @@ export const runProcess: RunProcess = (command, args, options = {}) =>
   new Promise((resolve, reject) => {
     const child = spawn(command, args, {
       cwd: options.cwd,
+      timeout: options.timeoutMs,
       stdio: ['ignore', 'pipe', options.inheritStderr ? 'inherit' : 'pipe'],
     })
     let stdout = ''

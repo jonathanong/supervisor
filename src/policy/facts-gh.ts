@@ -7,6 +7,8 @@ export class FactsError extends Error {}
 /** `<owner>/<repo>`; a part that is `.` or `..` would change the API path. */
 export const REPOSITORY = /^(?!\.{1,2}\/)[\w.-]+\/(?!\.{1,2}$)[\w.-]+$/
 export const PULL_NUMBER = /^[1-9]\d{0,9}$/
+/** A stalled `gh` must not hang the check; a paginated read of a large PR fits well inside this. */
+const GH_TIMEOUT_MS = 120_000
 const COMMIT_SHA = /^[0-9a-f]{40,64}$/
 
 /**
@@ -20,7 +22,7 @@ export async function ghApi(
   paginate = false,
 ): Promise<unknown[]> {
   const args = ['api', ...(paginate ? ['--paginate'] : []), endpoint, '--jq', jq]
-  const done = await run('gh', args)
+  const done = await run('gh', args, { timeoutMs: GH_TIMEOUT_MS })
   if (done.code !== 0) {
     const detail = done.stderr.trim().slice(0, 200)
     throw new FactsError(`gh api ${endpoint} exited ${done.code}: ${detail}`)

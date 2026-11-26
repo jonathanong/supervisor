@@ -106,7 +106,7 @@ A GitHub App is written `bot:<app slug>`, so `dependabot[bot]` is `bot:dependabo
 - **A blocker:** a commit whose author has no GitHub login, a PR that is not open, or a draft. With an author unknown, `facts.authors` is left out, so a condition on `pr/authors` stays undecided.
 - **Checks:** the command reads every check run and commit status on the head, not only the required ones, since branch protection is often unreadable. The next step is merge only when all of them passed. A failing or pending check that is not required holds the merge too, and so does a head with no checks at all.
 
-`--print-input` prints the collected input, with the head, the checks and the blockers, and evaluates nothing. `supervisor policy check --dir <policy dir> --input <json>` evaluates a written input file instead, for dry runs and the eval; it reads no checks and applies no blockers.
+`--print-input` prints the collected input, with the head, the checks and the blockers, and evaluates nothing. `supervisor policy check --dir <policy dir> --input <json>` evaluates a written input file instead, for dry runs and the eval. A written input has no checks and no blockers. An input that `--print-input` printed carries both, and they hold the merge on replay as they did live.
 
 `supervisor policy explain <dir> [path]` describes the policy without a PR. The MCP tool `policy_check` runs the same check, so a worker can ask what its PR needs. Under `policyEngine: "compare"` the check also reads the Claude Approvals check and reports any disagreement.
 

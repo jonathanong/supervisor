@@ -3,8 +3,8 @@ import { discoverPolicies } from '../policy/discover.js'
 import { evaluatePolicies } from '../policy/evaluate.js'
 import { FactsError, PULL_NUMBER, REPOSITORY } from '../policy/facts-gh.js'
 import { teamsNamed } from '../policy/facts-teams.js'
-import { collectPullFacts } from '../policy/facts.js'
-import { checkPull } from '../policy/pull-check.js'
+import { collectPullFacts, type PullFacts } from '../policy/facts.js'
+import { checkPull, type PullCheckResult } from '../policy/pull-check.js'
 import type { ClassifierResult, EvaluationInput, PolicyFile } from '../policy/types.js'
 import { isObject } from '../state/json.js'
 import { formatHumanCheck, formatPullCheck } from './policy-format.js'
@@ -72,12 +72,22 @@ async function readJson(path: string, what: string): Promise<unknown> {
   }
 }
 
-async function readInput(path: string): Promise<EvaluationInput> {
+const COLLECTED_KEYS = ['pull', 'checks', 'blockers'] as const
+
+/**
+ * A written input, or one that --print-input printed. A printed one carries the head's checks
+ * and blockers, and they must hold a merge on replay as they do live, so it needs all three.
+ */
+async function readInput(path: string): Promise<EvaluationInput | PullFacts> {
   const raw = await readJson(path, 'input')
   if (!isObject(raw) || !Array.isArray(raw.changedFiles)) {
     throw new FactsError('Input JSON must be an object with a changedFiles array')
   }
-  return raw as unknown as EvaluationInput
+  if (COLLECTED_KEYS.some((key) => key in raw)) {
+    const whole = isObject(raw.pull) && isObject(raw.checks) && Array.isArray(raw.blockers)
+    if (!whole) throw new FactsError('A printed input needs pull, checks and blockers together')
+  }
+  return raw as unknown as EvaluationInput | PullFacts
 }
 
 async function readClassifiers(path: string): Promise<Record<string, ClassifierResult>> {
@@ -116,8 +126,11 @@ export async function runCheck(argv: string[], io: CliIo, help: string): Promise
   try {
     const policies = await discoverPolicies(args.dir!, { supervisorPolicy: args.supervisorPolicy })
     if (args.positionals.length > 0) return await checkPullRequest(args, policies, io)
-    const result = evaluatePolicies(policies, await readInput(args.input!))
-    io.stdout(args.json ? `${JSON.stringify(result, null, 2)}\n` : formatHumanCheck(result))
+    const input = await readInput(args.input!)
+    const collected = 'blockers' in input
+    const result = collected ? checkPull(policies, input) : evaluatePolicies(policies, input)
+    const text = collected ? formatPullCheck(result as PullCheckResult) : formatHumanCheck(result)
+    io.stdout(args.json ? `${JSON.stringify(result, null, 2)}\n` : text)
     return result.nextStep.action === 'merge' ? 0 : 1
   } catch (err) {
     io.stderr(`${(err as Error).message}\n`)
