@@ -14,6 +14,7 @@
     "dist",
     "!dist/**/*.map",
     "schemas",
+    "skills",
     "plugin.json",
     ".mcp.json",
     ".claude-plugin/plugin.json",
