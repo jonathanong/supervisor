@@ -101,6 +101,31 @@ describe('supervisor state record subcommands', () => {
     expect((await loop.cli(['state', 'sweep-done', 'extra'])).code).toBe(2)
   })
 
+  it('lets one sweep run at a time and frees the claim when it is done or too old', async () => {
+    const loop = await makeLoop()
+    const start = (id: string, ...rest: string[]) =>
+      loop.cli(['state', 'sweep-start', '--id', id, ...rest])
+    expect((await start('a')).stdout).toBe(`{"sweep": {"id": "a", "startedAt": "${NOW}"}}\n`)
+    expect((await start('a')).code).toBe(0)
+    const refused = await start('b')
+    expect(refused.code).toBe(1)
+    expect((await loop.state()).sweep.id).toBe('a')
+
+    await loop.cli(['state', 'sweep-done'])
+    expect((await loop.state()).sweep).toBeUndefined()
+    expect((await start('b')).code).toBe(0)
+
+    const later = () => new Date(Date.parse(NOW) + 121 * 60_000)
+    expect((await loop.cli(['state', 'sweep-start', '--id', 'c'], undefined, later)).code).toBe(0)
+    expect((await loop.state()).sweep.id).toBe('c')
+
+    await loop.seed({ sweep: { id: 'old' } })
+    expect((await start('d')).code).toBe(0)
+    expect((await start('e', '--ttl-minutes', '0')).code).toBe(2)
+    expect((await start('e', '--ttl-minutes', 'x')).code).toBe(2)
+    expect((await loop.cli(['state', 'sweep-start'])).code).toBe(2)
+  })
+
   it('adds harvested comment ids per owner/repo once, whatever form they were stored in', async () => {
     const loop = await makeLoop()
     const file = join(loop.stateDir, '..', 'harvest.json')

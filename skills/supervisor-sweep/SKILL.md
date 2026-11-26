@@ -20,6 +20,12 @@ none, and `--owner <owner>`, `--repo <owner>/<repo>`, or `--phase <letter>` narr
 
 - **Stop switch:** before starting, and before every merge, check the
   [stop file](../supervisor-loop/SKILL.md#stop-switch). When it exists, do nothing.
+- **One sweep at a time:** after the stop-switch check, claim the sweep with
+  `supervisor state sweep-start --id <id>`, where `<id>` names this run (for example the session
+  name and the start time). Exit 1 means another sweep holds a claim newer than two hours: do
+  nothing and report `sweep skipped: another sweep is running`. `supervisor state sweep-done`
+  releases the claim; a claim left by a crashed sweep expires after two hours. A `--dry-run`
+  sweep writes no state, so it makes no claim and changes nothing.
 - **Per scope:** every phase runs once per entry of `scopes`, over that scope's repositories (listed
   as in supervisor-loop [Step 1](../supervisor-loop/SKILL.md#step-1---preflight)), with that scope's
   `checkoutRoot`, `mode`, and `taxonomy`. The summary names the owner on every line.
@@ -221,8 +227,8 @@ session-only jobs that expire after some days:
 1. List the supervisor's recurring jobs.
 2. If the fallback sweep job is missing, or its expiry falls within the next fallback interval plus
    a margin, register the replacement first, then delete the old job, so a failed create never
-   leaves the supervisor with no job. A brief duplicate is harmless: the sweep lock dedupes
-   concurrent sweeps.
+   leaves the supervisor with no job. A brief duplicate is harmless: the sweep claim lets
+   only one of two concurrent sweeps run.
 3. Record the new job id and registration time in the state file's `schedule` field.
 
 For each new escalation (dedupe on `escalations` in the state file). The supervisor session does
@@ -246,8 +252,8 @@ these actions, each prefixed with `would` in a `report` scope:
 - scheduled run
 - needs decision
 
-Set `lastSweepAt` (`supervisor state sweep-done`), except on `--dry-run`, which writes no state.
-Release the lock and return the next suggested wake delay to the loop.
+Run `supervisor state sweep-done`, which sets `lastSweepAt` and releases the sweep claim, except on
+`--dry-run`, which writes no state. Return the next suggested wake delay to the loop.
 
 The consumer owns nothing beyond the supervisor configuration file, the policy it names, and each
 repository's own `AGENTS.md`.

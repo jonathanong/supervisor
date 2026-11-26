@@ -28,6 +28,7 @@ export const FIELDS: Record<string, Kind> = {
   watches: 'array',
   quietMerges: 'array',
   mergeRecords: 'array',
+  sweep: 'object',
   pendingUpdateChecks: 'array',
 }
 

@@ -113,6 +113,7 @@ export async function sweepDone(args: string[], ctx: StateContext): Promise<void
   const state = await loadState(ctx.dir)
   const lastSweepAt = ctx.now()
   state.lastSweepAt = lastSweepAt
+  delete state.sweep
   await saveState(ctx.dir, state)
   ctx.print({ lastSweepAt })
 }

@@ -29,7 +29,7 @@ procedure.
   tier fixes, judges changelogs and migrations, and verifies; the review tier reviews work it did
   not write. Use them wherever possible. The supervisor session itself only orchestrates and
   decides.
-- **State:** `state.json` and the sweep lock live in `stateDir`, outside any repository. Change
+- **State:** `state.json`, which also holds the sweep claim, lives in `stateDir`, outside any repository. Change
   `state.json` only through `supervisor state`, which checks field shapes, holds a lock for each
   whole read-modify-write, and writes atomically. Its `set`, `append`, and `remove` subcommands take
   a dotted path under any field listed in Step 1 (for example
@@ -153,7 +153,9 @@ through that mode with this skill as its prompt (in Claude Code, for example, `/
    or when `lastSweepAt` is older than the fallback interval. Stop wake-ups once every wait is
    healthy again.
 
-Each sweep takes the lock in the state directory and skips if another sweep holds a fresh lock.
+Only one sweep runs at a time. Each sweep first claims it with
+`supervisor state sweep-start --id <id>` and skips when that exits 1 (see supervisor-sweep's
+[rules for every phase](../supervisor-sweep/SKILL.md#rules-for-every-phase)).
 
 ## Step 3 - Handle a wait result
 
@@ -191,8 +193,8 @@ other.
 
 ## Step 5 - Stop
 
-Stop when the user asks: delete the recurring job, stop every owner's event wait, release the lock,
-and print the last sweep summary.
+Stop when the user asks: delete the recurring job, stop every owner's event wait, release a sweep
+claim this session holds (`supervisor state remove sweep`), and print the last sweep summary.
 
 The consumer owns nothing beyond the configuration file, the supervisor policy it names, and each
 repository's own `AGENTS.md`. Delegation rules live in `state.json`.
