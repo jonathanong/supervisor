@@ -3,3 +3,15 @@ rules:
   - purpose: Everything goes to a person.
     paths: ['**']
     verdict: { claude: comments, seats: 1 }
+  - purpose: CI workflows, release and signing always go to a person.
+    paths: ['.github/workflows/**', '**/release/**', '**/signing/**']
+    nested: inherit
+    verdict: { claude: comments, seats: 1 }
+  - purpose: A change to merge rules always goes to a person.
+    paths:
+      - '**/.supervisor/**'
+      - '**/.claude/approvals.yml'
+      - '**/.claude/approvals.yaml'
+      - '**/.claude/classifiers/**'
+    nested: inherit
+    verdict: { claude: comments, seats: 1 }

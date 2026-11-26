@@ -79,6 +79,29 @@ Agents push under a person's login, so that person is the author of the agents' 
 
 An always-human rule says `claude: comments`, so the supervisor never merges what it matches and a person does. Always-human rules are inherited: a repository policy can add to them, and the supervisor refuses a policy whose inherited always-human rules are missing.
 
+### The always-human rules a supervisor policy must have
+
+Loading the supervisor policy fails unless its root file sends each required path to a person. The error names the file, the class of path, and the sample paths no rule matched. A rule counts as always-human only when all of these hold:
+
+- it is marked `nested: inherit`, on the rule or at the top of the file, so it still holds below a repository's own file
+- it is enforced, not in `mode: observe`
+- it has no `if`, so it applies to every PR
+- its verdict, alone and under each override, is `claude: blocks`, or `claude: comments` with at least one seat that only a person can fill (a verdict with no seats, or only a bot's, asks nobody)
+
+Which paths are required is data. The loader takes a list of requirements, each a name and sample paths, because two globs cannot be compared but a glob can be tested against a path. The default list is `DEFAULT_ALWAYS_HUMAN` in `src/policy/always-human.ts`:
+
+| Required                | Sample paths a rule must match                                                                                |
+| ----------------------- | ------------------------------------------------------------------------------------------------------------- |
+| CI workflow definitions | `.github/workflows/ci.yml`                                                                                    |
+| Release paths           | `release/publish.sh`                                                                                          |
+| Signing paths           | `signing/sign.sh`                                                                                             |
+| Policy files            | `approvals.yml` and `approvals.yaml` in `.supervisor/` and `.claude/`, at the root and in `packages/example/` |
+| Classifier definitions  | `.claude/classifiers/example/def.yml` and `prompt.md`, at the root and in `packages/example/`                 |
+
+An installation whose release or signing code lives elsewhere, or that has more always-human paths such as payments or migrations, passes its own list as `requiredAlwaysHuman` to `discoverPolicies` or `loadLayeredPolicies`. There is no config key for the list yet, because nothing in the supervisor loads the policy from the config; the CLI uses the default.
+
+The check applies wherever the supervisor policy is loaded: `--supervisor-policy`, `--repo-dir`, and the eval's reference policy. A repository policy is not checked, since the rules it cannot remove are the root's.
+
 ## Review depth
 
 The format takes no new keys, so full versus light review is expressed with what exists:
@@ -149,12 +172,25 @@ rules:
   - purpose: 'Test-only and docs-only changes merge once the reviewer approves.'
     paths: ['**/test/**', 'docs/**']
     verdict: { claude: approves, seats: '@reviewed' }
-  - purpose: 'Always a person: CI workflows, migrations, payments.'
-    paths: ['.github/workflows/**', '**/migrations/**', '**/payments/**']
+  - purpose: 'Always a person: CI workflows, release and signing, migrations, payments.'
+    paths:
+      [
+        '.github/workflows/**',
+        '**/release/**',
+        '**/signing/**',
+        '**/migrations/**',
+        '**/payments/**',
+      ]
     nested: inherit
     verdict: { claude: comments, seats: 1 }
   - purpose: 'A change to merge rules always goes to a person.'
-    paths: ['**/.supervisor/**', '**/.claude/approvals.yml', '**/.claude/classifiers/**']
+    paths:
+      [
+        '**/.supervisor/**',
+        '**/.claude/approvals.yml',
+        '**/.claude/approvals.yaml',
+        '**/.claude/classifiers/**',
+      ]
     nested: inherit
     verdict: { claude: comments, seats: 1 }
 ```

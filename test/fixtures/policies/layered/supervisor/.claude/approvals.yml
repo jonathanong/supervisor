@@ -14,11 +14,15 @@ rules:
     override:
       - if: "pr/repository = ['example-org/*'] AND ALL pr/authors = bot:dependabot"
         verdict: { claude: approves, seats: '@reviewed' }
-  - purpose: CI workflows always go to a person.
-    paths: ['.github/workflows/**']
+  - purpose: CI workflows, release and signing always go to a person.
+    paths: ['.github/workflows/**', '**/release/**', '**/signing/**']
     nested: inherit
     verdict: { claude: comments, seats: '@person' }
   - purpose: A change to merge rules always goes to a person.
-    paths: ['**/.supervisor/**', '**/.claude/approvals.yml', '**/.claude/classifiers/**']
+    paths:
+      - '**/.supervisor/**'
+      - '**/.claude/approvals.yml'
+      - '**/.claude/approvals.yaml'
+      - '**/.claude/classifiers/**'
     nested: inherit
     verdict: { claude: comments, seats: '@person' }
