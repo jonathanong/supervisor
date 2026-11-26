@@ -2,8 +2,10 @@ import { matchesRulePaths } from './glob.js'
 import type { Verdict } from './types.js'
 
 /**
- * Files that decide what may merge: policy files, for Claude Approvals and for the supervisor, and
- * classifier definitions, at any depth.
+ * Files that decide what may merge or what a review sees, as Claude Approvals protects them: policy
+ * files (the product's and the supervisor's), classifier definitions, `.gitattributes` and
+ * `.gitmodules`, at any depth, and the root `REVIEW.md`. The product also protects symlinks and
+ * submodules, which a path cannot tell; the supervisor does not.
  */
 export const PROTECTED_PATHS: readonly string[] = [
   '**/.supervisor/approvals.yml',
@@ -11,6 +13,9 @@ export const PROTECTED_PATHS: readonly string[] = [
   '**/.claude/approvals.yml',
   '**/.claude/approvals.yaml',
   '**/.claude/classifiers/**',
+  '**/.gitattributes',
+  '**/.gitmodules',
+  'REVIEW.md',
 ]
 
 export function isProtectedPath(filePath: string): boolean {

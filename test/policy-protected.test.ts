@@ -26,7 +26,7 @@ const reasonFor = (file: string) =>
   `No rule applies to protected file '${file}': a person must approve it, and the supervisor never merges it`
 
 describe('protected-file baseline', () => {
-  it('knows policy files and classifier definitions at any depth', () => {
+  it('knows the files Claude Approvals protects by path', () => {
     const protectedFiles = [
       '.supervisor/approvals.yml',
       '.supervisor/approvals.yaml',
@@ -36,6 +36,11 @@ describe('protected-file baseline', () => {
       'packages/app/.claude/approvals.yml',
       '.claude/classifiers/flake_fix/def.yml',
       'packages/app/.claude/classifiers/flake_fix/prompt.md',
+      '.gitattributes',
+      'packages/app/.gitattributes',
+      '.gitmodules',
+      'vendor/.gitmodules',
+      'REVIEW.md',
     ]
     for (const file of protectedFiles) expect(isProtectedPath(file), file).toBe(true)
 
@@ -46,6 +51,9 @@ describe('protected-file baseline', () => {
       '.supervisor/notes.md',
       'docs/.claude/approvals.yml.md',
       '.github/workflows/ci.yml',
+      'docs/REVIEW.md',
+      'gitattributes',
+      'docs/gitmodules.md',
     ]
     for (const file of ordinary) expect(isProtectedPath(file), file).toBe(false)
   })

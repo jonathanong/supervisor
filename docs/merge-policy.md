@@ -28,7 +28,16 @@ A PR that changes a policy file is judged by the default branch's copy, and an i
 
 ### Protected files
 
-Policy files (`approvals.yml` or `approvals.yaml` in `.supervisor/` or `.claude/`) and classifier definitions (`.claude/classifiers/**`) are protected at any depth. Where no rule applies to a changed protected file, because none matches it or every matching rule's `if` is false, the evaluator applies a baseline instead of leaving the file with no verdict:
+These files are protected, as Claude Approvals protects them:
+
+- policy files (`approvals.yml` or `approvals.yaml` in `.supervisor/` or `.claude/`), at any depth
+- classifier definitions (`.claude/classifiers/**`), at any depth
+- `.gitattributes` and `.gitmodules`, at any depth
+- `REVIEW.md` at the root
+
+The product also protects symlinks and submodules. The supervisor does not, because it reads changed paths and a path does not say which file is one.
+
+Where no rule applies to a changed protected file, because none matches it or every matching rule's `if` is false, the evaluator applies a baseline instead of leaving the file with no verdict:
 
 - the verdict is `comments`, so the supervisor never merges the PR, whatever its other files' rules say
 - one seat is asked: a person other than the PR's author and opener. No bot fills it, the final reviewer included
