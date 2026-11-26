@@ -12,10 +12,9 @@ trusted login.
 
 An agent delegates a PR with `/shepherd` as the [agent handoff](#agent-handoff).
 
-- **`/shepherd` on a PR:** skip it when `shepherds` already records the PR. Otherwise run it through
-  [ready and merge](ready-and-merge.md); the `pr-shepherd` skill routes a stack layer, and the
-  supervisor's [Stacks](ready-and-merge.md#stacks) rules apply. Record it in `shepherds`
-  (`supervisor state shepherd --pr <owner>/<repo>#<N> --head <sha>`).
+- **`/shepherd` on a PR:** run it through [ready and merge](ready-and-merge.md); exit 17 (`WATCHED`) from
+  `pr-shepherd` means another live one already watches the PR, so leave it; the `pr-shepherd` skill routes a stack layer, and the
+  supervisor's [Stacks](ready-and-merge.md#stacks) rules apply.
 - **`/plan` on an issue or PR:** a planning subagent drafts a plan with the `planning` skill. This
   is interactive: ask the human the plan's open questions (a question to a person; in Claude Code,
   for example, `AskUserQuestion`), revise, and post the plan as a comment only after the human has

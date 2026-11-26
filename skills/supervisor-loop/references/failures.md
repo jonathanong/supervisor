@@ -7,9 +7,9 @@ infra, or real failure.
 
 - **Ejected PR:** requeueing belongs to whichever agent shepherds the PR, through `pr-shepherd`'s
   "Merge queue ejection" playbook. The supervisor never requeues a PR it is not shepherding (one
-  with no `shepherds` entry). For a PR with no `shepherds` entry it still diagnoses the failure for
+  whose shepherd it did not start in this session). For such a PR it still diagnoses the failure for
   the flake handling below. Notify the PR's owning agent session only when no shepherd is running
-  for the PR and one can be identified and is running (PR provenance lines, branch name, or the
+  for the PR (`pr-shepherd` exit 17 means a live one exists) and one can be identified and is running (PR provenance lines, branch name, or the
   harness's list of live agents), with the failing check, run id, test, and a PR-caused or flake
   judgment; otherwise list it in the summary. An ejection with a flake fingerprint files or updates
   a flake issue and adds a summary line, whoever shepherds.

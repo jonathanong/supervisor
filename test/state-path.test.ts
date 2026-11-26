@@ -55,9 +55,9 @@ describe('supervisor state set, append, remove and show', () => {
     expect((await loop.cli(['state', 'set', 'intake.x', '--json', '1'])).stderr).toBe(
       'state.json: intake must be object, got array\n',
     )
-    await loop.seed({ shepherds: { a: 'text' } })
-    expect((await loop.cli(['state', 'set', 'shepherds.a.b', '--json', '1'])).stderr).toBe(
-      'state.json: shepherds.a must be object, got string\n',
+    await loop.seed({ escalations: { a: 'text' } })
+    expect((await loop.cli(['state', 'set', 'escalations.a.b', '--json', '1'])).stderr).toBe(
+      'state.json: escalations.a must be object, got string\n',
     )
     expect((await loop.cli(['state', 'set', 'lastSweepAt', '--json', '{oops'])).stderr).toMatch(
       /^--json: /,

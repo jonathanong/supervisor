@@ -163,7 +163,7 @@ describe('a tracked pull request is matched with its owner', () => {
 
   it('ignores a record of the same-named repository under another owner', async () => {
     const state = {
-      shepherds: { 'example-user/example-repo#61': {}, 'Example-Org/Example-Repo#62': {} },
+      escalations: { 'example-user/example-repo#61': {}, 'Example-Org/Example-Repo#62': {} },
       routed: [{ what: 'see other-example-org/example-repo#63' }],
       intake: ['report on example-org/example-repo#640', 'and (example-org/example-repo#65)'],
     }
@@ -177,18 +177,5 @@ describe('a tracked pull request is matched with its owner', () => {
       delegations: [7, null, { pr: 'x/example-repo#75' }],
     }
     expect(await trackedIds(state, [71, 72, 73, 74, 75])).toEqual(['m71', 'm73'])
-  })
-
-  it('records a new shepherd only with its owner, and still removes an old short key', async () => {
-    const loop = await makeLoop()
-    await loop.seed({ shepherds: { 'example-repo#9': {} } })
-    expect(await loop.cli(['state', 'shepherd', '--pr', 'example-repo#10'])).toEqual({
-      code: 1,
-      stdout: '',
-      stderr: "shepherd: 'example-repo#10' must look like owner/repo#N\n",
-    })
-    const removed = await loop.cli(['state', 'shepherd', '--pr', 'example-repo#9', '--remove'])
-    expect(removed.stdout).toBe('{"example-repo#9": null}\n')
-    expect((await loop.state()).shepherds).toEqual({})
   })
 })

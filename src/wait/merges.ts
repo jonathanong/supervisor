@@ -8,7 +8,7 @@ import { updateWatches } from './watches.js'
 
 /** How many clean merges state keeps until a wait reports them. */
 const QUIET_KEEP = 100
-const TRACKING = ['shepherds', 'routed', 'delegations', 'escalations', 'intake']
+const TRACKING = ['routed', 'delegations', 'escalations', 'intake']
 const DEFAULT_BOT = 'dependabot'
 
 export interface Sweep {
@@ -56,7 +56,7 @@ function mentions(text: string, needle: string, bare: boolean): boolean {
 }
 
 /**
- * True when a loop record (shepherd, routing, delegation, escalation, intake) names the PR as
+ * True when a loop record (routing, delegation, escalation, intake) names the PR as
  * `<owner>/<repo>#N`, so the same-named repository of another owner does not match. A record that
  * names it as `<repo>#N` with no owner (free text, or an entry from before records carried the
  * owner) still matches: it cannot be told apart, and a merge reported once too often costs less

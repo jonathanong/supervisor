@@ -77,25 +77,8 @@ describe('supervisor state record subcommands', () => {
     expect((await loop.state()).scheduledPrompts.runs).toHaveLength(20)
   })
 
-  it('records and removes a shepherd and marks a sweep done', async () => {
+  it('marks a sweep done', async () => {
     const loop = await makeLoop()
-    const pr = 'example-org/example-repo#12'
-    expect((await loop.cli(['state', 'shepherd', '--pr', pr])).stdout).toBe(
-      `{"${pr}": {"by": "loop subagent", "since": "${NOW}", "head": null, "category": null}}\n`,
-    )
-    const named = ['--by', 'worker-1', '--head', 'abc123', '--category', 'flake-fix']
-    await loop.cli(['state', 'shepherd', '--pr', pr, ...named])
-    expect((await loop.state()).shepherds[pr]).toEqual({
-      by: 'worker-1',
-      since: NOW,
-      head: 'abc123',
-      category: 'flake-fix',
-    })
-    expect((await loop.cli(['state', 'shepherd', '--pr', pr, '--remove'])).stdout).toBe(
-      `{"${pr}": null}\n`,
-    )
-    expect((await loop.state()).shepherds).toEqual({})
-
     expect((await loop.cli(['state', 'sweep-done'])).stdout).toBe(`{"lastSweepAt": "${NOW}"}\n`)
     expect((await loop.state()).lastSweepAt).toBe(NOW)
     expect((await loop.cli(['state', 'sweep-done', 'extra'])).code).toBe(2)
