@@ -101,12 +101,33 @@ async function readInput(path: string): Promise<EvaluationInput | PullFacts> {
   return raw as unknown as EvaluationInput | PullFacts
 }
 
-async function readClassifiers(path: string): Promise<Record<string, ClassifierResult>> {
+interface ClassifiersFile {
+  results: Record<string, ClassifierResult>
+  /** The head the results were collected for, when `classify-collect` wrote the file. */
+  pull?: PullFacts['pull']
+}
+
+async function readClassifiers(path: string): Promise<ClassifiersFile> {
   const raw = await readJson(path, 'classifiers')
   if (!isObject(raw) || !Object.values(raw).every(isObject)) {
     throw new FactsError('Classifiers JSON must be an object of classifier results')
   }
-  return raw as unknown as Record<string, ClassifierResult>
+  const { pull, ...results } = raw
+  return {
+    results: results as unknown as Record<string, ClassifierResult>,
+    ...(pull ? { pull: pull as unknown as PullFacts['pull'] } : {}),
+  }
+}
+
+/** Results collected for one head say nothing about another pull request or a later head. */
+function sameHead(bound: PullFacts['pull'], read: PullFacts['pull']): void {
+  const same =
+    bound.repository === read.repository && bound.number === read.number && bound.head === read.head
+  if (same) return
+  throw new FactsError(
+    `The classifier results are for ${bound.repository}#${bound.number} at ${bound.head}, ` +
+      `not ${read.repository}#${read.number} at ${read.head}: run the classifiers again`,
+  )
 }
 
 async function checkPullRequest(
@@ -115,12 +136,14 @@ async function checkPullRequest(
   io: CliIo,
 ): Promise<number> {
   const [repository, number] = args.positionals as [string, string]
+  const given = args.classifiers ? await readClassifiers(args.classifiers) : undefined
   const facts = await collectPullFacts(io.runProcess, repository, Number(number), {
     teams: teamsNamed(policies),
     status: io.shepherdStatus,
     cwd: args.repoDir ?? process.cwd(),
-    ...(args.classifiers ? { classifiers: await readClassifiers(args.classifiers) } : {}),
+    ...(given ? { classifiers: given.results } : {}),
   })
+  if (given?.pull) sameHead(given.pull, facts.pull)
   if (args.printInput) {
     io.stdout(`${JSON.stringify(facts, null, 2)}\n`)
     return 0

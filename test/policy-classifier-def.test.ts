@@ -95,6 +95,10 @@ budget: 1
     expect(await refusal(outputs('  bad name: { type: numeric, min: 0, max: 1 }\n'))).toContain(
       'plain word',
     )
+    for (const name of ['__proto__', '_a', 'severity']) {
+      const body = `  ${name}: { type: numeric, min: 0, max: 1 }\n`
+      expect(await refusal(outputs(body))).toContain('plain word')
+    }
     expect(await refusal(outputs('  a: yes\n'))).toContain('must be a mapping')
     expect(await refusal(outputs('  a: { type: text }\n'))).toContain('type must be')
     expect(await refusal(outputs('  a: { type: numeric, min: 5, max: 1 }\n'))).toContain('min')

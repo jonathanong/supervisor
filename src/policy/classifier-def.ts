@@ -42,7 +42,11 @@ function parseOutput(
     errors.push({ file, path, message })
     return undefined
   }
-  if (!NAME.test(path.slice('outputs.'.length))) return fail('The name must be a plain word')
+  const name = path.slice('outputs.'.length)
+  // No leading `_`, as in Claude Approvals. It also keeps out `__proto__`, which would set no key.
+  if (!NAME.test(name) || name.startsWith('_') || name === 'severity') {
+    return fail('The name must be a plain word that does not start with _ and is not severity')
+  }
   if (!isPlainObject(raw)) return fail('An output must be a mapping with a type')
   if (raw.type === 'numeric') {
     checkAllowedKeys(raw, new Set(['type', 'min', 'max']), path, file, errors)

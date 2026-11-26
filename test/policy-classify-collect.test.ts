@@ -5,6 +5,7 @@ import { classifyGh, policy, PR, tempDir, writeTree } from './helpers/classify.j
 import { check, fixture, HEAD, OLD_HEAD, policyDir } from './helpers/pull.js'
 
 const DIR = policyDir('classify-flake-fix')
+const BOUND = { repository: PR[0], number: 7, head: HEAD }
 
 /** Prepare one pull request and write each answer; `answers` is by classifier name. */
 async function prepared(answers: Record<string, string>) {
@@ -25,6 +26,7 @@ describe('supervisor policy classify-collect', () => {
     const result = await collect(out)
     expect(result).toEqual({ code: 0, stdout: `${join(out, 'classifiers.json')}\n`, stderr: '' })
     expect(JSON.parse(await readFile(join(out, 'classifiers.json'), 'utf8'))).toEqual({
+      pull: BOUND,
       'repo/flake_fix': { status: 'complete', value: 'yes', outputs: { answer: 'yes' } },
     })
   })
@@ -45,7 +47,9 @@ describe('supervisor policy classify-collect', () => {
       expect(result.code).toBe(0)
       expect(result.stderr).toMatch(/^repo\/flake_fix: no result: /)
       expect(result.stderr).toContain(reason)
-      expect(JSON.parse(await readFile(join(out, 'classifiers.json'), 'utf8'))).toEqual({})
+      expect(JSON.parse(await readFile(join(out, 'classifiers.json'), 'utf8'))).toEqual({
+        pull: BOUND,
+      })
     }
   })
 
@@ -79,6 +83,7 @@ outputs:
     await writeFile(answer, '{"level": "low", "score": 3}')
     expect((await collect(out)).stderr).toBe('')
     expect(JSON.parse(await readFile(join(out, 'classifiers.json'), 'utf8'))).toEqual({
+      pull: BOUND,
       'repo/risk': { status: 'complete', outputs: { level: 'low', score: 3 } },
     })
   })
@@ -143,6 +148,21 @@ describe('a collected result in policy check', () => {
     const written = await run(byHand)
     expect(collected.nextStep).toEqual({ action: 'merge' })
     expect({ ...collected, classifiers: null }).toEqual({ ...written, classifiers: null })
+  })
+
+  it('refuses results collected for another head, pull request or repository', async () => {
+    const result = { 'repo/flake_fix': { status: 'complete', value: 'yes' } }
+    for (const pull of [
+      { ...BOUND, head: OLD_HEAD },
+      { ...BOUND, number: 8 },
+      { ...BOUND, repository: 'example/other' },
+    ]) {
+      const path = join(await tempDir(), 'classifiers.json')
+      await writeFile(path, JSON.stringify({ pull, ...result }))
+      const checked = await check(fixture(), ['--dir', DIR, '--json', '--classifiers', path])
+      expect(checked.code).toBe(2)
+      expect(checked.stderr).toContain('run the classifiers again')
+    }
   })
 
   it('holds the stricter verdict for an answer that is not allowed, as for no result', async () => {

@@ -23,7 +23,9 @@ diff, nothing else.
 3. **Collect.** Run `supervisor policy classify-collect --out <out dir>`. It prints the path of
    `classifiers.json`. It leaves out any answer that is missing or not allowed, and exits 1 and
    writes nothing when the PR has a new head since step 1: start again from step 1.
-4. **Check.** Pass that file to `supervisor policy check ... --classifiers <classifiers.json>`.
+4. **Check.** Pass that file to `supervisor policy check ... --classifiers <classifiers.json>`. The
+   file names the head it was collected for. The check exits 2 when the PR has a newer head: start
+   again from step 1.
 
 ## Rules
 

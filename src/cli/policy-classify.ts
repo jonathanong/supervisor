@@ -115,7 +115,8 @@ async function collect(args: Exclude<ReturnType<typeof parseArgs>, string>, io: 
     if (reason) io.stderr(`repo/${entry.name}: no result: ${reason}\n`)
   }
   const path = join(args.out, 'classifiers.json')
-  await writeFile(path, `${JSON.stringify(results, null, 2)}\n`)
+  // The head goes in the file, so `policy check` refuses the results for any other head.
+  await writeFile(path, `${JSON.stringify({ pull: manifest.pull, ...results }, null, 2)}\n`)
   io.stdout(`${path}\n`)
   return 0
 }
