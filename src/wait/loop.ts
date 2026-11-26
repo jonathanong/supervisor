@@ -1,5 +1,6 @@
 import { recordEvents } from '../state/hook-harness.js'
 import { get } from '../state/json.js'
+import { refuseWhenStopped } from '../state/stop.js'
 import { loadState, saveState, withStateLock } from '../state/store.js'
 import { WaitError, type WaitContext } from './context.js'
 import { emit, pendingChecks } from './emit.js'
@@ -39,7 +40,8 @@ async function pendingDeadline(ctx: WaitContext, delay: number): Promise<number 
  * Wait for this owner's events until one needs action. A merged pull request is checked for
  * unresolved or late review findings; a clean one is logged, the cursor moves past it, and the
  * wait continues. The wait returns on any other event, a merge with findings, a completed watch,
- * a due dependency update check, a gap, or the timeout.
+ * a due dependency update check, a gap, or the timeout. It throws `StoppedError` when the stop
+ * switch is set at the start or appears between two hook-harness rounds.
  */
 export async function runWait(ctx: WaitContext, settings: WaitSettings): Promise<void> {
   const total = seconds(settings.timeout)
@@ -50,6 +52,8 @@ export async function runWait(ctx: WaitContext, settings: WaitSettings): Promise
   let repos: string[] | undefined
   let first = true
   for (;;) {
+    // Before the first round and between rounds: a stop ends the wait without acting.
+    await refuseWhenStopped(ctx.dir, 'supervisor wait')
     const remaining = total - (ctx.now().getTime() - started) / 1000
     const waiting = await watchTriggers(ctx.dir)
     if (remaining <= 0) {

@@ -6,6 +6,11 @@ its own wait, its own result file `<stateDir>/hh-last.<owner>.json`, and its own
 
 ## Order
 
+A wait that exits 3 printed no events: the [stop switch](stop-switch.md) is set. Do not relaunch it
+until `supervisor stop --status` exits 0. Before handling any other result, run that check too; on
+any exit but 0, act on nothing yet: keep the result (it is also in `hh-last.<owner>.json`) and
+handle it in the order below once the status is 0 again, before relaunching the wait.
+
 1. Read the output and dedupe events on `id` against `hookHarness.<owner>.seen`.
 2. Record each event in `hookHarness.<owner>` as in progress before acting, and mark it done after.
 3. Only then persist the new cursor with `supervisor state advance-hh --owner <owner>`. Launching

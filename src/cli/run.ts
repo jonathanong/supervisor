@@ -4,6 +4,7 @@ import { validateConfigFile } from './config-validate.js'
 import { runPolicyCommand } from './policy-cmd.js'
 import { runPrepushCommand } from './prepush-cmd.js'
 import { runStateCommand } from './state-cmd.js'
+import { runStopCommand } from './stop-cmd.js'
 import { getVersion } from './version.js'
 import { runWaitCommand } from './wait-cmd.js'
 
@@ -42,6 +43,9 @@ Commands:
   prepush install                      Install the git pre-push hook
   state <subcommand> [options]         Update the loop's state.json (see: supervisor state --help)
   wait --owner <owner> [--advance]     Wait for one owner's events that need action
+  stop [--reason <text>]               Set the stop switch: the supervisor takes no action
+  stop --status                        Report the stop switch (exit 3 when it is set)
+  resume                               Clear the stop switch
   mcp                                  Start the stdio MCP server
 
 Options:
@@ -103,6 +107,9 @@ export async function runCli(argv: string[], io: CliIo = defaultCliIo): Promise<
   }
   if (command === 'wait') {
     return await runWaitCommand(rest, io)
+  }
+  if (command === 'stop' || command === 'resume') {
+    return await runStopCommand(command, rest, io)
   }
   if (command === 'mcp') {
     if (rest.length > 0) {

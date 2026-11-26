@@ -1,0 +1,64 @@
+import { STOPPED_EXIT } from '../state/stop.js'
+import { FIELDS } from '../state/store.js'
+
+const FIELD_NAMES = Object.keys(FIELDS)
+const FIELD_LINES = [0, 6, 12, 18]
+  .map((start) => `  ${FIELD_NAMES.slice(start, start + 6).join(', ')}`)
+  .join(',\n')
+
+export const STATE_HELP = `Usage: supervisor state <subcommand> [options]
+
+Typed, locked, atomic updates to <stateDir>/state.json. The config file is $SUPERVISOR_CONFIG,
+else .supervisor.json in the current directory. Each subcommand holds the state lock for its whole
+read-modify-write, checks the shape of the fields it touches, and replaces the file atomically.
+
+While the stop switch is set (see: supervisor stop --help), sweep-start refuses with one line and
+exit ${STOPPED_EXIT}. Every other subcommand only records facts and keeps working.
+
+Subcommands:
+  show [key]                              Print one key, or the top-level keys
+  set <path> --json <value>               Set a dotted path under a known field to a JSON value
+  append <path> --json <value> [--keep <n>]
+                                          Append a JSON value to the list at a dotted path;
+                                          --keep keeps only the newest n entries
+  remove <path>                           Remove the key at a dotted path
+  sweep-start --id <id> [--ttl-minutes <n>]
+                                          Claim the one running sweep; exits 1 while another id's
+                                          claim is newer than the limit (default 120 minutes), and
+                                          ${STOPPED_EXIT} while the stop switch is set
+  sweep-done                              Set lastSweepAt to now and release the sweep claim
+  advance-hh --owner <owner>              Store the cursor and seen ids from hh-last.<owner>.json
+                                          under hookHarness.<owner>
+  route --what <text> --to <text> [--evidence <text>] [--issue <text>] [--note <text>]
+                                          Record where an item was routed
+  annotate-route --match <text> --note <text> [--issue <text>]
+                                          Annotate the one routed item whose "what" contains <text>
+  sp-record --prompt <name> --run-id <id> --outcome <text> --next <name> [--pr <ref>]
+                                          Record a scheduled-prompt run and the next prompt
+  sp-next --next <name>                   Set the next scheduled prompt
+  shepherd --pr <owner/repo#N> [--by <who>] [--head <sha>] [--category <name>]
+                                          Record an in-flight shepherd (--by defaults to
+                                          "loop subagent")
+  shepherd --pr <owner/repo#N> --remove   Remove an in-flight shepherd
+  reviewed --file <path>                  Add harvested comment ids from a
+                                          {"<owner>/<repo>": [ids]} JSON file
+  watch add --id <id> --notify <session> --pr <owner/repo#N> [--pr ...] [--note <text>]
+                                          Add a merge watch; supervisor wait reports it when
+                                          every pull request has merged
+  watch list | watch ack --id <id> | watch remove --id <id>
+                                          List the watches, acknowledge one, or remove one
+  late-review <owner/repo#N>...           Report unresolved threads and late reviews for merged
+                                          pull requests (takes no lock; exits 1 on any error)
+  update-check-script --repo <name>[:<ecosystem>,...] [--repo ...] [--owner <owner>] [--dry]
+                                          Print the dependency update-check browser script
+                                          (takes no lock; --owner defaults to the only scope owner)
+
+Fields (the first key of every <path>):
+${FIELD_LINES}
+
+Keys that name a repository are <owner>/<repo>, for example
+  supervisor state set lateReview.example-org/example-repo.scannedThrough --json '"2026-01-01T00:00:00Z"'
+
+Options:
+  -h, --help                              Show help
+`

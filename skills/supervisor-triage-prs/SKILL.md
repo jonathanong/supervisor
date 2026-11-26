@@ -35,6 +35,10 @@ policy, and how a final review is requested.
 
 - **Repository:** triage works one repository, `<owner>/<repo>`. Pass `--repo <owner>/<repo>` on
   every `gh` command. Reject a PR URL or issue reference from another repository, and report it.
+- **Stop switch:** before Step 1, and before every mutation in Steps 3b to 6 (ready, steer, merge,
+  dispatch, close, branch delete, issue close), run `supervisor stop --status` (see the
+  [stop switch](../supervisor-loop/references/stop-switch.md)). On any exit but 0, mutate nothing
+  more and report the decisions reached so far.
 - **Report mode:** in a repository whose scope is in `report` mode, run Steps 1 to 3 and report the
   decisions; skip every mutation in Steps 3b to 6.
 - **Reviewed head:** every mutation of a PR (ready, steer, merge, dispatch, close, branch delete)

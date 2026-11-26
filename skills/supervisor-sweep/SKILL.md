@@ -18,12 +18,15 @@ none, and `--owner <owner>`, `--repo <owner>/<repo>`, or `--phase <letter>` narr
 
 ## Rules for every phase
 
-- **Stop switch:** before starting, and before every merge, check the
-  [stop file](../supervisor-loop/SKILL.md#stop-switch). When it exists, do nothing.
+- **Stop switch:** before starting, before every mutation, and before every merge, run
+  `supervisor stop --status` (see the
+  [stop switch](../supervisor-loop/references/stop-switch.md)). On any exit but 0, do nothing more:
+  report `sweep stopped` and leave the rest of the pass undone.
 - **One sweep at a time:** after the stop-switch check, claim the sweep with
   `supervisor state sweep-start --id <id>`, where `<id>` names this run (for example the session
   name and the start time). Exit 1 means another sweep holds a claim newer than two hours: do
-  nothing and report `sweep skipped: another sweep is running`. `supervisor state sweep-done`
+  nothing and report `sweep skipped: another sweep is running`. Exit 3 means the stop switch is
+  set: do nothing. `supervisor state sweep-done`
   releases the claim; a claim left by a crashed sweep expires after two hours. A `--dry-run`
   sweep writes no state, so it makes no claim and changes nothing.
 - **Per scope:** every phase runs once per entry of `scopes`, over that scope's repositories (listed
