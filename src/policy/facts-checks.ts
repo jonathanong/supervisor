@@ -8,7 +8,8 @@ import { FactsError, ghObjects, text } from './facts-gh.js'
  * pass. A required check that has not reported yet is not in GitHub's list, so the supervisor
  * also reads GitHub's merge state, and holds when it is BLOCKED or UNKNOWN. BLOCKED can also mean
  * a required review or another branch rule; the supervisor holds either way, because GitHub
- * would refuse the merge. UNKNOWN means GitHub is still working it out.
+ * would refuse the merge. UNKNOWN means GitHub is still working it out, so the supervisor reads the state
+ * once more over REST before it holds on it.
  */
 export interface CheckState {
   source: 'required-checks' | 'all-checks-on-head'
@@ -73,6 +74,12 @@ function toCheck(node: unknown): Check {
     return { name, outcome: check.state === 'PENDING' ? 'pending' : 'failing', required }
   }
   throw new FactsError('GitHub returned a check that is neither a check run nor a status')
+}
+
+/** An UNKNOWN GraphQL merge state is replaced by the REST `mergeable_state`, when that is known. */
+export function resolveMergeState(graphql: string, rest: unknown): string {
+  if (graphql !== 'UNKNOWN' || typeof rest !== 'string') return graphql
+  return rest === '' || rest === 'unknown' ? graphql : rest.toUpperCase()
 }
 
 export async function collectChecks(

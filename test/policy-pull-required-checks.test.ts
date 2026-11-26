@@ -86,10 +86,13 @@ describe('the checks GitHub requires for a pull request', () => {
     expect(blocked.result.policyNextStep).toEqual({ action: 'merge' })
     expect(blocked.result.nextStep.action).toBe('escalate')
 
-    const unknown = await checkJson(fixture({ contexts, mergeState: 'UNKNOWN' }))
-    expect(unknown.code).toBe(1)
-    expect(unknown.result.blockers).toEqual(['GitHub has not worked out the merge state yet'])
-    expect(unknown.result.nextStep.action).toBe('escalate')
+    for (const restMergeState of ['unknown', undefined, '', 7]) {
+      const unknown = await checkJson(fixture({ contexts, mergeState: 'UNKNOWN', restMergeState }))
+      expect(unknown.code).toBe(1)
+      expect(unknown.result.checks.mergeState).toBe('UNKNOWN')
+      expect(unknown.result.blockers).toEqual(['GitHub has not worked out the merge state yet'])
+      expect(unknown.result.nextStep.action).toBe('escalate')
+    }
 
     for (const mergeState of ['CLEAN', 'UNSTABLE', 'BEHIND']) {
       const open = await checkJson(fixture({ contexts, mergeState }))
@@ -97,6 +100,33 @@ describe('the checks GitHub requires for a pull request', () => {
       expect(open.result.blockers).toEqual([])
       expect(open.result.checks.mergeState).toBe(mergeState)
     }
+  })
+
+  it('reads an UNKNOWN merge state once more over REST', async () => {
+    const contexts = [pass('test', true)]
+    const clean = await checkJson(fixture({ contexts, mergeState: 'UNKNOWN' }))
+    expect(clean.code).toBe(0)
+    expect(clean.result.checks.mergeState).toBe('CLEAN')
+    expect(clean.result.blockers).toEqual([])
+
+    const blocked = await checkJson(
+      fixture({ contexts, mergeState: 'UNKNOWN', restMergeState: 'blocked' }),
+    )
+    expect(blocked.code).toBe(1)
+    expect(blocked.result.checks.mergeState).toBe('BLOCKED')
+    expect(blocked.result.blockers).toEqual([
+      'GitHub blocks the merge: a required check has not reported, or a branch rule is not met',
+    ])
+  })
+
+  it('ignores the REST merge state when GraphQL already knows it', async () => {
+    const contexts = [pass('test', true)]
+    const { code, result } = await checkJson(
+      fixture({ contexts, mergeState: 'CLEAN', restMergeState: 'blocked' }),
+    )
+    expect(code).toBe(0)
+    expect(result.checks.mergeState).toBe('CLEAN')
+    expect(result.blockers).toEqual([])
   })
 
   it('treats a head with no checks, or no check rollup, as none', async () => {
