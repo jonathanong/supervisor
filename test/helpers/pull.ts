@@ -26,6 +26,8 @@ export interface GhFixture {
   /** The head GraphQL read the checks of, and whether it has more than 100 checks. */
   checksHead: unknown
   checksMore: boolean
+  /** GitHub's `mergeStateStatus` of the pull request. */
+  mergeState: unknown
   teams: Record<string, unknown[]>
   /** The head the pull request has when it is read again at the end. */
   headAfter: unknown
@@ -70,6 +72,7 @@ export function fixture(overrides: Partial<GhFixture> = {}): GhFixture {
     contexts: [checkRun('test', 'COMPLETED', 'SUCCESS')],
     checksHead: HEAD,
     checksMore: false,
+    mergeState: 'CLEAN',
     teams: {},
     headAfter: HEAD,
     raw: {},
@@ -100,7 +103,7 @@ function reply(endpoint: string, jq: string, gh: GhFixture): string {
   if (endpoint.includes('/files?')) return lines(gh.files)
   if (endpoint === 'graphql') {
     const more = gh.contexts === null ? null : gh.checksMore
-    return lines([{ oid: gh.checksHead, more, contexts: gh.contexts }])
+    return lines([{ mergeState: gh.mergeState, oid: gh.checksHead, more, contexts: gh.contexts }])
   }
   if (endpoint.includes('/commits?')) return lines(gh.commits)
   if (endpoint.includes('/reviews?')) return lines(gh.reviews)

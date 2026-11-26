@@ -5,7 +5,8 @@ import { FactsError, ghObjects, text } from './facts-gh.js'
  * The checks on the head, as GitHub marks them for this pull request. The supervisor asks
  * GitHub which checks the pull request requires and keeps no list of its own. When GitHub marks
  * any as required, only those hold the merge. When it marks none, every check on the head must
- * pass.
+ * pass. A required check that has not reported yet is not in GitHub's list, so the supervisor
+ * also reads GitHub's merge state, and holds when it is BLOCKED.
  */
 export interface CheckState {
   source: 'required-checks' | 'all-checks-on-head'
@@ -19,11 +20,14 @@ export interface CheckState {
   pending: string[]
   /** Failing or pending checks that GitHub does not require; they do not hold the merge. */
   notRequired: string[]
+  /** GitHub's `mergeStateStatus` of the pull request, such as CLEAN, UNSTABLE or BLOCKED. */
+  mergeState: string
 }
 
 const QUERY = `query($owner: String!, $name: String!, $number: Int!) {
   repository(owner: $owner, name: $name) {
     pullRequest(number: $number) {
+      mergeStateStatus
       commits(last: 1) { nodes { commit { oid statusCheckRollup { contexts(first: 100) {
         pageInfo { hasNextPage }
         nodes {
@@ -36,9 +40,9 @@ const QUERY = `query($owner: String!, $name: String!, $number: Int!) {
   }
 }`
 const COMMIT_JQ =
-  '.data.repository.pullRequest.commits.nodes[0].commit | ' +
-  '{oid, more: .statusCheckRollup.contexts.pageInfo.hasNextPage, ' +
-  'contexts: .statusCheckRollup.contexts.nodes}'
+  '.data.repository.pullRequest | {mergeState: .mergeStateStatus} + ' +
+  '(.commits.nodes[0].commit | {oid, more: .statusCheckRollup.contexts.pageInfo.hasNextPage, ' +
+  'contexts: .statusCheckRollup.contexts.nodes})'
 const PASSING_CONCLUSIONS = new Set(['SUCCESS', 'NEUTRAL', 'SKIPPED'])
 const MAX_CHECKS = 100
 
@@ -83,6 +87,7 @@ export async function collectChecks(
   if (text(commit.oid, 'head of the pull request') !== head) {
     throw new FactsError(`${repository}#${number} got a new head while its checks were read`)
   }
+  const mergeState = text(commit.mergeState, 'merge state')
   if (commit.more === true) {
     throw new FactsError(
       `${repository}#${number} has more than ${MAX_CHECKS} checks on the head: ` +
@@ -113,5 +118,6 @@ export async function collectChecks(
     failing,
     pending,
     notRequired,
+    mergeState,
   }
 }

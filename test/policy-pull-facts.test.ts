@@ -49,14 +49,14 @@ describe('supervisor policy check <owner>/<repo> <pr> --print-input', () => {
         failing: [],
         pending: [],
         notRequired: [],
+        mergeState: 'CLEAN',
       },
       blockers: [],
     })
     // Every call is a GET through an argument array, and its filter names no title or body.
     const pull = `repos/${REPO}/pulls/7`
     const checkCall = calls.find((args) => args.includes('graphql'))!
-    expect(checkCall).toContain('number=7')
-    expect(checkCall.join(' ')).toContain('isRequired(pullRequestNumber: $number)')
+    expect(checkCall.join(' ')).toMatch(/isRequired\(pullRequestNumber[\s\S]*number=7/)
     expect(calls.map((args) => args.slice(0, args.includes('graphql') ? 2 : -2))).toEqual([
       ['api', pull],
       ['api', '--paginate', `${pull}/files?per_page=100`],

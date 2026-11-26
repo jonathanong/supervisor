@@ -38,6 +38,7 @@ describe('the checks GitHub requires for a pull request', () => {
       failing: [],
       pending: [],
       notRequired: ['lint', 'deploy'],
+      mergeState: 'CLEAN',
     })
     const human = await check(gh, DIR)
     expect(human.stdout).toContain('Checks: success (4 on the head; GitHub requires checks)\n')
@@ -74,6 +75,25 @@ describe('the checks GitHub requires for a pull request', () => {
     })
   })
 
+  it('holds the merge when GitHub says BLOCKED, and only then', async () => {
+    const contexts = [pass('test', true)]
+    const blocked = await checkJson(fixture({ contexts, mergeState: 'BLOCKED' }))
+    expect(blocked.code).toBe(1)
+    expect(blocked.result.checks).toMatchObject({ state: 'success', mergeState: 'BLOCKED' })
+    expect(blocked.result.blockers).toEqual([
+      'GitHub blocks the merge: a required check has not reported, or a branch rule is not met',
+    ])
+    expect(blocked.result.policyNextStep).toEqual({ action: 'merge' })
+    expect(blocked.result.nextStep.action).toBe('escalate')
+
+    for (const mergeState of ['CLEAN', 'UNSTABLE', 'BEHIND']) {
+      const open = await checkJson(fixture({ contexts, mergeState }))
+      expect(open.code).toBe(0)
+      expect(open.result.blockers).toEqual([])
+      expect(open.result.checks.mergeState).toBe(mergeState)
+    }
+  })
+
   it('treats a head with no checks, or no check rollup, as none', async () => {
     for (const contexts of [[], null]) {
       const { code, result } = await checkJson(fixture({ contexts }))
@@ -88,6 +108,8 @@ describe('the checks GitHub requires for a pull request', () => {
       [{ checksHead: null }, 'GitHub returned no head of the pull request'],
       [{ contexts: [checkRun('', 'COMPLETED', 'SUCCESS')] }, 'GitHub returned no check run name'],
       [{ contexts: [statusContext('', 'SUCCESS')] }, 'GitHub returned no status context'],
+      [{ mergeState: undefined }, 'GitHub returned no merge state'],
+      [{ mergeState: 4 }, 'GitHub returned no merge state'],
       [{ checksMore: true }, 'has more than 100 checks on the head'],
       [{ raw: { graphql: '\n' } }, 'gh api graphql printed nothing'],
       [{ contexts: 'x' as never }, 'GitHub returned no check list'],
