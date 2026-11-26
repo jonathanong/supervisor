@@ -1,0 +1,243 @@
+[
+  {
+    "id": "flake-01",
+    "group": "flake-fix",
+    "priority": "medium",
+    "description": "A flake fix in src/queue/worker.ts and its test: classified as a flake fix with no coverage trade, reviewed.",
+    "input": {
+      "changedFiles": ["src/queue/worker.ts", "test/queue/worker.test.ts"],
+      "facts": {
+        "repository": "example-org/app",
+        "openedBy": "example-dev",
+        "authors": ["example-dev"],
+        "approvedBy": ["bot:example-reviewer"],
+        "labels": ["flake-fix"]
+      },
+      "classifiers": {
+        "repo/flake_fix": {
+          "status": "complete",
+          "value": "yes"
+        },
+        "repo/coverage_trade": {
+          "status": "complete",
+          "value": "no"
+        }
+      }
+    },
+    "label": "merge",
+    "reason": "The flake-fix carve-out applies and the reviewer seat is filled."
+  },
+  {
+    "id": "flake-02",
+    "group": "flake-fix",
+    "priority": "critical",
+    "description": "A PR carries the flake-fix label and changes source, but no classifier has run.",
+    "input": {
+      "changedFiles": ["src/queue/worker.ts"],
+      "facts": {
+        "repository": "example-org/app",
+        "openedBy": "example-dev",
+        "authors": ["example-dev"],
+        "approvedBy": ["bot:example-reviewer"],
+        "labels": ["flake-fix"]
+      }
+    },
+    "label": "person",
+    "reason": "A label is a claim, not a judgment; with no classifier result the PR goes to a person."
+  },
+  {
+    "id": "flake-03",
+    "group": "flake-fix",
+    "priority": "critical",
+    "description": "A PR carries the flake-fix label, but the classifier says it is not a flake fix.",
+    "input": {
+      "changedFiles": ["src/queue/worker.ts"],
+      "facts": {
+        "repository": "example-org/app",
+        "openedBy": "example-dev",
+        "authors": ["example-dev"],
+        "approvedBy": ["bot:example-reviewer"],
+        "labels": ["flake-fix"]
+      },
+      "classifiers": {
+        "repo/flake_fix": {
+          "status": "complete",
+          "value": "no"
+        },
+        "repo/coverage_trade": {
+          "status": "complete",
+          "value": "no"
+        }
+      }
+    },
+    "label": "person",
+    "reason": "The label is present but the diff is a feature change."
+  },
+  {
+    "id": "flake-04",
+    "group": "flake-fix",
+    "priority": "critical",
+    "description": "A flake fix that adds a retry around the failing call.",
+    "input": {
+      "changedFiles": ["src/queue/worker.ts"],
+      "facts": {
+        "repository": "example-org/app",
+        "openedBy": "example-dev",
+        "authors": ["example-dev"],
+        "approvedBy": ["bot:example-reviewer"],
+        "labels": ["flake-fix"]
+      },
+      "classifiers": {
+        "repo/flake_fix": {
+          "status": "complete",
+          "value": "yes"
+        },
+        "repo/coverage_trade": {
+          "status": "complete",
+          "value": "yes"
+        }
+      }
+    },
+    "label": "person",
+    "reason": "A fix that trades coverage for green does not merge on its own."
+  },
+  {
+    "id": "flake-05",
+    "group": "flake-fix",
+    "priority": "critical",
+    "description": "A flake fix that raises a job timeout in a CI workflow.",
+    "input": {
+      "changedFiles": [".github/workflows/ci.yml"],
+      "facts": {
+        "repository": "example-org/app",
+        "openedBy": "example-dev",
+        "authors": ["example-dev"],
+        "approvedBy": ["bot:example-reviewer"],
+        "labels": ["flake-fix"]
+      },
+      "classifiers": {
+        "repo/flake_fix": {
+          "status": "complete",
+          "value": "yes"
+        },
+        "repo/coverage_trade": {
+          "status": "complete",
+          "value": "no"
+        }
+      }
+    },
+    "label": "person",
+    "reason": "CI workflows are always-human whatever the classifier says."
+  },
+  {
+    "id": "flake-06",
+    "group": "flake-fix",
+    "priority": "critical",
+    "description": "A classified flake fix with no reviewer approval.",
+    "input": {
+      "changedFiles": ["src/queue/worker.ts"],
+      "facts": {
+        "repository": "example-org/app",
+        "openedBy": "example-dev",
+        "authors": ["example-dev"],
+        "approvedBy": [],
+        "labels": ["flake-fix"]
+      },
+      "classifiers": {
+        "repo/flake_fix": {
+          "status": "complete",
+          "value": "yes"
+        },
+        "repo/coverage_trade": {
+          "status": "complete",
+          "value": "no"
+        }
+      }
+    },
+    "label": "person",
+    "reason": "The reviewer seat is empty."
+  },
+  {
+    "id": "flake-07",
+    "group": "flake-fix",
+    "priority": "critical",
+    "description": "A flake fix whose classifier run is incomplete.",
+    "input": {
+      "changedFiles": ["src/queue/worker.ts"],
+      "facts": {
+        "repository": "example-org/app",
+        "openedBy": "example-dev",
+        "authors": ["example-dev"],
+        "approvedBy": ["bot:example-reviewer"],
+        "labels": ["flake-fix"]
+      },
+      "classifiers": {
+        "repo/flake_fix": {
+          "status": "incomplete"
+        },
+        "repo/coverage_trade": {
+          "status": "complete",
+          "value": "no"
+        }
+      }
+    },
+    "label": "person",
+    "reason": "An incomplete classifier has no result."
+  },
+  {
+    "id": "flake-08",
+    "group": "flake-fix",
+    "priority": "critical",
+    "description": "A flake fix whose classifier answered something other than yes or no.",
+    "input": {
+      "changedFiles": ["src/queue/worker.ts"],
+      "facts": {
+        "repository": "example-org/app",
+        "openedBy": "example-dev",
+        "authors": ["example-dev"],
+        "approvedBy": ["bot:example-reviewer"],
+        "labels": ["flake-fix"]
+      },
+      "classifiers": {
+        "repo/flake_fix": {
+          "status": "complete",
+          "value": "unsure"
+        },
+        "repo/coverage_trade": {
+          "status": "complete",
+          "value": "no"
+        }
+      }
+    },
+    "label": "person",
+    "reason": "Only an explicit yes opens the carve-out."
+  },
+  {
+    "id": "flake-09",
+    "group": "flake-fix",
+    "priority": "critical",
+    "description": "A classified flake fix that also edits the billing module.",
+    "input": {
+      "changedFiles": ["src/queue/worker.ts", "src/billing/invoice.ts"],
+      "facts": {
+        "repository": "example-org/app",
+        "openedBy": "example-dev",
+        "authors": ["example-dev"],
+        "approvedBy": ["bot:example-reviewer"],
+        "labels": ["flake-fix"]
+      },
+      "classifiers": {
+        "repo/flake_fix": {
+          "status": "complete",
+          "value": "yes"
+        },
+        "repo/coverage_trade": {
+          "status": "complete",
+          "value": "no"
+        }
+      }
+    },
+    "label": "person",
+    "reason": "Billing is always-human; the strictest rule wins over the carve-out."
+  }
+]

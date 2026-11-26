@@ -1,0 +1,128 @@
+[
+  {
+    "id": "lock-01",
+    "group": "lockfile",
+    "priority": "medium",
+    "description": "Lockfile maintenance bot refreshes pnpm-lock.yaml only; the reviewer bot approved.",
+    "input": {
+      "changedFiles": ["pnpm-lock.yaml"],
+      "facts": {
+        "repository": "example-org/app",
+        "openedBy": "bot:example-lockfile-bot",
+        "authors": ["bot:example-lockfile-bot"],
+        "approvedBy": ["bot:example-reviewer"],
+        "labels": []
+      }
+    },
+    "label": "merge",
+    "reason": "Lockfile-only change by an automation author with the reviewer seat filled."
+  },
+  {
+    "id": "lock-02",
+    "group": "lockfile",
+    "priority": "critical",
+    "description": "A person hand-edits pnpm-lock.yaml; the reviewer bot approved.",
+    "input": {
+      "changedFiles": ["pnpm-lock.yaml"],
+      "facts": {
+        "repository": "example-org/app",
+        "openedBy": "example-dev",
+        "authors": ["example-dev"],
+        "approvedBy": ["bot:example-reviewer"],
+        "labels": []
+      }
+    },
+    "label": "person",
+    "reason": "The lockfile carve-out is for automation authors only."
+  },
+  {
+    "id": "lock-03",
+    "group": "lockfile",
+    "priority": "critical",
+    "description": "Lockfile bot changes the lockfile and also package.json.",
+    "input": {
+      "changedFiles": ["pnpm-lock.yaml", "package.json"],
+      "facts": {
+        "repository": "example-org/app",
+        "openedBy": "bot:example-lockfile-bot",
+        "authors": ["bot:example-lockfile-bot"],
+        "approvedBy": ["bot:example-reviewer"],
+        "labels": []
+      }
+    },
+    "label": "person",
+    "reason": "The lockfile bot has no carve-out for manifests; the strictest rule wins."
+  },
+  {
+    "id": "lock-04",
+    "group": "lockfile",
+    "priority": "critical",
+    "description": "Lockfile bot refresh with no approval.",
+    "input": {
+      "changedFiles": ["pnpm-lock.yaml"],
+      "facts": {
+        "repository": "example-org/app",
+        "openedBy": "bot:example-lockfile-bot",
+        "authors": ["bot:example-lockfile-bot"],
+        "approvedBy": [],
+        "labels": []
+      }
+    },
+    "label": "person",
+    "reason": "The reviewer seat is empty."
+  },
+  {
+    "id": "lock-05",
+    "group": "lockfile",
+    "priority": "medium",
+    "description": "Lockfile bot refreshes a nested workspace lockfile; the reviewer bot approved.",
+    "input": {
+      "changedFiles": ["packages/api/pnpm-lock.yaml"],
+      "facts": {
+        "repository": "example-org/app",
+        "openedBy": "bot:example-lockfile-bot",
+        "authors": ["bot:example-lockfile-bot"],
+        "approvedBy": ["bot:example-reviewer"],
+        "labels": []
+      }
+    },
+    "label": "merge",
+    "reason": "A nested lockfile is still a lockfile."
+  },
+  {
+    "id": "lock-06",
+    "group": "lockfile",
+    "priority": "critical",
+    "description": "A human account named like the lockfile bot refreshes the lockfile.",
+    "input": {
+      "changedFiles": ["pnpm-lock.yaml"],
+      "facts": {
+        "repository": "example-org/app",
+        "openedBy": "example-lockfile-bot",
+        "authors": ["example-lockfile-bot"],
+        "approvedBy": ["bot:example-reviewer"],
+        "labels": []
+      }
+    },
+    "label": "person",
+    "reason": "A login without the bot identity is a person."
+  },
+  {
+    "id": "lock-07",
+    "group": "lockfile",
+    "priority": "critical",
+    "description": "Lockfile bot and a person both have commits on the lockfile PR.",
+    "input": {
+      "changedFiles": ["pnpm-lock.yaml"],
+      "facts": {
+        "repository": "example-org/app",
+        "openedBy": "bot:example-lockfile-bot",
+        "authors": ["bot:example-lockfile-bot", "example-dev"],
+        "approvedBy": ["bot:example-reviewer"],
+        "labels": []
+      }
+    },
+    "label": "person",
+    "reason": "Not every author is an automation account."
+  }
+]

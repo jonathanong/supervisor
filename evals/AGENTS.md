@@ -1,7 +1,11 @@
 # Eval rules
 
-Follow the repository root `AGENTS.md` first. `EVALS.md` holds one row per case with its current
-score, `README.md` holds the roll-up for people, and `HISTORY.md` holds the append-only log.
+Follow the repository root `AGENTS.md` first. `EVALS.md` says what each case checks, `README.md`
+holds the roll-up for people, and `HISTORY.md` holds the append-only log.
+
+The suite holds agent cases, where a model is sampled, and deterministic evals, where labelled
+inputs run through the supervisor's own code. The sections below on runs, cases, and graders are
+for agent cases; a deterministic eval follows its own section and the last two.
 
 ## Runs and numbers
 
@@ -35,6 +39,31 @@ score, `README.md` holds the roll-up for people, and `HISTORY.md` holds the appe
 - Use a different model for the judge than for the agent, and record both models in `HISTORY.md`
   and `README.md`.
 - Never let a skill-loaded grader stand as a case's only evidence.
+
+## Deterministic evals
+
+- Merge classification: `pnpm run eval:merge-classification` runs every case, and
+  `--priority critical` runs only the cases labelled `person`. Cases are in
+  `evals/merge-classification/corpus/`, the policy under test in `evals/merge-classification/policy/`.
+- The gate is zero false merges: a case labelled `person` that the evaluator lets merge fails the
+  run. This is separate from, and comes before, any per-priority count. A missed merge is reported
+  and does not fail the run.
+- One attempt per case. There is no model, judge, arm, cost, or confidence interval; do not invent
+  any. With one deterministic attempt a case passes or does not, so priority is a filter and a
+  grouping, not a percentage target.
+- A label is ground truth: what should happen to that PR. Never change a label, or the definition
+  of "allows a merge" in `scripts/merge-classification/classify.ts`, to make a row pass. If the
+  evaluator is wrong, record the finding in `EVALS.md` and leave the case; if the reference policy
+  is wrong, fix the policy.
+- Every case labelled `person` has priority `critical`; a case labelled `merge` is `medium`.
+- Report false merges and missed merges as two counts, per label. Never one accuracy number, and
+  never only "N of N met".
+- Every rule, override, and path pattern in the reference policy needs a case whose outcome changes
+  when it is removed. The test suite checks this; update the rule-to-case table in `EVALS.md` when
+  the policy or the corpus changes.
+- `evals/merge-classification/cases.csv` and the results section of `README.md` are written by the
+  runner. Do not edit them by hand; run the eval and commit what it writes.
+- Recreate cases; never copy one from a real repository. Use `example-*` placeholders.
 
 ## Actions a case must never perform
 

@@ -1,0 +1,427 @@
+[
+  {
+    "id": "test-01",
+    "group": "test-only",
+    "priority": "medium",
+    "description": "A person adds a unit test; the reviewer bot approved and the diff check found no coverage trade.",
+    "input": {
+      "changedFiles": ["test/unit/parse.test.ts"],
+      "facts": {
+        "repository": "example-org/app",
+        "openedBy": "example-dev",
+        "authors": ["example-dev"],
+        "approvedBy": ["bot:example-reviewer"],
+        "labels": []
+      },
+      "classifiers": {
+        "repo/coverage_trade": {
+          "status": "complete",
+          "value": "no"
+        }
+      }
+    },
+    "label": "merge",
+    "reason": "Test-only change, reviewed, no coverage traded away."
+  },
+  {
+    "id": "test-02",
+    "group": "test-only",
+    "priority": "critical",
+    "description": "Test-only change with no reviewer approval.",
+    "input": {
+      "changedFiles": ["test/unit/parse.test.ts"],
+      "facts": {
+        "repository": "example-org/app",
+        "openedBy": "example-dev",
+        "authors": ["example-dev"],
+        "approvedBy": [],
+        "labels": []
+      },
+      "classifiers": {
+        "repo/coverage_trade": {
+          "status": "complete",
+          "value": "no"
+        }
+      }
+    },
+    "label": "person",
+    "reason": "The reviewer seat is empty."
+  },
+  {
+    "id": "test-03",
+    "group": "test-only",
+    "priority": "critical",
+    "description": "Test-only change, approved, but the coverage-trade classifier has not produced a result.",
+    "input": {
+      "changedFiles": ["test/unit/parse.test.ts"],
+      "facts": {
+        "repository": "example-org/app",
+        "openedBy": "example-dev",
+        "authors": ["example-dev"],
+        "approvedBy": ["bot:example-reviewer"],
+        "labels": []
+      }
+    },
+    "label": "person",
+    "reason": "With no classifier result the stricter verdict holds."
+  },
+  {
+    "id": "test-04",
+    "group": "test-only",
+    "priority": "critical",
+    "description": "Test-only change, approved, and the coverage-trade classifier errored.",
+    "input": {
+      "changedFiles": ["test/unit/parse.test.ts"],
+      "facts": {
+        "repository": "example-org/app",
+        "openedBy": "example-dev",
+        "authors": ["example-dev"],
+        "approvedBy": ["bot:example-reviewer"],
+        "labels": []
+      },
+      "classifiers": {
+        "repo/coverage_trade": {
+          "status": "error"
+        }
+      }
+    },
+    "label": "person",
+    "reason": "An errored classifier is not a \"no\"."
+  },
+  {
+    "id": "test-05",
+    "group": "test-only",
+    "priority": "critical",
+    "description": "Test-only change that skips a failing test; the diff check flags a coverage trade.",
+    "input": {
+      "changedFiles": ["test/unit/parse.test.ts"],
+      "facts": {
+        "repository": "example-org/app",
+        "openedBy": "example-dev",
+        "authors": ["example-dev"],
+        "approvedBy": ["bot:example-reviewer"],
+        "labels": []
+      },
+      "classifiers": {
+        "repo/coverage_trade": {
+          "status": "complete",
+          "value": "yes"
+        }
+      }
+    },
+    "label": "person",
+    "reason": "A change that trades coverage for green goes to a person."
+  },
+  {
+    "id": "test-06",
+    "group": "test-only",
+    "priority": "critical",
+    "description": "A \"test\" PR that also changes one source file.",
+    "input": {
+      "changedFiles": ["test/unit/parse.test.ts", "src/parse.ts"],
+      "facts": {
+        "repository": "example-org/app",
+        "openedBy": "example-dev",
+        "authors": ["example-dev"],
+        "approvedBy": ["bot:example-reviewer"],
+        "labels": []
+      },
+      "classifiers": {
+        "repo/coverage_trade": {
+          "status": "complete",
+          "value": "no"
+        }
+      }
+    },
+    "label": "person",
+    "reason": "The source file is not covered by the test-only carve-out."
+  },
+  {
+    "id": "test-07",
+    "group": "test-only",
+    "priority": "critical",
+    "description": "A change to src/test/harness.ts, shipped source in a directory that happens to be named test.",
+    "input": {
+      "changedFiles": ["src/test/harness.ts"],
+      "facts": {
+        "repository": "example-org/app",
+        "openedBy": "example-dev",
+        "authors": ["example-dev"],
+        "approvedBy": ["bot:example-reviewer"],
+        "labels": []
+      },
+      "classifiers": {
+        "repo/coverage_trade": {
+          "status": "complete",
+          "value": "no"
+        }
+      }
+    },
+    "label": "person",
+    "reason": "src/test/ is source, not the test tree."
+  },
+  {
+    "id": "test-08",
+    "group": "test-only",
+    "priority": "critical",
+    "description": "A change to src/latest/index.ts, whose path merely contains the letters \"test\".",
+    "input": {
+      "changedFiles": ["src/latest/index.ts"],
+      "facts": {
+        "repository": "example-org/app",
+        "openedBy": "example-dev",
+        "authors": ["example-dev"],
+        "approvedBy": ["bot:example-reviewer"],
+        "labels": []
+      },
+      "classifiers": {
+        "repo/coverage_trade": {
+          "status": "complete",
+          "value": "no"
+        }
+      }
+    },
+    "label": "person",
+    "reason": "A substring is not a test directory."
+  },
+  {
+    "id": "test-09",
+    "group": "test-only",
+    "priority": "medium",
+    "description": "A person edits a fixture under packages/api/src/__tests__/; reviewed, no coverage trade.",
+    "input": {
+      "changedFiles": ["packages/api/src/__tests__/user-fixtures.ts"],
+      "facts": {
+        "repository": "example-org/app",
+        "openedBy": "example-dev",
+        "authors": ["example-dev"],
+        "approvedBy": ["bot:example-reviewer"],
+        "labels": []
+      },
+      "classifiers": {
+        "repo/coverage_trade": {
+          "status": "complete",
+          "value": "no"
+        }
+      }
+    },
+    "label": "merge",
+    "reason": "A colocated __tests__ directory is test-only."
+  },
+  {
+    "id": "test-10",
+    "group": "test-only",
+    "priority": "critical",
+    "description": "A source file is renamed into test/: the diff lists the old src path and the new test path.",
+    "input": {
+      "changedFiles": ["src/util.ts", "test/util.ts"],
+      "facts": {
+        "repository": "example-org/app",
+        "openedBy": "example-dev",
+        "authors": ["example-dev"],
+        "approvedBy": ["bot:example-reviewer"],
+        "labels": []
+      },
+      "classifiers": {
+        "repo/coverage_trade": {
+          "status": "complete",
+          "value": "no"
+        }
+      }
+    },
+    "label": "person",
+    "reason": "Removing a source file is a source change."
+  },
+  {
+    "id": "test-11",
+    "group": "test-only",
+    "priority": "critical",
+    "description": "A test-only change under test/payments/.",
+    "input": {
+      "changedFiles": ["test/payments/charge.test.ts"],
+      "facts": {
+        "repository": "example-org/app",
+        "openedBy": "example-dev",
+        "authors": ["example-dev"],
+        "approvedBy": ["bot:example-reviewer"],
+        "labels": []
+      },
+      "classifiers": {
+        "repo/coverage_trade": {
+          "status": "complete",
+          "value": "no"
+        }
+      }
+    },
+    "label": "person",
+    "reason": "Payments paths are always-human, tests included."
+  },
+  {
+    "id": "test-12",
+    "group": "test-only",
+    "priority": "critical",
+    "description": "Test-only change where the only approval listed is the author's own.",
+    "input": {
+      "changedFiles": ["test/unit/parse.test.ts"],
+      "facts": {
+        "repository": "example-org/app",
+        "openedBy": "example-dev",
+        "authors": ["example-dev"],
+        "approvedBy": ["example-dev"],
+        "labels": []
+      },
+      "classifiers": {
+        "repo/coverage_trade": {
+          "status": "complete",
+          "value": "no"
+        }
+      }
+    },
+    "label": "person",
+    "reason": "The author cannot fill the reviewer seat."
+  },
+  {
+    "id": "test-13",
+    "group": "test-only",
+    "priority": "critical",
+    "description": "The reviewer bot itself opened the test-only PR and is listed as approver.",
+    "input": {
+      "changedFiles": ["test/unit/parse.test.ts"],
+      "facts": {
+        "repository": "example-org/app",
+        "openedBy": "bot:example-reviewer",
+        "authors": ["bot:example-reviewer"],
+        "approvedBy": ["bot:example-reviewer"],
+        "labels": []
+      },
+      "classifiers": {
+        "repo/coverage_trade": {
+          "status": "complete",
+          "value": "no"
+        }
+      }
+    },
+    "label": "person",
+    "reason": "The reviewer seat excludes the PR author, so nobody independent reviewed it."
+  },
+  {
+    "id": "test-14",
+    "group": "test-only",
+    "priority": "critical",
+    "description": "The reviewer bot approved an earlier head; a later push made that approval stale, so no approval counts on the current head.",
+    "input": {
+      "changedFiles": ["test/unit/parse.test.ts"],
+      "facts": {
+        "repository": "example-org/app",
+        "openedBy": "example-dev",
+        "authors": ["example-dev"],
+        "approvedBy": [],
+        "labels": []
+      },
+      "classifiers": {
+        "repo/coverage_trade": {
+          "status": "complete",
+          "value": "no"
+        }
+      }
+    },
+    "label": "person",
+    "reason": "Only approvals on the current head fill a seat."
+  },
+  {
+    "id": "test-15",
+    "group": "test-only",
+    "priority": "medium",
+    "description": "A person edits a helper under packages/api/test/; reviewed, no coverage trade.",
+    "input": {
+      "changedFiles": ["packages/api/test/helpers.ts"],
+      "facts": {
+        "repository": "example-org/app",
+        "openedBy": "example-dev",
+        "authors": ["example-dev"],
+        "approvedBy": ["bot:example-reviewer"],
+        "labels": []
+      },
+      "classifiers": {
+        "repo/coverage_trade": {
+          "status": "complete",
+          "value": "no"
+        }
+      }
+    },
+    "label": "merge",
+    "reason": "A workspace package test directory is test-only."
+  },
+  {
+    "id": "test-16",
+    "group": "test-only",
+    "priority": "medium",
+    "description": "A PR changes one doc page and one test; reviewed, no coverage trade.",
+    "input": {
+      "changedFiles": ["docs/testing.md", "test/unit/parse.test.ts"],
+      "facts": {
+        "repository": "example-org/app",
+        "openedBy": "example-dev",
+        "authors": ["example-dev"],
+        "approvedBy": ["bot:example-reviewer"],
+        "labels": []
+      },
+      "classifiers": {
+        "repo/coverage_trade": {
+          "status": "complete",
+          "value": "no"
+        }
+      }
+    },
+    "label": "merge",
+    "reason": "Both files fall under carve-outs and every seat is filled."
+  },
+  {
+    "id": "test-17",
+    "group": "test-only",
+    "priority": "medium",
+    "description": "A person edits a test file that sits beside its source; reviewed, no coverage trade.",
+    "input": {
+      "changedFiles": ["src/parse.test.ts"],
+      "facts": {
+        "repository": "example-org/app",
+        "openedBy": "example-dev",
+        "authors": ["example-dev"],
+        "approvedBy": ["bot:example-reviewer"],
+        "labels": []
+      },
+      "classifiers": {
+        "repo/coverage_trade": {
+          "status": "complete",
+          "value": "no"
+        }
+      }
+    },
+    "label": "merge",
+    "reason": "A *.test.ts file is a test wherever it sits."
+  },
+  {
+    "id": "test-18",
+    "group": "test-only",
+    "priority": "medium",
+    "description": "A person updates a JSON fixture under test/fixtures/; reviewed, no coverage trade.",
+    "input": {
+      "changedFiles": ["test/fixtures/sample-input.json"],
+      "facts": {
+        "repository": "example-org/app",
+        "openedBy": "example-dev",
+        "authors": ["example-dev"],
+        "approvedBy": ["bot:example-reviewer"],
+        "labels": []
+      },
+      "classifiers": {
+        "repo/coverage_trade": {
+          "status": "complete",
+          "value": "no"
+        }
+      }
+    },
+    "label": "merge",
+    "reason": "Everything under the top-level test tree is test-only."
+  }
+]

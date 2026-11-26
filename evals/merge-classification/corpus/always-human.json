@@ -1,0 +1,144 @@
+[
+  {
+    "id": "human-01",
+    "group": "always-human",
+    "priority": "critical",
+    "description": "A new database migration; the reviewer bot approved.",
+    "input": {
+      "changedFiles": ["migrations/0007_add_index.sql"],
+      "facts": {
+        "repository": "example-org/app",
+        "openedBy": "example-dev",
+        "authors": ["example-dev"],
+        "approvedBy": ["bot:example-reviewer"],
+        "labels": []
+      }
+    },
+    "label": "person",
+    "reason": "Migrations are always-human."
+  },
+  {
+    "id": "human-02",
+    "group": "always-human",
+    "priority": "critical",
+    "description": "A reviewed change to the release script that the classifier calls a flake fix.",
+    "input": {
+      "changedFiles": ["scripts/release/publish.ts"],
+      "facts": {
+        "repository": "example-org/app",
+        "openedBy": "example-dev",
+        "authors": ["example-dev"],
+        "approvedBy": ["bot:example-reviewer"],
+        "labels": ["flake-fix"]
+      },
+      "classifiers": {
+        "repo/flake_fix": {
+          "status": "complete",
+          "value": "yes"
+        },
+        "repo/coverage_trade": {
+          "status": "complete",
+          "value": "no"
+        }
+      }
+    },
+    "label": "person",
+    "reason": "Release paths are always-human whatever the classifier says."
+  },
+  {
+    "id": "human-03",
+    "group": "always-human",
+    "priority": "critical",
+    "description": "A docs change bundled with a migration.",
+    "input": {
+      "changedFiles": ["docs/guide.md", "db/migrations/0008_drop_column.sql"],
+      "facts": {
+        "repository": "example-org/app",
+        "openedBy": "example-dev",
+        "authors": ["example-dev"],
+        "approvedBy": ["bot:example-reviewer"],
+        "labels": []
+      }
+    },
+    "label": "person",
+    "reason": "Mixed paths: the always-human rule wins over the docs carve-out."
+  },
+  {
+    "id": "human-04",
+    "group": "always-human",
+    "priority": "critical",
+    "description": "A workflow change that both the reviewer bot and a second person approved.",
+    "input": {
+      "changedFiles": [".github/workflows/release.yml"],
+      "facts": {
+        "repository": "example-org/app",
+        "openedBy": "example-dev",
+        "authors": ["example-dev"],
+        "approvedBy": ["bot:example-reviewer", "example-maintainer"],
+        "labels": []
+      }
+    },
+    "label": "person",
+    "reason": "An always-human path is never merged by the supervisor; the person merges it."
+  },
+  {
+    "id": "human-05",
+    "group": "always-human",
+    "priority": "critical",
+    "description": "A test-only change inside a signing directory.",
+    "input": {
+      "changedFiles": ["packages/signing/__tests__/verify.test.ts"],
+      "facts": {
+        "repository": "example-org/app",
+        "openedBy": "example-dev",
+        "authors": ["example-dev"],
+        "approvedBy": ["bot:example-reviewer"],
+        "labels": []
+      },
+      "classifiers": {
+        "repo/coverage_trade": {
+          "status": "complete",
+          "value": "no"
+        }
+      }
+    },
+    "label": "person",
+    "reason": "Signing paths are always-human, tests included."
+  },
+  {
+    "id": "human-06",
+    "group": "always-human",
+    "priority": "critical",
+    "description": "Dependency bot bumps a pinned action inside a composite action under .github/actions/.",
+    "input": {
+      "changedFiles": [".github/actions/setup/action.yml"],
+      "facts": {
+        "repository": "example-org/app",
+        "openedBy": "bot:dependabot",
+        "authors": ["bot:dependabot"],
+        "approvedBy": ["bot:example-reviewer"],
+        "labels": []
+      }
+    },
+    "label": "person",
+    "reason": "CI definitions are always-human; the bot author does not override that."
+  },
+  {
+    "id": "human-07",
+    "group": "always-human",
+    "priority": "critical",
+    "description": "A docs page that lives under a secrets directory in the docs tree.",
+    "input": {
+      "changedFiles": ["docs/secrets/rotation.yaml"],
+      "facts": {
+        "repository": "example-org/app",
+        "openedBy": "example-dev",
+        "authors": ["example-dev"],
+        "approvedBy": ["bot:example-reviewer"],
+        "labels": []
+      }
+    },
+    "label": "person",
+    "reason": "Secrets paths are always-human wherever they sit."
+  }
+]

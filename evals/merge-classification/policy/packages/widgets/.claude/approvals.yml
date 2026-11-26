@@ -1,0 +1,7 @@
+# A directory policy that decides for its own subtree. Of the root rules, only those marked
+# `nested: inherit` still hold here.
+version: 1
+rules:
+  - purpose: The widgets package merges any change once the reviewer approves.
+    paths: ['**']
+    verdict: { claude: approves, seats: '@reviewed' }
