@@ -5,6 +5,7 @@ import { runPolicyCommand } from './policy-cmd.js'
 import { runPrepushCommand } from './prepush-cmd.js'
 import { runStateCommand } from './state-cmd.js'
 import { getVersion } from './version.js'
+import { runWaitCommand } from './wait-cmd.js'
 
 export interface CliIo {
   env: Record<string, string | undefined>
@@ -38,6 +39,7 @@ Commands:
   prepush [--range <a>..<b>]           Scan outgoing commits for private names, emails, hostnames
   prepush install                      Install the git pre-push hook
   state <subcommand> [options]         Update the loop's state.json (see: supervisor state --help)
+  wait --owner <owner> [--advance]     Wait for one owner's events that need action
   mcp                                  Start the stdio MCP server
 
 Options:
@@ -96,6 +98,9 @@ export async function runCli(argv: string[], io: CliIo = defaultCliIo): Promise<
   }
   if (command === 'state') {
     return await runStateCommand(rest, io)
+  }
+  if (command === 'wait') {
+    return await runWaitCommand(rest, io)
   }
   if (command === 'mcp') {
     if (rest.length > 0) {

@@ -29,6 +29,13 @@ Start the stdio MCP server:
 supervisor mcp
 ```
 
+## Loop commands
+
+The supervisor loop keeps its state and waits for events through two commands. Both read the config from `$SUPERVISOR_CONFIG`, else `.supervisor.json` in the current directory, and need `stateDir` set. They call `gh`, and `wait` runs `hook-harness` through `npx`.
+
+- `supervisor state <subcommand>` is the only writer of `<stateDir>/state.json`. Each subcommand checks the shape of the fields it touches, holds a lock for the whole read-modify-write, and replaces the file atomically. `supervisor state --help` lists the subcommands.
+- `supervisor wait --owner <owner> [--advance]` waits for one owner's repository events and returns only the ones that need action: a JSON summary line, then one compact JSON line per event. The full result goes to `<stateDir>/hh-last.<owner>.json`. Run one wait per scope owner. `supervisor wait --help` describes what returns.
+
 ## Development
 
 ```bash
