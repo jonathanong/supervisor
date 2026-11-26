@@ -41,6 +41,7 @@ export interface SupervisorConfig {
     attendedOnly: boolean
     hosts: string[]
     models: string[]
+    requiredAlwaysHuman?: Array<{ name: string; samples: string[] }>
   }
   finalReview: { request: Array<'session' | 'label'>; label?: string; status?: string }
   harness: string

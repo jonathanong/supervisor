@@ -17,11 +17,12 @@ export interface AlwaysHumanRequirement {
 }
 
 /**
- * What a supervisor policy must send to a person unless the caller passes its own list: CI
- * workflow definitions, release and signing paths, and the files that decide what may merge.
- * An installation whose release or signing code lives elsewhere passes its own samples.
+ * An example list of what a supervisor policy might be required to send to a person: CI workflow
+ * definitions, release and signing paths, and the files that decide what may merge. Nothing
+ * requires it by default; the eval and the tests pass it explicitly, and an installation lists its
+ * own in `mergeAuthority.requiredAlwaysHuman`.
  */
-export const DEFAULT_ALWAYS_HUMAN: readonly AlwaysHumanRequirement[] = [
+export const EXAMPLE_ALWAYS_HUMAN: readonly AlwaysHumanRequirement[] = [
   { name: 'CI workflow definitions', samples: ['.github/workflows/ci.yml'] },
   { name: 'release paths', samples: ['release/publish.sh'] },
   { name: 'signing paths', samples: ['signing/sign.sh'] },

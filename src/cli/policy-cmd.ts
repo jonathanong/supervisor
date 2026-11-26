@@ -2,6 +2,7 @@ import { discoverPolicies, selectRulesForFile } from '../policy/discover.js'
 import { loadLayeredPolicies } from '../policy/layers.js'
 import type { PolicyFile } from '../policy/types.js'
 import { runCheck } from './policy-check.js'
+import { requiredAlwaysHumanFromConfig } from './policy-required.js'
 import { formatPoliciesOverview, formatRuleSummary } from './policy-format.js'
 import type { CliIo } from './run.js'
 
@@ -38,7 +39,11 @@ async function runExplain(args: string[], io: CliIo): Promise<number> {
   const [dir, targetPath] = args as [string, string | undefined]
   let policies: PolicyFile[]
   try {
-    policies = repoDir ? await loadLayeredPolicies(dir, repoDir) : await discoverPolicies(dir)
+    policies = repoDir
+      ? await loadLayeredPolicies(dir, repoDir, {
+          requiredAlwaysHuman: await requiredAlwaysHumanFromConfig(io.env, process.cwd()),
+        })
+      : await discoverPolicies(dir)
   } catch (err) {
     io.stderr(`${(err as Error).message}\n`)
     return 2

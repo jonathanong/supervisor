@@ -77,18 +77,18 @@ A carve-out names the repositories it applies to with `pr/repository`. A scope t
 
 Agents push under a person's login, so that person is the author of the agents' PRs. The author fills a seat without approving. So a bare `seats: 1` is met by the agent's own PR, with nobody looking. A rule that means "reviewed" names the reviewer: `[{ count: 1, from: "bot:<review app>" }]`. The evaluator flags any rule whose seats the author alone can fill.
 
-An always-human rule says `claude: comments`, so the supervisor never merges what it matches and a person does. Always-human rules are inherited: a repository policy can add to them, and the supervisor refuses a policy whose inherited always-human rules are missing.
+An always-human rule says `claude: comments`, so the supervisor never merges what it matches and a person does. Always-human rules are inherited: a repository policy can add to them, and the supervisor refuses a policy that lacks the always-human rules the config requires. By default it requires none.
 
 ### The always-human rules a supervisor policy must have
 
-Loading the supervisor policy fails unless its root file sends each required path to a person. The error names the file, the class of path, and the sample paths no rule matched. A rule counts as always-human only when all of these hold:
+Loading the supervisor policy fails unless its root file sends each required path to a person. The required paths come from `mergeAuthority.requiredAlwaysHuman` in the config. The list is empty by default, so nothing is required and any policy loads. A policy directory with no root `.claude/approvals.yml` is still refused. The error names the file, the class of path, and the sample paths no rule matched. A rule counts as always-human only when all of these hold:
 
 - it is marked `nested: inherit`, on the rule or at the top of the file, so it still holds below a repository's own file
 - it is enforced, not in `mode: observe`
 - it has no `if`, so it applies to every PR
 - its verdict, alone and under each override, is `claude: blocks`, or `claude: comments` with at least one seat that only a person can fill (a verdict with no seats, or only a bot's, asks nobody)
 
-Which paths are required is data. The loader takes a list of requirements, each a name and sample paths, because two globs cannot be compared but a glob can be tested against a path. The default list is `DEFAULT_ALWAYS_HUMAN` in `src/policy/always-human.ts`:
+Each requirement is a name and sample paths, because two globs cannot be compared but a glob can be tested against a path. `EXAMPLE_ALWAYS_HUMAN` in `src/policy/always-human.ts` is an example list. The eval and the tests pass it. An installation might require something like this:
 
 | Required                | Sample paths a rule must match                                                                                |
 | ----------------------- | ------------------------------------------------------------------------------------------------------------- |
@@ -98,9 +98,9 @@ Which paths are required is data. The loader takes a list of requirements, each 
 | Policy files            | `approvals.yml` and `approvals.yaml` in `.supervisor/` and `.claude/`, at the root and in `packages/example/` |
 | Classifier definitions  | `.claude/classifiers/example/def.yml` and `prompt.md`, at the root and in `packages/example/`                 |
 
-An installation whose release or signing code lives elsewhere, or that has more always-human paths such as payments or migrations, passes its own list as `requiredAlwaysHuman` to `discoverPolicies` or `loadLayeredPolicies`. There is no config key for the list yet, because nothing in the supervisor loads the policy from the config; the CLI uses the default.
+Write the list in the config as `mergeAuthority.requiredAlwaysHuman`, an array of `{ "name": "...", "samples": ["..."] }` with at least one sample each. An installation might copy the table above, or list its own paths such as payments or migrations. Policy files and classifier definitions still reach a person through the protected-file baseline, even with an empty list.
 
-The check applies wherever the supervisor policy is loaded: `--supervisor-policy`, `--repo-dir`, and the eval's reference policy. A repository policy is not checked, since the rules it cannot remove are the root's.
+The check applies wherever the CLI loads the supervisor policy: `--supervisor-policy` and `--repo-dir`. Those commands read the config, from `$SUPERVISOR_CONFIG` or `.supervisor.json` in the current directory. With neither set and no `.supervisor.json`, nothing is required. A named config that is missing, unreadable or invalid exits 2. The eval checks its reference policy against the example list. A repository policy is not checked, since the rules it cannot remove are the root's.
 
 ## Review depth
 

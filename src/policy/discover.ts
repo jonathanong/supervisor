@@ -1,9 +1,5 @@
 import { posix } from 'node:path'
-import {
-  DEFAULT_ALWAYS_HUMAN,
-  assertAlwaysHumanRules,
-  type AlwaysHumanRequirement,
-} from './always-human.js'
+import { assertAlwaysHumanRules, type AlwaysHumanRequirement } from './always-human.js'
 import { matchesRulePaths, toRelativePath } from './glob.js'
 import { loadPolicyFile } from './load.js'
 import { scanPolicyFiles, type PolicyFolder } from './scan.js'
@@ -16,8 +12,8 @@ export interface DiscoverPoliciesOptions {
    */
   supervisorPolicy?: boolean
   /**
-   * The paths a supervisor policy must send to a person. Defaults to `DEFAULT_ALWAYS_HUMAN`; an
-   * empty list switches the check off. Read only with `supervisorPolicy`.
+   * The paths a supervisor policy must send to a person. Defaults to none; an
+   * empty list requires nothing. Read only with `supervisorPolicy`.
    */
   requiredAlwaysHuman?: readonly AlwaysHumanRequirement[]
   /** The folder that holds each policy file. Defaults to `.claude`. */
@@ -79,7 +75,7 @@ export async function discoverPolicies(
       const message = 'Supervisor policy directory has no .claude/approvals.yml'
       throw new PolicyLoadError([{ file: rootDir, path: '$', message }])
     }
-    assertAlwaysHumanRules(root, root.path, opts.requiredAlwaysHuman ?? DEFAULT_ALWAYS_HUMAN)
+    assertAlwaysHumanRules(root, root.path, opts.requiredAlwaysHuman ?? [])
   }
   return loaded
 }
