@@ -14,6 +14,8 @@ function createTestIo() {
     stdout: (text) => out.push(text),
     stderr: (text) => err.push(text),
     startMcp: vi.fn(async () => undefined),
+    runProcess: vi.fn(),
+    now: () => new Date(0),
   }
   return { io, stdout: () => out.join(''), stderr: () => err.join('') }
 }

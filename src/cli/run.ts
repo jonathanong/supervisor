@@ -1,7 +1,9 @@
 import { startMcpServer } from '../mcp/server.js'
+import { runProcess, type RunProcess } from '../state/process.js'
 import { validateConfigFile } from './config-validate.js'
 import { runPolicyCommand } from './policy-cmd.js'
 import { runPrepushCommand } from './prepush-cmd.js'
+import { runStateCommand } from './state-cmd.js'
 import { getVersion } from './version.js'
 
 export interface CliIo {
@@ -9,6 +11,9 @@ export interface CliIo {
   stdout: (text: string) => void
   stderr: (text: string) => void
   startMcp: (version: string) => Promise<unknown>
+  /** Runs `gh` and other external commands; tests replace it so nothing is spawned. */
+  runProcess: RunProcess
+  now: () => Date
 }
 
 export const defaultCliIo: CliIo = {
@@ -20,6 +25,8 @@ export const defaultCliIo: CliIo = {
     process.stderr.write(text)
   },
   startMcp: startMcpServer,
+  runProcess,
+  now: () => new Date(),
 }
 
 const HELP_TEXT = `Usage: supervisor <command> [options]
@@ -30,6 +37,7 @@ Commands:
   policy check --dir <d> --input <f>   Dry-evaluate a PR against policies
   prepush [--range <a>..<b>]           Scan outgoing commits for private names, emails, hostnames
   prepush install                      Install the git pre-push hook
+  state <subcommand> [options]         Update the loop's state.json (see: supervisor state --help)
   mcp                                  Start the stdio MCP server
 
 Options:
@@ -85,6 +93,9 @@ export async function runCli(argv: string[], io: CliIo = defaultCliIo): Promise<
   }
   if (command === 'prepush') {
     return await runPrepushCommand(rest, io)
+  }
+  if (command === 'state') {
+    return await runStateCommand(rest, io)
   }
   if (command === 'mcp') {
     if (rest.length > 0) {
