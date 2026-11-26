@@ -1,0 +1,30 @@
+version: 1
+rules:
+  - purpose: Source changes need a person who is not a contractor
+    paths:
+      - 'src/**'
+    if: "pr/base = 'release/v1' OR pr/base = 'main' OR claude/code_review = error"
+    verdict:
+      claude: approves
+      seats:
+        - count: 1
+          from:
+            - humans
+            - '!example-org/contractors'
+            - '!pr/authors'
+    override:
+      - if: "ANY pr/approved_by = example-org/security AND pr/opened_by = ['example-org/core', 'dev-one']"
+        verdict:
+          claude: approves
+          seats:
+            - count: 1
+              from:
+                - example-org/security
+      - if: 'pr/files_changed > 100'
+        verdict:
+          claude: comments
+  - purpose: Advisory only
+    paths:
+      - 'docs/**'
+    advisory:
+      - claude/code_review

@@ -138,6 +138,7 @@ describe('supervisor policy CLI', () => {
   })
 
   it('exits 2 on invalid policies, bad input JSON, or usage errors', async () => {
+    const docs = ['--dir', fixture('docs-light')]
     const cases: string[][] = [
       ['policy'],
       ['policy', 'unknown'],
@@ -161,6 +162,21 @@ describe('supervisor policy CLI', () => {
         fixture('docs-light'),
         '--input',
         fixture('../../../examples/config.example.json'),
+      ],
+      ['policy', 'check', 'example-org/example-repo'],
+      ['policy', 'check', 'not-a-repo', '7', ...docs],
+      ['policy', 'check', '../example-repo', '7', ...docs],
+      ['policy', 'check', 'example-org/..', '7', ...docs],
+      ['policy', 'check', 'example-org/example-repo', '0', ...docs],
+      ['policy', 'check', ...docs, '--input', fixture('inputs/docs-pass.json'), '--print-input'],
+      [
+        'policy',
+        'check',
+        ...docs,
+        '--input',
+        fixture('inputs/docs-pass.json'),
+        '--classifiers',
+        'x',
       ],
     ]
     for (const argv of cases) {

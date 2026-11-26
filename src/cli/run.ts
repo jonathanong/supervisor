@@ -35,7 +35,9 @@ const HELP_TEXT = `Usage: supervisor <command> [options]
 Commands:
   config validate [path]               Validate a config JSON file (defaults to $SUPERVISOR_CONFIG)
   policy explain <dir> [path]          Explain policy rules for a repo or path
-  policy check --dir <d> --input <f>   Dry-evaluate a PR against policies
+  policy check <owner>/<repo> <pr> --dir <d>
+                                       Read a PR from GitHub and evaluate it against policies
+  policy check --dir <d> --input <f>   Evaluate a written input file against policies
   prepush [--range <a>..<b>]           Scan outgoing commits for private names, emails, hostnames
   prepush install                      Install the git pre-push hook
   state <subcommand> [options]         Update the loop's state.json (see: supervisor state --help)

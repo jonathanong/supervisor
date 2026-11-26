@@ -70,16 +70,45 @@ The format takes no new keys, so full versus light review is expressed with what
 
 ## What the evaluator tells an agent
 
-`supervisor policy check <repo> <pr>` prints:
+`supervisor policy check <owner>/<repo> <pr> --dir <policy dir>` reads the PR from GitHub through `gh api` and prints:
 
+- the head it read
 - the rules that apply
 - the verdict
 - the seats and who must fill them
 - which seats are filled on the current head
 - the review depth asked for
+- the checks on that head
 - the next step: merge, request a review at a given depth on that head, or escalate
 
-`supervisor policy explain <repo> [path]` describes the policy without a PR. The MCP tool `policy_check` runs the same check, so a worker can ask what its PR needs. Under `policyEngine: "compare"` the check also reads the Claude Approvals check and reports any disagreement.
+It exits 0 only when the next step is merge. `--json` prints the same as one object, with the policy's own answer in `policyNextStep` and the final one in `nextStep`.
+
+**What it reads.** Every caller gets the same input for the same head, because the command builds it:
+
+| Input                                              | From GitHub                                                                                                                                                                                                     |
+| -------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `changedFiles`                                     | Every changed file, and a renamed file's previous name as well                                                                                                                                                  |
+| `facts.filesChanged`, `filesAdded`, `filesRemoved` | Counts of the files, and of those added and removed                                                                                                                                                             |
+| `facts.diffLines`                                  | Additions plus deletions                                                                                                                                                                                        |
+| `facts.openedBy`                                   | The account that opened the PR                                                                                                                                                                                  |
+| `facts.authors`                                    | The opener and every commit author's login                                                                                                                                                                      |
+| `facts.approvedBy`                                 | Each reviewer whose latest decision is an approval of the current head. A later request for changes or a dismissal cancels an approval; a later comment does not. An approval of an earlier head does not count |
+| `facts.base`, `facts.repository`, `facts.labels`   | The base branch, `<owner>/<repo>`, and the label names                                                                                                                                                          |
+| `facts.teams`                                      | The members of each `<org>/<team>` the policy names                                                                                                                                                             |
+| `classifiers`                                      | Not collected. `--classifiers <json>` supplies them; without it a rule that waits on a classifier stays undecided                                                                                               |
+
+A GitHub App is written `bot:<app slug>`, so `dependabot[bot]` is `bot:dependabot`. A person whose login is `dependabot` stays `dependabot`. No title, body, comment or commit message is read.
+
+**When it refuses.** The command exits 2 and evaluates nothing when it cannot read the PR whole: more files than the API lists (3000), a file or commit list shorter than the PR's own count, a team it cannot read, or a head that moved while it read.
+
+**What holds a merge the policy allows.** These change the next step to escalate, and `--json` lists them:
+
+- **A blocker:** a commit whose author has no GitHub login, a PR that is not open, or a draft. With an author unknown, `facts.authors` is left out, so a condition on `pr/authors` stays undecided.
+- **Checks:** the command reads every check run and commit status on the head, not only the required ones, since branch protection is often unreadable. The next step is merge only when all of them passed. A failing or pending check that is not required holds the merge too, and so does a head with no checks at all.
+
+`--print-input` prints the collected input, with the head, the checks and the blockers, and evaluates nothing. `supervisor policy check --dir <policy dir> --input <json>` evaluates a written input file instead, for dry runs and the eval. A written input has no checks and no blockers. An input that `--print-input` printed carries both, and they hold the merge on replay as they did live.
+
+`supervisor policy explain <dir> [path]` describes the policy without a PR. The MCP tool `policy_check` runs the same check, so a worker can ask what its PR needs. Under `policyEngine: "compare"` the check also reads the Claude Approvals check and reports any disagreement.
 
 ## A sketch
 
