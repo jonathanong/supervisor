@@ -5,7 +5,7 @@ import { fileURLToPath } from 'node:url'
 import { afterEach, describe, expect, it } from 'vitest'
 import { loadReferencePolicy } from '../scripts/merge-classification/main.js'
 import {
-  DEFAULT_ALWAYS_HUMAN,
+  EXAMPLE_ALWAYS_HUMAN,
   assertAlwaysHumanRules,
   type AlwaysHumanRequirement,
 } from '../src/policy/always-human.js'
@@ -50,18 +50,20 @@ describe('always-human rules a supervisor policy must have', () => {
 
   it('refuses a supervisor policy without them and names every missing path', async () => {
     const dir = await policyDir({ '.claude': CATCH_ALL })
-    const load = discoverPolicies(dir, { supervisorPolicy: true })
+    const required = { supervisorPolicy: true, requiredAlwaysHuman: EXAMPLE_ALWAYS_HUMAN }
+    const load = discoverPolicies(dir, required)
     await expect(load).rejects.toThrow(PolicyLoadError)
     const { errors } = (await load.catch((err: unknown) => err)) as PolicyLoadError
 
     expect(errors.map((e) => e.file)).toEqual(Array(5).fill('.claude/approvals.yml'))
     expect(errors.map((e) => e.message.split(' to a person')[0])).toEqual(
-      DEFAULT_ALWAYS_HUMAN.map((r) => `Supervisor policy must send ${r.name}`),
+      EXAMPLE_ALWAYS_HUMAN.map((r) => `Supervisor policy must send ${r.name}`),
     )
     expect(errors[0]!.message).toBe(
       "Supervisor policy must send CI workflow definitions to a person: no rule with 'nested: inherit', no 'if' and a verdict that blocks or asks for a human seat matches '.github/workflows/ci.yml'",
     )
-    await expect(loadLayeredPolicies(dir, fixture('repo-plain'))).rejects.toThrow('release paths')
+    const layered = loadLayeredPolicies(dir, fixture('repo-plain'), required)
+    await expect(layered).rejects.toThrow('release paths')
 
     // The same file is a valid repository policy, and the list is a parameter.
     expect(await discoverPolicies(dir)).toHaveLength(1)
@@ -71,7 +73,8 @@ describe('always-human rules a supervisor policy must have', () => {
   })
 
   it('loads a supervisor policy that has them, the eval reference policy included', async () => {
-    const policies = await discoverPolicies(fixture('supervisor'), { supervisorPolicy: true })
+    const required = { supervisorPolicy: true, requiredAlwaysHuman: EXAMPLE_ALWAYS_HUMAN }
+    const policies = await discoverPolicies(fixture('supervisor'), required)
     expect(policies).toHaveLength(1)
     expect(await loadReferencePolicy()).toHaveLength(2)
     // A directory with no supervisor policy at all is refused, not loaded as an empty policy.
@@ -94,6 +97,12 @@ describe('always-human rules a supervisor policy must have', () => {
 `
     const dir = await policyDir({ '.claude': `${CATCH_ALL}${rule}` })
     expect(await loadLayeredPolicies(dir, repoDir, opts)).toHaveLength(1)
+  })
+
+  it('requires nothing by default, so a policy with no always-human rules loads', async () => {
+    const dir = await policyDir({ '.claude': CATCH_ALL })
+    expect(await discoverPolicies(dir, { supervisorPolicy: true })).toHaveLength(1)
+    expect(await loadLayeredPolicies(dir, fixture('repo-plain'))).toHaveLength(1)
   })
 
   it('needs the rules in the root file, where every repository inherits them', async () => {

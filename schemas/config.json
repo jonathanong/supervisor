@@ -111,6 +111,28 @@
             "type": "string",
             "minLength": 1
           }
+        },
+        "requiredAlwaysHuman": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["name", "samples"],
+            "properties": {
+              "name": {
+                "type": "string",
+                "minLength": 1
+              },
+              "samples": {
+                "type": "array",
+                "minItems": 1,
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              }
+            }
+          }
         }
       }
     },

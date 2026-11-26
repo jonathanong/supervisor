@@ -1,6 +1,7 @@
 import { execFileSync } from 'node:child_process'
 import { readFile, writeFile } from 'node:fs/promises'
 import { fileURLToPath } from 'node:url'
+import { EXAMPLE_ALWAYS_HUMAN } from '../../src/policy/always-human.js'
 import { discoverPolicies } from '../../src/policy/discover.js'
 import type { PolicyFile } from '../../src/policy/types.js'
 import { classifyCase, summarize } from './classify.js'
@@ -23,7 +24,10 @@ export const README_PATH = path('evals/README.md')
 
 /** The reference policy is a supervisor policy: it uses `pr/repository` and `pr/labels`. */
 export async function loadReferencePolicy(): Promise<PolicyFile[]> {
-  return await discoverPolicies(POLICY_DIR, { supervisorPolicy: true })
+  return await discoverPolicies(POLICY_DIR, {
+    supervisorPolicy: true,
+    requiredAlwaysHuman: EXAMPLE_ALWAYS_HUMAN,
+  })
 }
 
 const git = (...args: string[]) =>
