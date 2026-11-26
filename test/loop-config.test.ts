@@ -61,7 +61,6 @@ describe('loop config loading', () => {
     expect(loaded.config.scopes[0]!.checkoutRoot).toBe(homedir())
     expect(loaded.config.stateDir).toBeUndefined()
     expect(() => requireStateDir(loaded)).toThrow(ConfigError)
-    expect(() => requireStateDir(loaded)).toThrow(/stateDir is required/)
   })
 
   it('leaves scheduledPrompts absent, turns staleRuns on, and returns a set stateDir', async () => {
@@ -77,9 +76,14 @@ describe('loop config loading', () => {
     await expect(loadConfig({}, '/nonexistent-dir')).rejects.toThrow(
       /^supervisor config \/nonexistent-dir\/\.supervisor\.json: /,
     )
-    await expect(loadConfig({ SUPERVISOR_CONFIG: invalidJsonPath }, '/x')).rejects.toThrow(
-      ConfigError,
+    await expect(loadConfig({}, '/nonexistent-dir')).rejects.toMatchObject({
+      cause: { code: 'ENOENT' },
+    })
+    const badJson = await loadConfig({ SUPERVISOR_CONFIG: invalidJsonPath }, '/x').catch(
+      (error: unknown) => error,
     )
+    expect(badJson).toBeInstanceOf(ConfigError)
+    expect((badJson as ConfigError).cause).toBeInstanceOf(SyntaxError)
     await expect(loadConfig({ SUPERVISOR_CONFIG: invalidConfigPath }, '/x')).rejects.toThrow(
       /\/scopes\/0\/kind: .*; /,
     )

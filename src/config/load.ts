@@ -26,7 +26,9 @@ export async function loadConfig(
   try {
     data = JSON.parse(await readFile(path, 'utf8'))
   } catch (error) {
-    throw new ConfigError(`supervisor config ${path}: ${(error as Error).message}`)
+    throw new ConfigError(`supervisor config ${path}: ${(error as Error).message}`, {
+      cause: error,
+    })
   }
   const result = validateConfigData(data)
   if (!result.valid) {
