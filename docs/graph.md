@@ -12,6 +12,10 @@ _Coding harnesses are the commodity. Business impact is what we build the harnes
 - **A coding harness.** Claude Code, Codex, Grok and Antigravity are a commodity, and they improve on their own. We don't build or tune one. We build workflows around them, and switch between them as they change.
 - **A dispatcher or runtime.** Everything runs locally. Sessions, panes and workers belong to a terminal multiplexer for agents, today [herdr](https://herdr.dev). The supervisor is designed to drive it rather than replace it (that integration is not built yet), and it is just as replaceable: if a better one appears, we switch.
 
+- **A reviewer.** The final review before a merge belongs to a separate review agent, [code-reviewer](https://github.com/jonathanong/code-reviewer), in its own session.
+- **A hosted service or CI job.** The supervisor is a local session, and a merge needs an attended one.
+- **New merge policy.** The supervisor encodes the installation's merge rules. It does not widen them.
+
 A change that adds a custom dispatcher, or works around a harness bug instead of reporting it upstream, is out of scope by design.
 
 ## What we do build
@@ -97,7 +101,9 @@ Loops 1, 5 and 7 feed loop 2: a distilled theme, a repeated answer, or a recurri
 - [merge-policy.md](merge-policy.md): what may merge without a person, written in the Claude Approvals `approvals.yml` format.
 - [dispatch.md](dispatch.md): where work runs, and how usage limits across several accounts and harnesses shape it.
 - [privacy.md](privacy.md): what may leave a private repository, and how that is enforced before a push.
+- [config.md](config.md): the one JSON file per installation, and how a scope overrides its defaults.
 - [guardrails.md](guardrails.md): shadow mode, merge records, the stop switch, and what the supervisor may never change about itself.
+- [evals-design.md](evals-design.md): how the evals the autonomy depends on are built.
 - [use-cases.md](use-cases.md): the real incidents this design answers.
 
 ## State and wake-ups
@@ -109,16 +115,28 @@ Loops 1, 5 and 7 feed loop 2: a distilled theme, a repeated answer, or a recurri
 
 ## Surfaces
 
-| Surface          | Holds                                                                                                                        |
-| ---------------- | ---------------------------------------------------------------------------------------------------------------------------- |
-| `supervisor` CLI | The supervisor's own steps: `policy check` and `policy explain`, distill classify and route, claim reconciliation, `prepush` |
-| MCP server       | Tools for agents: `pr_create`, `pr_update`, `pr_validate`, `session_facts`, `policy_check`, `coordination_check`             |
-| Skills           | Procedures that are not code: the supervisor loop, the skill-feedback procedure, claims                                      |
-| JSON Schemas     | Journal entry shapes, registered in agent-blackboard                                                                         |
-| Config           | One JSON file per installation, kept private. Scopes, provenance fields, who may merge, how to request the final review      |
+| Surface          | Holds                                                                                                                                               |
+| ---------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `supervisor` CLI | The supervisor's own steps: `policy check` and `policy explain`, distill classify and route, claim reconciliation, `prepush`                        |
+| MCP server       | Tools for agents: `pr_create`, `pr_update`, `pr_validate`, `session_facts`, `policy_check`, `coordination_check`                                    |
+| Skills           | Procedures that are not code: the supervisor loop, the skill-feedback procedure, claims                                                             |
+| JSON Schemas     | Journal entry shapes, registered in agent-blackboard                                                                                                |
+| Config           | One JSON file per installation, kept private. Scopes, provenance fields, who may merge, how to request the final review. See [config.md](config.md) |
 
 ## Harness agnostic
 
-Skills name capabilities, not tools: a recurring job, a self-paced wake-up, a background command, an isolated worker, a message to another session, an escalation to a person. An adapter per harness maps each capability to that harness's tool. A harness with no recurring-job tool can still run single sweeps on request.
+Skills name capabilities, not tools: a recurring job, a self-paced wake-up, a background command, an isolated worker, a message to another session, an escalation to a person. An adapter per harness maps each capability to that harness's tool.
+
+| Capability              | In Claude Code                                                                                                                               |
+| ----------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| Recurring job           | `CronCreate`, or a cloud routine                                                                                                             |
+| Self-paced wake-up      | `ScheduleWakeup` under `/loop`                                                                                                               |
+| Background command      | Bash with `run_in_background`                                                                                                                |
+| Isolated worker         | An agent with `isolation: "worktree"`                                                                                                        |
+| Message another session | `SendMessage`, or `herdr agent prompt` from any harness                                                                                      |
+| Escalate to a person    | A push notification                                                                                                                          |
+| Journal and PR tools    | The MCP tools, under the prefix the host gives them. The prefix differs per harness, so a skill names the tool and the agent searches for it |
+
+A harness with no recurring-job tool can still run single sweeps on request. That is the floor for "harness agnostic".
 
 Any harness can run workers and sweeps. Merging stays with an attended Claude session, as the merge policy's host and model settings require.

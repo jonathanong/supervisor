@@ -13,37 +13,52 @@ What may merge without a person is written in the format of Claude Approvals' `a
 
 They combine the way the format combines a root file and a directory's file. Where a repository has its own file, that file decides. Of the supervisor's rules, only those marked `nested: inherit` still hold there. So the always-human rules and the final-review seat are inherited rules. A repository file can add its own carve-outs or ask for more, and cannot remove them.
 
+**No label grants merge authority.** The policy alone decides what may merge. A label such as `automation` only marks a PR as opened by an agent, for the triage queue. A rule may still read `pr/labels` as a condition, for example to hold a PR for a person.
+
 A PR that changes a policy file is judged by the default branch's copy, and an inherited rule sends every change to a policy file to a person.
 
 ## Staying compatible with Claude Approvals
 
 - **Repository policies use only the product's vocabulary.** The product refuses a whole file for one unknown key, so the supervisor's loader checks each repository policy against that vocabulary.
-- **Judgment carve-outs are `repo/<name>` classifiers,** defined in `.claude/classifiers/<name>/` in the product's layout. The supervisor runs them with its own model; the product would run the same definitions.
-- **The folder is the switch.** `.supervisor/approvals.yml` is inert for the product. Moving it to `.claude/approvals.yml` hands that repository to Claude Approvals.
-- **A trial without risk.** In `compare` mode the supervisor evaluates as usual, also reads the product's check, and reports any disagreement.
+- **Judgment carve-outs are `repo/<name>` classifiers,** defined in `.claude/classifiers/<name>/` in the product's layout (`def.yml` and `prompt.md`). The supervisor runs them with its own model; the product would run the same definitions, billed. A classifier several repositories share, such as the flake-fix one, lives beside the supervisor policy and is copied into a repository that adopts the product.
+- **The folder is the switch.** `.supervisor/approvals.yml` is inert for the product. Moving it to `.claude/approvals.yml` hands that repository to Claude Approvals, and its billed reviews start.
+- **The config says which evaluation to trust.** `mergeAuthority.policyEngine` is `supervisor` for the supervisor's own evaluation, or `claude-approvals` for the product's green check. Under `claude-approvals` the supervisor still does the merge, since the product only approves.
+- **A trial without risk.** With `policyEngine: "compare"` the supervisor evaluates as usual, also reads the product's check, and reports any disagreement. The product's rules can run in `mode: observe` meanwhile, so nothing depends on its verdict.
 
 ## How the supervisor reads the format
 
-| Key                    | In Claude Approvals     | In the supervisor                                                                                                 |
-| ---------------------- | ----------------------- | ----------------------------------------------------------------------------------------------------------------- |
-| `claude: approves`     | Claude may approve      | The supervisor may merge once the seats are filled                                                                |
-| `claude: comments`     | Claude does not approve | The supervisor does not merge; the PR goes to a person                                                            |
-| `claude: blocks`       | Nothing merges          | Nothing merges                                                                                                    |
-| `seats`                | Who must approve        | The same                                                                                                          |
-| `pr/*`, `rule/*` facts | As documented           | The same, computed from the GitHub API                                                                            |
-| `repo/<name>`          | Custom classifiers      | The same definitions, run by the supervisor's model                                                               |
-| `claude/code_review`   | Anthropic's Code Review | Mapped to a review request to [code-reviewer](https://github.com/jonathanong/code-reviewer) at the matching depth |
+| Key                    | In Claude Approvals     | In the supervisor                                                                                                       |
+| ---------------------- | ----------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| `claude: approves`     | Claude may approve      | The supervisor may merge once the seats are filled                                                                      |
+| `claude: comments`     | Claude does not approve | The supervisor does not merge; the PR goes to a person                                                                  |
+| `claude: blocks`       | Nothing merges          | Nothing merges                                                                                                          |
+| `seats`                | Who must approve        | The same. A bot fills a seat only where a set names it, so `bot:<review app>` is how a rule requires the final reviewer |
+| `pr/*`, `rule/*` facts | As documented           | The same, computed from the GitHub API                                                                                  |
+| `repo/<name>`          | Custom classifiers      | The same definitions, run by the supervisor's model                                                                     |
+| `claude/code_review`   | Anthropic's Code Review | Mapped to a review request to [code-reviewer](https://github.com/jonathanong/code-reviewer) at the matching depth       |
 
-**Extensions, in the supervisor policy only:** the facts `pr/repository`, because one file covers many repositories, and `pr/labels`.
+**Extensions, in the supervisor policy only.** A repository policy cannot use them, because the product would refuse the file.
+
+| Extension                                                                       | Why the format needs it                                                |
+| ------------------------------------------------------------------------------- | ---------------------------------------------------------------------- |
+| Fact `pr/repository`, matched like `pr/base`: `"pr/repository = ['<owner>/*']"` | The supervisor policy covers many repositories; the format assumes one |
+| Fact `pr/labels`, with `ANY` and `ALL` as for `pr/authors`                      | Flake-fix and review-request labels                                    |
+
+A carve-out names the repositories it applies to with `pr/repository`. A scope that no override names stays at `claude: comments` everywhere, so the supervisor merges nothing there, which is what a scope in `report` mode needs. A scope may skip the final reviewer by writing `seats: 0` in its overrides; the supervisor loads that as written.
 
 **Outside the policy:**
 
 - **Required CI:** the supervisor merges only once required checks pass, as the format leaves CI to GitHub.
-- **Host, model and attended session:** these decide who may merge at all, so they live in the config.
+- **Host, model and attended session:** these decide who may merge at all, not what a PR needs, so they live in the [config](config.md).
+- **Decisions:** the policy covers the merge step. It grants nothing about architecture or trade-offs, which stay with a person.
+
+**Model calls.** Facts come from the GitHub API. `repo/<name>` classifiers are the evaluator's only model calls, made through whichever harness runs the supervisor. So any harness can run `supervisor policy check`.
 
 ## The author trap
 
 Agents push under a person's login, so that person is the author of the agents' PRs. The author fills a seat without approving. So a bare `seats: 1` is met by the agent's own PR, with nobody looking. A rule that means "reviewed" names the reviewer: `[{ count: 1, from: "bot:<review app>" }]`. The evaluator flags any rule whose seats the author alone can fill.
+
+An always-human rule says `claude: comments`, so the supervisor never merges what it matches and a person does. Always-human rules are inherited: a repository policy can add to them, and the supervisor refuses a policy whose inherited always-human rules are missing.
 
 ## Review depth
 
@@ -64,7 +79,7 @@ The format takes no new keys, so full versus light review is expressed with what
 - the review depth asked for
 - the next step: merge, request a review at a given depth on that head, or escalate
 
-`supervisor policy explain <repo> [path]` describes the policy without a PR. The MCP tool `policy_check` runs the same check, so a worker can ask what its PR needs.
+`supervisor policy explain <repo> [path]` describes the policy without a PR. The MCP tool `policy_check` runs the same check, so a worker can ask what its PR needs. Under `policyEngine: "compare"` the check also reads the Claude Approvals check and reports any disagreement.
 
 ## A sketch
 
