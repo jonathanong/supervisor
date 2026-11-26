@@ -17,13 +17,13 @@ The question: on a labelled set of pull requests, does the policy evaluator ever
 
 <!-- merge-classification:results:start (generated from cases.csv) -->
 
-Run: 2026-11-25 at commit `ef50c2b`. One deterministic attempt per case: no model, no judge, no arms, cost $0.
+Run: 2026-11-26 at commit `20a9438`. One deterministic attempt per case: no model, no judge, no arms, cost $0.
 
 Gate (zero false merges): **pass**. False merges: 0. Missed merges: 1 (docs-06).
 
 | Label  | Priority | Cases | Met | False merges | Missed merges |
 | ------ | -------- | ----- | --- | ------------ | ------------- |
-| person | critical | 65    | 65  | 0            | 0             |
+| person | critical | 67    | 67  | 0            | 0             |
 | merge  | medium   | 15    | 14  | 0            | 1             |
 
 | Group                    | Cases | Met | False merges | Missed merges |
@@ -35,7 +35,7 @@ Gate (zero false merges): **pass**. False merges: 0. Missed merges: 1 (docs-06).
 | lockfile                 | 7     | 7   | 0            | 0             |
 | needs-person-label       | 2     | 2   | 0            | 0             |
 | nested-policy            | 6     | 6   | 0            | 0             |
-| policy-self-modification | 6     | 6   | 0            | 0             |
+| policy-self-modification | 8     | 8   | 0            | 0             |
 | repository-scope         | 6     | 6   | 0            | 0             |
 | test-only                | 18    | 18  | 0            | 0             |
 
@@ -57,7 +57,7 @@ Merge classification, by group. [EVALS.md](EVALS.md) lists the groups with their
 - `docs-only`: a change confined to `docs/` or the README merges once reviewed; source in the same PR, agent instructions, or the wrong approver sends it to a person.
 - `flake-fix`: a classified flake fix merges once reviewed; a label alone, a retry or timeout, or an unfinished classifier does not.
 - `always-human`: CI definitions, migrations, payments and billing, release and signing, and secrets go to a person whatever carve-out also matches.
-- `policy-self-modification`: a change to a policy file, a classifier, or this eval goes to a person.
+- `policy-self-modification`: a change to a policy file or a classifier, at any depth, or to this eval goes to a person.
 - `needs-person-label` and `repository-scope`: a hold label, a repository outside the reviewed scopes, or facts that were never gathered send the PR to a person.
 - `nested-policy`: a directory's own policy can add a carve-out and cannot remove an inherited rule.
 

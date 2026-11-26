@@ -67,7 +67,7 @@ rules:
 
   - purpose: A change to merge rules, classifiers, or the eval that gates them always goes to a person.
     paths:
-      - '.supervisor/**'
+      - '**/.supervisor/**'
       - '**/.claude/approvals.yml'
       - '**/.claude/approvals.yaml'
       - '**/.claude/classifiers/**'

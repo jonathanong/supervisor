@@ -106,5 +106,44 @@
     },
     "label": "person",
     "reason": "The loader reads approvals.yaml too, so it is a policy file."
+  },
+  {
+    "id": "policy-07",
+    "group": "policy-self-modification",
+    "priority": "critical",
+    "description": "A PR edits a repository policy file inside packages/widgets, whose own policy merges on reviewer approval; approved.",
+    "input": {
+      "changedFiles": ["packages/widgets/.supervisor/approvals.yml"],
+      "facts": {
+        "repository": "example-org/app",
+        "openedBy": "example-dev",
+        "authors": ["example-dev"],
+        "approvedBy": ["bot:example-reviewer"],
+        "labels": []
+      }
+    },
+    "label": "person",
+    "reason": "A repository policy file is protected at any depth; a directory policy cannot open it."
+  },
+  {
+    "id": "policy-08",
+    "group": "policy-self-modification",
+    "priority": "critical",
+    "description": "A reviewed widgets change that also edits a classifier definition inside packages/widgets.",
+    "input": {
+      "changedFiles": [
+        "packages/widgets/src/render.ts",
+        "packages/widgets/.claude/classifiers/coverage_trade/prompt.md"
+      ],
+      "facts": {
+        "repository": "example-org/app",
+        "openedBy": "example-dev",
+        "authors": ["example-dev"],
+        "approvedBy": ["bot:example-reviewer"],
+        "labels": []
+      }
+    },
+    "label": "person",
+    "reason": "A classifier definition is protected at any depth; the directory policy's carve-out does not reach it."
   }
 ]

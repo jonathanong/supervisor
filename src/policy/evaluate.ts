@@ -8,6 +8,7 @@ import {
   strictestClaude,
 } from './evaluate-helpers.js'
 import { matchesRulePaths, toRelativePath } from './glob.js'
+import { PROTECTED_BASELINE, isProtectedPath } from './protected.js'
 import type {
   AppliedRuleResult,
   ClaudeAction,
@@ -32,23 +33,38 @@ export function evaluatePolicies(policies: PolicyFile[], input: EvaluationInput)
   let overallDepth: ReviewDepth | null = null
   let anyWaitingOnCodeReview = false
   let anyHardBlock = false
-  let blockReason = ''
+  const blockReasons = new Set<string>()
 
-  // TODO(spec): enforce protected-file baseline (1 human, no bots, no claude approves) when uncovered protected paths are changed.
+  // A changed protected file that no rule applies to takes the baseline instead: one person, no
+  // bot, and never a merge by the supervisor, whatever the other files' rules say.
+  const protectedBaseline = (file: string): EvaluatedSeat[] | null => {
+    if (!isProtectedPath(file)) return null
+    const seats = PROTECTED_BASELINE.seats.map((s) => evaluateSeat(s, facts))
+    allSeats.push(...seats)
+    overallVerdict = strictestClaude(overallVerdict, PROTECTED_BASELINE.claude)
+    anyHardBlock = true
+    blockReasons.add(
+      `No rule applies to protected file '${file}': a person must approve it, and the supervisor never merges it`,
+    )
+    return seats
+  }
+
   for (const file of input.changedFiles) {
     const { decidingPolicy, rules } = selectRulesForFile(policies, file)
     const verdictRules = rules.filter((r) => r.verdict !== undefined)
     if (!decidingPolicy || verdictRules.length === 0) {
       uncoveredFiles.push(file)
+      const baseline = protectedBaseline(file)
       files.push({
         file,
         decidingPolicy: decidingPolicy?.path ?? null,
         covered: false,
+        protectedBaseline: baseline !== null,
         noRuleApplies: false,
         unresolvedRuleIf: false,
         rules: [],
-        verdict: null,
-        seats: [],
+        verdict: baseline ? PROTECTED_BASELINE.claude : null,
+        seats: baseline ?? [],
         reviewDepth: null,
       })
       continue
@@ -78,7 +94,7 @@ export function evaluatePolicies(policies: PolicyFile[], input: EvaluationInput)
       if (ifRes === 'unknown') {
         unresolvedRuleIf = true
         anyHardBlock = true
-        blockReason = `Rule '${rule.purpose}' condition could not be evaluated`
+        blockReasons.add(`Rule '${rule.purpose}' condition could not be evaluated`)
         continue
       }
       const { verdict, overrideIndex, waitingOnCodeReview } = evaluateRuleVerdict(
@@ -108,15 +124,20 @@ export function evaluatePolicies(policies: PolicyFile[], input: EvaluationInput)
     }
 
     const noRuleApplies = applied.length === 0 && !unresolvedRuleIf
-    if (noRuleApplies) {
+    const baseline = noRuleApplies ? protectedBaseline(file) : null
+    if (baseline) {
+      fileVerdict = PROTECTED_BASELINE.claude
+      fileSeats.push(...baseline)
+    } else if (noRuleApplies) {
       anyHardBlock = true
-      blockReason = `No rule applies to '${file}'`
+      blockReasons.add(`No rule applies to '${file}'`)
     }
     if (fileVerdict) overallVerdict = strictestClaude(overallVerdict, fileVerdict)
     files.push({
       file,
       decidingPolicy: decidingPolicy.path,
       covered: true,
+      protectedBaseline: baseline !== null,
       noRuleApplies,
       unresolvedRuleIf,
       rules: applied,
@@ -129,7 +150,7 @@ export function evaluatePolicies(policies: PolicyFile[], input: EvaluationInput)
   const unmetSeats = allSeats.filter((s) => s.remaining > 0)
   let nextStep: NextStep
   if (anyHardBlock) {
-    nextStep = { action: 'escalate', reason: blockReason }
+    nextStep = { action: 'escalate', reason: [...blockReasons].join('; ') }
   } else if (
     anyWaitingOnCodeReview &&
     (overallVerdict === 'blocks' || unmetSeats.length > 0 || overallVerdict === 'comments')

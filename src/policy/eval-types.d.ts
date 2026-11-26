@@ -48,6 +48,8 @@ export interface FileEvaluation {
   file: string
   decidingPolicy: string | null
   covered: boolean
+  /** True when no rule applied to this protected file, so its verdict and seats are the baseline. */
+  protectedBaseline: boolean
   noRuleApplies: boolean
   unresolvedRuleIf: boolean
   rules: AppliedRuleResult[]
