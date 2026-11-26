@@ -63,6 +63,50 @@ describe('config validation', () => {
     expect(validateConfigData(config)).toEqual({ valid: true })
   })
 
+  it('accepts a config without any loop key, and staleRuns as false or an object', () => {
+    const config = loadExampleConfig()
+    for (const key of ['stateDir', 'trustedLogins', 'eventWait', 'distill', 'staleRuns']) {
+      delete config[key]
+    }
+    expect(validateConfigData(config)).toEqual({ valid: true })
+    expect(validateConfigData({ ...config, staleRuns: false })).toEqual({ valid: true })
+    expect(validateConfigData({ ...config, staleRuns: { olderThan: '2h' } })).toEqual({
+      valid: true,
+    })
+  })
+
+  it('rejects loop keys of the wrong type or with unknown members', () => {
+    const config = loadExampleConfig()
+    ;(config.scopes as Record<string, unknown>[])[0]!.checkoutRoot = 7
+    ;(config.scopes as Record<string, unknown>[])[0]!.taxonomy = { projectByRepo: { repo: 1 } }
+    ;(config.finalReview as Record<string, unknown>).status = false
+    config.trustedLogins = 'example-user'
+    config.staleRuns = true
+    config.eventWait = { timeout: 'soon', advance: 'yes' }
+    config.modelTiers = { mechanical: 'fast', extra: 'no' }
+    config.scheduledPrompts = { history: 1.5 }
+    config.lateReviewDays = '14'
+
+    const result = validateConfigData(config)
+    expect(result.valid).toBe(false)
+    if (result.valid) return
+    const paths = result.errors.map((error) => error.path)
+    for (const path of [
+      '/scopes/0/checkoutRoot',
+      '/scopes/0/taxonomy/projectByRepo/repo',
+      '/finalReview/status',
+      '/trustedLogins',
+      '/staleRuns',
+      '/eventWait/timeout',
+      '/eventWait/advance',
+      '/modelTiers',
+      '/scheduledPrompts/history',
+      '/lateReviewDays',
+    ]) {
+      expect(paths).toContain(path)
+    }
+  })
+
   it('reports file read errors at root path', async () => {
     const result = await validateConfigFile('/nonexistent/supervisor-config.json')
     expect(result.valid).toBe(false)

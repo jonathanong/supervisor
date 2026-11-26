@@ -1,0 +1,19 @@
+{
+  "scopes": [
+    { "owner": "example-org", "kind": "org", "repos": "*", "checkoutRoot": "~" },
+    { "owner": "example-user", "kind": "user", "repos": ["example-repo"] }
+  ],
+  "provenance": { "fields": ["agent"] },
+  "mergeAuthority": {
+    "policy": "./merge-policy.json",
+    "policyEngine": "supervisor",
+    "attendedOnly": true,
+    "hosts": [],
+    "models": []
+  },
+  "finalReview": { "request": ["session"] },
+  "harness": "claude-code",
+  "scheduledPrompts": { "glob": "prompts/*.md", "history": 5 },
+  "staleRuns": false,
+  "eventWait": { "timeout": "90s" }
+}

@@ -11,7 +11,13 @@
       "provenance": {
         "fields": ["agent", "model", "session"]
       },
-      "taxonomy": {}
+      "taxonomy": {
+        "projectByRepo": {
+          "example-repo": "Example project"
+        },
+        "sensitiveIssueRepo": "example-private-issues"
+      },
+      "checkoutRoot": "~/code/example-org"
     },
     {
       "owner": "example-user",
@@ -32,7 +38,59 @@
   },
   "finalReview": {
     "request": ["session", "label"],
-    "label": "ready-for-review"
+    "label": "ready-for-review",
+    "status": "review-status"
   },
-  "harness": "claude-code"
+  "harness": "claude-code",
+  "trustedLogins": ["example-user"],
+  "stateDir": "~/.supervisor-state",
+  "modelTiers": {
+    "mechanical": "fast model, medium effort",
+    "implementation": "balanced model, medium effort",
+    "review": "strongest model"
+  },
+  "labels": {
+    "automation": "automation",
+    "needsHuman": "needs-human"
+  },
+  "escalationChannel": "push notification",
+  "dependencyBot": {
+    "author": "app/dependabot",
+    "openPullRequestLimit": 5
+  },
+  "lockfileDedupe": {
+    "author": "app/github-actions",
+    "branch": "chore/pnpm-dedupe",
+    "workflow": "pnpm-dedupe.yml"
+  },
+  "dispatchTargets": {
+    "workspaceAgents": "list and prompt agents through the terminal multiplexer"
+  },
+  "fallbackCron": "0 */6 * * *",
+  "lateReviewDays": 14,
+  "fullRescanDays": 7,
+  "layerCap": 10,
+  "scheduledPrompts": {
+    "glob": "docs/prompts/scheduled/*.md",
+    "prWrapper": "docs/prompts/automation/scheduled-prompt.md",
+    "issueWrapper": "docs/prompts/automation/scheduled-issue.md",
+    "issueMarker": "scheduled-completion: issue",
+    "quota": 1,
+    "history": 20
+  },
+  "staleRuns": {
+    "olderThan": "6h",
+    "cancelAfter": "24h"
+  },
+  "eventWait": {
+    "hookHarness": "0.3.5",
+    "timeout": "2h",
+    "advance": false,
+    "updateCheckDelay": "10m"
+  },
+  "distill": {
+    "retroDays": 1,
+    "sessionDays": 7,
+    "archive": true
+  }
 }

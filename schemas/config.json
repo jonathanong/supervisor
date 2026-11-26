@@ -57,7 +57,24 @@
             "$ref": "#/$defs/provenance"
           },
           "taxonomy": {
-            "type": "object"
+            "type": "object",
+            "properties": {
+              "projectByRepo": {
+                "type": "object",
+                "additionalProperties": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              },
+              "sensitiveIssueRepo": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          },
+          "checkoutRoot": {
+            "type": "string",
+            "minLength": 1
           }
         }
       }
@@ -113,12 +130,213 @@
         "label": {
           "type": "string",
           "minLength": 1
+        },
+        "status": {
+          "type": "string",
+          "minLength": 1
         }
       }
     },
     "harness": {
       "type": "string",
       "minLength": 1
+    },
+    "trustedLogins": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "stateDir": {
+      "type": "string",
+      "minLength": 1
+    },
+    "modelTiers": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "mechanical": {
+          "type": "string",
+          "minLength": 1
+        },
+        "implementation": {
+          "type": "string",
+          "minLength": 1
+        },
+        "review": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "labels": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "automation": {
+          "type": "string",
+          "minLength": 1
+        },
+        "needsHuman": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "escalationChannel": {
+      "type": "string",
+      "minLength": 1
+    },
+    "dependencyBot": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "author": {
+          "type": "string",
+          "minLength": 1
+        },
+        "openPullRequestLimit": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "lockfileDedupe": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "author": {
+          "type": "string",
+          "minLength": 1
+        },
+        "branch": {
+          "type": "string",
+          "minLength": 1
+        },
+        "workflow": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "dispatchTargets": {
+      "type": "object"
+    },
+    "fallbackCron": {
+      "type": "string",
+      "minLength": 1,
+      "default": "0 */6 * * *"
+    },
+    "lateReviewDays": {
+      "type": "number",
+      "minimum": 0,
+      "default": 14
+    },
+    "fullRescanDays": {
+      "type": "number",
+      "minimum": 0,
+      "default": 7
+    },
+    "layerCap": {
+      "type": "number",
+      "minimum": 0,
+      "default": 10
+    },
+    "scheduledPrompts": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "glob": {
+          "type": "string",
+          "minLength": 1
+        },
+        "prWrapper": {
+          "type": "string",
+          "minLength": 1
+        },
+        "issueWrapper": {
+          "type": "string",
+          "minLength": 1
+        },
+        "issueMarker": {
+          "type": "string",
+          "minLength": 1
+        },
+        "quota": {
+          "type": "number",
+          "minimum": 0,
+          "default": 1
+        },
+        "history": {
+          "type": "integer",
+          "minimum": 0,
+          "default": 20
+        }
+      }
+    },
+    "staleRuns": {
+      "oneOf": [
+        {
+          "const": false
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "olderThan": {
+              "type": "string",
+              "minLength": 1
+            },
+            "cancelAfter": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        }
+      ]
+    },
+    "eventWait": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "hookHarness": {
+          "type": "string",
+          "minLength": 1,
+          "default": "0.3.5"
+        },
+        "timeout": {
+          "type": "string",
+          "pattern": "^[0-9]+[smhd]?$",
+          "default": "2h"
+        },
+        "advance": {
+          "type": "boolean",
+          "default": false
+        },
+        "updateCheckDelay": {
+          "type": "string",
+          "pattern": "^[0-9]+[smhd]?$",
+          "default": "10m"
+        }
+      }
+    },
+    "distill": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "retroDays": {
+          "type": "number",
+          "minimum": 0
+        },
+        "sessionDays": {
+          "type": "number",
+          "minimum": 0
+        },
+        "archive": {
+          "type": "boolean"
+        }
+      }
     }
   },
   "$defs": {
