@@ -1,0 +1,34 @@
+version: 1
+rules:
+  - purpose: Source changes merge once the reviewer bot approves
+    paths:
+      - 'src/**'
+    verdict:
+      claude: approves
+      seats:
+        - count: 1
+          from:
+            - 'bot:example-reviewer'
+            - '!pr/authors'
+  - purpose: Dependency manifests go to a person unless the dependency bot wrote every commit
+    paths:
+      - 'package.json'
+    verdict:
+      claude: comments
+      seats: 1
+    override:
+      - if: 'ALL pr/authors = bot:dependabot'
+        verdict:
+          claude: approves
+          seats: 0
+  - purpose: Docs merge once a quick review passes
+    paths:
+      - 'docs/**'
+    verdict:
+      claude: comments
+      seats: 1
+    override:
+      - if: 'claude/code_review(level=quick) = pass'
+        verdict:
+          claude: approves
+          seats: 0
