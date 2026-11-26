@@ -14,17 +14,24 @@ const POLICY_HELP = `Usage:
                           [--repo-dir <checkout>]
 
 check <owner>/<repo> <pr> reads the pull request from GitHub with \`gh api\`: its current head,
-changed files, authors, labels, approvals of that head, and its checks. It then
-evaluates the policies in <dir>. The next step is merge only when the policy allows it and
-every check GitHub requires for the pull request passed (every check on the head, where the base
-branch requires none).
+changed files, authors, labels and approvals of that head. It evaluates the policies in <dir>,
+then asks pr-shepherd (read-only: it changes nothing on GitHub) whether it would merge that
+head. The next step is merge only when the policy allows it and pr-shepherd says the head is
+ready. When the policy allows the merge but pr-shepherd does not, the next step is shepherd:
+run pr-shepherd on the pull request. A pending check needs no person. A blocker, such as a
+draft or a closed pull request, escalates.
+
+pr-shepherd reads its .pr-shepherdrc.yml from the target repository's checkout. Pass it with
+--repo-dir; without --repo-dir it reads the config from the current directory.
 
   --classifiers <json>  Classifier results to evaluate with: {"<name>": {"status": ...}}.
                         Without it no classifier has a result.
   --print-input         Print the collected input as JSON and do not evaluate.
   --input <json>        Evaluate a written input file instead of a pull request.
   --repo-dir <checkout> Treat <dir> as the supervisor policy and add the repository's own
-                        .supervisor/approvals.yml files from a default-branch checkout.
+                        .supervisor/approvals.yml files from a default-branch checkout. Also
+                        the directory pr-shepherd reads its config from (default: the
+                        current directory).
 
 Exit codes: 0 the next step is merge (or --print-input printed the input), 1 it is not,
 2 the pull request, the policies or the input could not be read.

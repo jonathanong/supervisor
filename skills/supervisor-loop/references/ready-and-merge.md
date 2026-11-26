@@ -36,6 +36,9 @@ In a scope in `report` mode, run step 1 only and report what the later steps wou
      on the reviewer.
    - When `finalReview.status` is configured, run it too: exit 0 means the newest final review
      approved the current head. Any other exit code means do not merge.
+   - When the policy check's next step is `shepherd`, the policy allows the merge but
+     `pr-shepherd` would not merge the head yet, often because a check is pending. Leave the PR
+     ready, run `pr-shepherd` on it, and rerun the check on the head it reaches. Do not escalate.
    - Any other outcome than "may merge" leaves the PR ready and escalated.
 
    This gate is procedural: GitHub enforces a review only through a required status check, or

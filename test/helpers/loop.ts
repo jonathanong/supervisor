@@ -53,6 +53,9 @@ export async function makeLoop(overrides: Record<string, unknown> = {}): Promise
         stderr: (text) => err.push(text),
         startMcp: async () => undefined,
         runProcess,
+        shepherdStatus: async () => {
+          throw new Error('unexpected pr-shepherd call')
+        },
         now,
       })
       return { code, stdout: out.join(''), stderr: err.join('') }

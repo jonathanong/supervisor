@@ -1,0 +1,4 @@
+# First-party packages, published by this repository's owner, skip the minimum release age.
+# Every other package keeps it.
+minimumReleaseAgeExclude:
+  - pr-shepherd

@@ -1,8 +1,10 @@
 import { startMcpServer } from '../mcp/server.js'
+import type { ShepherdStatus } from '../policy/facts-readiness.js'
 import { runProcess, type RunProcess } from '../state/process.js'
 import { validateConfigFile } from './config-validate.js'
 import { runPolicyCommand } from './policy-cmd.js'
 import { runPrepushCommand } from './prepush-cmd.js'
+import { shepherdStatus } from './shepherd-status.js'
 import { runStateCommand } from './state-cmd.js'
 import { runStopCommand } from './stop-cmd.js'
 import { getVersion } from './version.js'
@@ -15,6 +17,8 @@ export interface CliIo {
   startMcp: (version: string) => Promise<unknown>
   /** Runs `gh` and other external commands; tests replace it so nothing is spawned. */
   runProcess: RunProcess
+  /** pr-shepherd's read-only status; tests replace it so nothing is read from GitHub. */
+  shepherdStatus: ShepherdStatus
   now: () => Date
 }
 
@@ -28,6 +32,7 @@ export const defaultCliIo: CliIo = {
   },
   startMcp: startMcpServer,
   runProcess,
+  shepherdStatus,
   now: () => new Date(),
 }
 

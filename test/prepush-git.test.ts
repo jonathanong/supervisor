@@ -37,6 +37,7 @@ function createTestIo(env: Record<string, string | undefined> = {}) {
     stderr: (t) => err.push(t),
     startMcp: vi.fn(async () => undefined),
     runProcess: vi.fn(),
+    shepherdStatus: vi.fn(),
     now: () => new Date(0),
   }
   return { io, stdout: () => out.join(''), stderr: () => err.join('') }

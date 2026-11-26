@@ -59,7 +59,7 @@ function samePull(check: JsonObject, ref: RegExpExecArray, head: string): void {
 
 /** Refuse a check that does not allow the merge; the next step covers each, checked again here. */
 function allows(check: JsonObject, nextStep: JsonObject): void {
-  const { blockers, checks, authorOnlyWarnings: warnings } = check
+  const { blockers, readiness, authorOnlyWarnings: warnings } = check
   if (nextStep.action !== 'merge') {
     const reason = typeof nextStep.reason === 'string' ? ` (${nextStep.reason})` : ''
     refuse(`the check's next step is ${dumps(nextStep.action ?? null)}${reason}, not "merge"`)
@@ -67,9 +67,11 @@ function allows(check: JsonObject, nextStep: JsonObject): void {
   if (!Array.isArray(blockers) || blockers.length > 0) {
     refuse(`the check has blockers: ${dumps(blockers ?? null)}`)
   }
-  if (!isObject(checks) || checks.state !== 'success') {
-    const state = isObject(checks) ? checks.state : undefined
-    refuse(`the checks on the head are ${dumps(state ?? null)}, not "success"`)
+  if (!isObject(readiness) || readiness.ready !== true) {
+    const action = isObject(readiness) ? readiness.action : undefined
+    refuse(
+      `pr-shepherd does not say the head is ready to merge (its action is ${dumps(action ?? null)})`,
+    )
   }
   if (!Array.isArray(warnings) || warnings.length > 0) {
     refuse('the check has author-only warnings, so nobody but the author filled a seat')
@@ -97,13 +99,14 @@ function fromCheck(check: JsonObject, file: string, ref: RegExpExecArray, head: 
     from: seat.from ?? [],
     filledBy: seat.filledBy ?? [],
   }))
-  const { state, total } = check.checks as JsonObject
-  return { rules, classifiers, seats: kept, checks: { state: state!, total: total ?? null } }
+  const { action } = check.readiness as JsonObject
+  const readiness = { ready: true, action: action ?? null }
+  return { rules, classifiers, seats: kept, readiness }
 }
 
 /**
  * Record one autonomous merge before it is made: the pull request, the head, the rules that allowed
- * it, the classifier results, the seats and who filled them, the checks on the head, the review,
+ * it, the classifier results, the seats and who filled them, pr-shepherd's readiness answer, the review,
  * and the always-human check.
  */
 export async function mergeRecord(args: string[], ctx: StateContext): Promise<void> {
@@ -133,7 +136,7 @@ export async function mergeRecord(args: string[], ctx: StateContext): Promise<vo
     rules: allowed.rules,
     classifiers: allowed.classifiers,
     seats: allowed.seats,
-    checks: allowed.checks,
+    readiness: allowed.readiness,
     review,
     alwaysHuman,
   }

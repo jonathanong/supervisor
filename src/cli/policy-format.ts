@@ -36,6 +36,9 @@ function formatNextStep(result: EvaluationResult): string {
   if (result.nextStep.action === 'request_review') {
     return `Next step: request review at depth ${result.nextStep.depth}`
   }
+  if (result.nextStep.action === 'shepherd') {
+    return `Next step: run pr-shepherd on the pull request (${result.nextStep.reason})`
+  }
   return `Next step: escalate to a person (${result.nextStep.reason})`
 }
 
@@ -61,9 +64,9 @@ export function formatHumanCheck(result: EvaluationResult): string {
   return `${[...evaluationLines(result), formatNextStep(result)].join('\n')}\n`
 }
 
-/** The same report for a pull request read from GitHub: its head, seats filled, and checks. */
+/** The same report for a pull request read from GitHub: its head, seats filled, and whether pr-shepherd would merge it. */
 export function formatPullCheck(result: PullCheckResult): string {
-  const { pull, checks } = result
+  const { pull, readiness } = result
   const lines = [`Pull request: ${pull.repository}#${pull.number} at ${pull.head}`]
   lines.push(...evaluationLines(result))
   // Each file a rule applies to repeats the rule's seats; one line per distinct seat is enough.
@@ -72,18 +75,10 @@ export function formatPullCheck(result: PullCheckResult): string {
     return `Seat ${seat.count} from [${seat.from.join(', ')}]: filled by ${filled}`
   })
   lines.push(...new Set(seatLines))
-  const basis =
-    checks.source === 'required-checks'
-      ? 'GitHub requires checks'
-      : 'none required, so all must pass'
-  lines.push(`Checks: ${checks.state} (${checks.total} on the head; ${basis})`)
-  if (checks.failing.length > 0) lines.push(`Failing checks: ${checks.failing.join(', ')}`)
-  if (checks.pending.length > 0) lines.push(`Pending checks: ${checks.pending.join(', ')}`)
-  if (checks.notRequired.length > 0) {
-    lines.push(
-      `Not required, failing or pending, and do not hold the merge: ${checks.notRequired.join(', ')}`,
-    )
-  }
+  lines.push(
+    `pr-shepherd: ${readiness.action} (${readiness.ready ? 'ready' : 'not ready'} to merge)`,
+  )
+  if (readiness.summary) lines.push(`pr-shepherd said: ${readiness.summary}`)
   for (const blocker of result.blockers) {
     lines.push(`Blocker: ${blocker}`)
   }

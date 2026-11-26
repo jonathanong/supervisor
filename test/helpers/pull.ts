@@ -1,5 +1,6 @@
 import { fileURLToPath } from 'node:url'
 import { runCli } from '../../src/cli/run.js'
+import type { ShepherdAnswer } from '../../src/policy/facts-readiness.js'
 import type { RunProcess } from '../../src/state/process.js'
 import { done, type CliResult } from './loop.js'
 
@@ -21,15 +22,8 @@ export interface GhFixture {
   files: unknown[]
   commits: unknown[]
   reviews: unknown[]
-  /** The head's checks as GraphQL lists them; `null` is a head with no check rollup. */
-  contexts: unknown[] | null
-  /** The head GraphQL read the checks of, and whether it has more than 100 checks. */
-  checksHead: unknown
-  checksMore: boolean
-  /** GitHub's `mergeStateStatus` of the pull request. */
-  mergeState: unknown
-  /** The pull request's `mergeable_state` over REST, read at the end; `undefined` leaves it out. */
-  restMergeState: unknown
+  /** What pr-shepherd's status answers, or the error it throws; the head defaults to HEAD. */
+  shepherd: ShepherdAnswer | Error
   teams: Record<string, unknown[]>
   /** The head the pull request has when it is read again at the end. */
   headAfter: unknown
@@ -49,21 +43,7 @@ export const review = (reviewer: unknown, state: string, commitId = HEAD) => ({
   commit: commitId,
 })
 
-/** A check run as GraphQL lists it; `isRequired` is whether the base branch requires it. */
-export const checkRun = (
-  name: string,
-  status: string,
-  conclusion: string | null = null,
-  isRequired = false,
-) => ({ __typename: 'CheckRun', name, status, conclusion, isRequired })
-export const statusContext = (context: string, state: string, isRequired = false) => ({
-  __typename: 'StatusContext',
-  context,
-  state,
-  isRequired,
-})
-
-/** A one-file pull request by `dev-one` that the reviewer bot approved and whose checks passed. */
+/** A one-file pull request by `dev-one` that the reviewer bot approved and that pr-shepherd would merge. */
 export function fixture(overrides: Partial<GhFixture> = {}): GhFixture {
   const files = overrides.files ?? [file('src/index.ts')]
   const commits = overrides.commits ?? [commit(DEV)]
@@ -71,11 +51,7 @@ export function fixture(overrides: Partial<GhFixture> = {}): GhFixture {
     files,
     commits,
     reviews: [review(REVIEWER, 'APPROVED')],
-    contexts: [checkRun('test', 'COMPLETED', 'SUCCESS')],
-    checksHead: HEAD,
-    checksMore: false,
-    mergeState: 'CLEAN',
-    restMergeState: 'clean',
+    shepherd: { action: 'merge', headSha: HEAD },
     teams: {},
     headAfter: HEAD,
     raw: {},
@@ -104,18 +80,10 @@ function reply(endpoint: string, jq: string, gh: GhFixture): string {
     return lines(gh.teams[`${org}/${slug}`]!)
   }
   if (endpoint.includes('/files?')) return lines(gh.files)
-  if (endpoint === 'graphql') {
-    const more = gh.contexts === null ? null : gh.checksMore
-    return lines([{ mergeState: gh.mergeState, oid: gh.checksHead, more, contexts: gh.contexts }])
-  }
   if (endpoint.includes('/commits?')) return lines(gh.commits)
   if (endpoint.includes('/reviews?')) return lines(gh.reviews)
   if (endpoint !== `repos/${REPO}/pulls/7`) throw new Error(`unexpected endpoint: ${endpoint}`)
-  return lines([
-    jq === '{head: .head.sha, mergeState: .mergeable_state}'
-      ? { head: gh.headAfter, mergeState: gh.restMergeState }
-      : gh.pull,
-  ])
+  return lines([jq === '{head: .head.sha}' ? { head: gh.headAfter } : gh.pull])
 }
 
 /** A fake `gh api` that answers from a fixture and records each call's arguments. */
@@ -124,9 +92,7 @@ export function fakeGh(gh: GhFixture): { run: RunProcess; calls: string[][] } {
   const run: RunProcess = async (command, args) => {
     if (command !== 'gh' || args[0] !== 'api') throw new Error(`unexpected process: ${command}`)
     calls.push(args)
-    const endpoint = args.find(
-      (arg) => arg === 'graphql' || arg.startsWith('repos/') || arg.startsWith('orgs/'),
-    )!
+    const endpoint = args.find((arg) => arg.startsWith('repos/') || arg.startsWith('orgs/'))!
     const raw = Object.entries(gh.raw).find(([part]) => endpoint.includes(part))?.[1]
     if (typeof raw === 'number') return done('', raw, 'gh: Not Found (HTTP 404)')
     return done(raw ?? reply(endpoint, args.at(-1)!, gh))
@@ -138,8 +104,9 @@ export function fakeGh(gh: GhFixture): { run: RunProcess; calls: string[][] } {
 export async function check(
   gh: GhFixture,
   options: string[] = ['--dir', policyDir('pull-facts'), '--json'],
-): Promise<CliResult & { calls: string[][] }> {
+): Promise<CliResult & { calls: string[][]; shepherdCalls: string[][] }> {
   const { run, calls } = fakeGh(gh)
+  const shepherdCalls: string[][] = []
   const out: string[] = []
   const err: string[] = []
   const code = await runCli(['policy', 'check', REPO, '7', ...options], {
@@ -148,7 +115,12 @@ export async function check(
     stderr: (text) => err.push(text),
     startMcp: async () => undefined,
     runProcess: run,
+    shepherdStatus: async (pull, cwd) => {
+      shepherdCalls.push([pull, cwd])
+      if (gh.shepherd instanceof Error) throw gh.shepherd
+      return gh.shepherd
+    },
     now: () => new Date(0),
   })
-  return { code, stdout: out.join(''), stderr: err.join(''), calls }
+  return { code, stdout: out.join(''), stderr: err.join(''), calls, shepherdCalls }
 }

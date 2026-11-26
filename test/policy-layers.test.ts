@@ -33,6 +33,7 @@ async function cli(argv: string[]) {
     stderr: (text) => err.push(text),
     startMcp: vi.fn(async () => undefined),
     runProcess: vi.fn(),
+    shepherdStatus: vi.fn(),
     now: () => new Date(0),
   }
   const code = await runCli(argv, io)

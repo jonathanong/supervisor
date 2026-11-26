@@ -37,7 +37,7 @@ Subcommands:
                                           --always-human who checked the always-human list. Exits
                                           1 unless the check is of that pull request at that head
                                           (one made with --input is refused) and its next step is
-                                          merge with no blocker, every check passed, and no
+                                          merge with no blocker, pr-shepherd ready to merge the head, and no
                                           author-only warning; ${STOPPED_EXIT} while the stop switch is set
   merge-records [--repo <owner/repo>] [--rule <text>]
                                           Print the merge records, one JSON line each: all, or
