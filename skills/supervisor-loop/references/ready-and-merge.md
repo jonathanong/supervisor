@@ -17,7 +17,8 @@ In a scope in `report` mode, run step 1 only and report what the later steps wou
    tool, never shell interpolation, and read it back in full.
 2. **Preflight.** Before every mutation below, run `supervisor stop --status` and go no further on
    any exit but 0 (see the [stop switch](stop-switch.md)), then re-read `headRefOid`; if it moved,
-   return for re-review. Skip a PR that `shepherds` already records.
+   return for re-review. Run `pr-shepherd`; exit 17 (`WATCHED`) means another live `pr-shepherd` already
+   watches the PR, so leave it.
 3. **Steer (optional).** Post the reviewed steering file as an ordinary comment with
    `gh pr comment <N> --repo <owner>/<repo> --body-file <path>`. Reject an empty file.
 4. **Mark ready and label.** `gh pr ready <N> --repo <owner>/<repo>` for a draft (the supervisor
@@ -48,8 +49,8 @@ In a scope in `report` mode, run step 1 only and report what the later steps wou
    (`pr-shepherd [PR]` or `pr-shepherd stack`); the fixer runs the printed post-push
    `pr-shepherd apply` commands from its own worktree, so `--require-sha HEAD` resolves to the
    commit it pushed. Run the shepherd from `<checkoutRoot>/<name>` so the repository's own
-   configuration loads, and record the PR in `shepherds` until `[CANCEL]` or `[ESCALATE]`
-   (`--until-terminal` exits on every TRIAGE and is rerun). After any push the head is new: step 5
+   configuration loads (`--until-terminal` exits on every TRIAGE and is rerun until `[CANCEL]` or
+   `[ESCALATE]`). After any push the head is new: step 5
    runs again before anything merges. A steered PR is not merged in this pass: leave it ready,
    report `steered-hold`, and let a later sweep merge it. Still shepherd it without `--merge`, so
    its steering and any required fix are carried out.
@@ -78,7 +79,7 @@ supervisor's own:
 - **Derive the ledger.** Which stacks and layers exist, their order, and their state are read from
   the forge every sweep (the `pr-shepherd stack` result, the stack list endpoint), never cached.
   Reconcile unfiltered before opening or adding to a stack, so a new session does not start a rival
-  one. `state.json` and `shepherds` hold intent only.
+  one. `state.json` holds intent only.
 - **Layer cap.** An agent building a stack keeps at most `layerCap` open layers (default 10),
   counting every locally tracked layer not yet submitted. Beyond the cap, independent work opens as
   its own PR on the default branch and dependent work waits for the bottom layers to merge.

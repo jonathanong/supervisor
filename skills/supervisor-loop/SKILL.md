@@ -108,7 +108,6 @@ implementation-tier worker, never the supervisor session.
    - `escalations` (key to first-notified time, used for dedupe)
    - `hookHarness.<owner>` (`cursor`, recently `seen` event ids, and per-event progress)
    - `handledFailures` (default-branch run ids already diagnosed, and the fix PR or issue each got)
-   - `shepherds` (in-flight handoffs, so no PR gets a second shepherd)
    - `intake` (queued agent reports)
    - `scheduledPrompts` (`next` rotation position, and a bounded `runs` history)
    - `delegations` and `routed` (where items were sent)

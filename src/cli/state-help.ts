@@ -52,10 +52,6 @@ Subcommands:
   sp-record --prompt <name> --run-id <id> --outcome <text> --next <name> [--pr <ref>]
                                           Record a scheduled-prompt run and the next prompt
   sp-next --next <name>                   Set the next scheduled prompt
-  shepherd --pr <owner/repo#N> [--by <who>] [--head <sha>] [--category <name>]
-                                          Record an in-flight shepherd (--by defaults to
-                                          "loop subagent")
-  shepherd --pr <owner/repo#N> --remove   Remove an in-flight shepherd
   reviewed --file <path>                  Add harvested comment ids from a
                                           {"<owner>/<repo>": [ids]} JSON file
   watch add --id <id> --notify <session> --pr <owner/repo#N> [--pr ...] [--note <text>]

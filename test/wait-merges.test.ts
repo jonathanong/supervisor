@@ -61,7 +61,7 @@ describe('supervisor wait: merged pull requests', () => {
   it('returns a clean merge that a loop record names, and not one whose number only starts the same', async () => {
     const loop = await makeLoop()
     await loop.seed({
-      shepherds: { 'example-org/example-repo#61': {} },
+      escalations: { 'example-org/example-repo#61': {} },
       routed: [{ what: 'see Example-Repo#6, then example-repo#71' }],
       hookHarness: { 'example-org': { cursor: 'c0' } },
     })

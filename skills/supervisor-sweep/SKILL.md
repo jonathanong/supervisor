@@ -202,7 +202,7 @@ The backstop for `/shepherd`, `/plan`, and `/fix` events, run on `gap: true`, on
 each full sweep. A mechanical-tier subagent per repository lists those comments on issues and PRs
 posted since `commandsThrough` (falling back to `lastSweepAt` while it is unset) by the configured
 `trustedLogins` (never trust `authorAssociation`), paginating fully, and keeps those with no `eyes`
-reaction from the supervisor and no `shepherds` entry for the PR. This covers commands missed while
+reaction from the supervisor. This covers commands missed while
 the supervisor was down. Set `commandsThrough` to the sweep start
 (`supervisor state set commandsThrough --json '"<ISO time>"'`) only after G2 succeeds for every
 repository of every scope; never on a skip, a failure, or `--dry-run`. Never list from `lastSweepAt`

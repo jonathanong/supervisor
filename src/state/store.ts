@@ -20,7 +20,6 @@ export const FIELDS: Record<string, Kind> = {
   escalations: 'object',
   hookHarness: 'object',
   handledFailures: 'object',
-  shepherds: 'object',
   intake: 'array',
   scheduledPrompts: 'object',
   delegations: 'array',

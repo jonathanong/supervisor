@@ -9,7 +9,6 @@ import {
   route,
   scheduledPromptNext,
   scheduledPromptRecord,
-  shepherd,
   show,
   sweepDone,
 } from '../state/commands-records.js'
@@ -38,7 +37,6 @@ const LOCKED: Record<string, Locked> = {
   'annotate-route': annotateRoute,
   'sp-record': scheduledPromptRecord,
   'sp-next': scheduledPromptNext,
-  shepherd,
   reviewed,
   watch,
 }
