@@ -72,10 +72,14 @@ export async function discoverPolicies(
     loadedByDir.set(entry.dir, policy)
     loaded.push(policy)
   }
-  if (opts.supervisorPolicy && loaded.length > 0) {
+  if (opts.supervisorPolicy) {
+    // An empty or mistyped directory has no always-human rule either, so it is refused too.
     const root = loadedByDir.get('')
-    const file = root?.path ?? rootDir
-    assertAlwaysHumanRules(root, file, opts.requiredAlwaysHuman ?? DEFAULT_ALWAYS_HUMAN)
+    if (!root) {
+      const message = 'Supervisor policy directory has no .claude/approvals.yml'
+      throw new PolicyLoadError([{ file: rootDir, path: '$', message }])
+    }
+    assertAlwaysHumanRules(root, root.path, opts.requiredAlwaysHuman ?? DEFAULT_ALWAYS_HUMAN)
   }
   return loaded
 }

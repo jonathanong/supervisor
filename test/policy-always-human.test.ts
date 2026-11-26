@@ -59,7 +59,7 @@ describe('always-human rules a supervisor policy must have', () => {
       DEFAULT_ALWAYS_HUMAN.map((r) => `Supervisor policy must send ${r.name}`),
     )
     expect(errors[0]!.message).toBe(
-      "Supervisor policy must send CI workflow definitions to a person: no rule with 'nested: inherit', no 'if' and no 'claude: approves' matches '.github/workflows/ci.yml'",
+      "Supervisor policy must send CI workflow definitions to a person: no rule with 'nested: inherit', no 'if' and a verdict that blocks or asks for a human seat matches '.github/workflows/ci.yml'",
     )
     await expect(loadLayeredPolicies(dir, fixture('repo-plain'))).rejects.toThrow('release paths')
 
@@ -74,7 +74,9 @@ describe('always-human rules a supervisor policy must have', () => {
     const policies = await discoverPolicies(fixture('supervisor'), { supervisorPolicy: true })
     expect(policies).toHaveLength(1)
     expect(await loadReferencePolicy()).toHaveLength(2)
-    expect(await discoverPolicies(fixture('repo-plain'), { supervisorPolicy: true })).toEqual([])
+    // A directory with no supervisor policy at all is refused, not loaded as an empty policy.
+    const empty = discoverPolicies(fixture('repo-plain'), { supervisorPolicy: true })
+    await expect(empty).rejects.toThrow('has no .claude/approvals.yml')
   })
 
   it('takes the required paths as a parameter', async () => {
@@ -82,7 +84,7 @@ describe('always-human rules a supervisor policy must have', () => {
     const opts = { requiredAlwaysHuman: payments }
     const repoDir = fixture('repo-plain')
     await expect(loadLayeredPolicies(fixture('supervisor'), repoDir, opts)).rejects.toThrow(
-      "must send payments to a person: no rule with 'nested: inherit', no 'if' and no 'claude: approves' matches 'services/payments/charge.ts'",
+      "must send payments to a person: no rule with 'nested: inherit', no 'if' and a verdict that blocks or asks for a human seat matches 'services/payments/charge.ts'",
     )
 
     const rule = `  - purpose: Payments always go to a person.
@@ -122,6 +124,11 @@ describe('always-human rules a supervisor policy must have', () => {
       `${paths}${inherit}    mode: observe\n${person}`,
       `${paths}${inherit}    findings: { resolution: nobody }\n`,
       `    paths: ['.github/workflows/*.yaml']\n${inherit}${person}`,
+      // A rule that comments and asks nobody, or only a bot, does not go to a person.
+      `${paths}${inherit}    verdict: { claude: comments, seats: [] }\n`,
+      `${paths}${inherit}    verdict: { claude: comments, seats: [{ count: 1, from: ['bot:example-reviewer'] }] }\n`,
+      `${paths}${inherit}    verdict: { claude: comments, seats: [{ count: 0, from: [humans] }] }\n`,
+      `${paths}${inherit}${person}    override:\n      - { if: 'pr/diff_lines < 5', verdict: { seats: [] } }\n`,
     ]
     for (const rule of fails) expect(() => check(rule), rule).toThrow(PolicyLoadError)
     expect(() => check(`${paths}${inherit}${person}`, 'mode: observe\n')).toThrow(PolicyLoadError)

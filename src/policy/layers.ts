@@ -37,16 +37,8 @@ export async function loadLayeredPolicies(
   opts: LayeredPolicyOptions = {},
 ): Promise<PolicyFile[]> {
   const above = await discoverPolicies(supervisorDir, { ...opts, supervisorPolicy: true })
-  const root = above.find((policy) => policy.dir === '')
-  if (!root) {
-    throw new PolicyLoadError([
-      {
-        file: supervisorDir,
-        path: '$',
-        message: 'Supervisor policy directory has no .claude/approvals.yml',
-      },
-    ])
-  }
+  // discoverPolicies refuses a supervisor policy that has no root file.
+  const root = above.find((policy) => policy.dir === '')!
   const nested = above.filter((policy) => policy !== root)
   if (nested.length > 0) {
     throw new PolicyLoadError(

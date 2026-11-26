@@ -1,5 +1,11 @@
 import { matchesRulePaths } from './glob.js'
-import { PolicyLoadError, type PolicyFile, type PolicyRule } from './types.js'
+import {
+  PolicyLoadError,
+  type ClaudeAction,
+  type PolicyFile,
+  type PolicyRule,
+  type SeatSet,
+} from './types.js'
 
 /**
  * One class of path that must always go to a person. Two globs cannot be compared directly, so a
@@ -40,20 +46,38 @@ export const DEFAULT_ALWAYS_HUMAN: readonly AlwaysHumanRequirement[] = [
   },
 ]
 
+/** A seat that only a person can fill: it names someone, and nobody it names is a bot. */
+function isHumanSeat(seat: SeatSet): boolean {
+  const named = seat.from.filter((who) => !who.startsWith('!'))
+  return seat.count > 0 && named.length > 0 && named.every((who) => !who.startsWith('bot:'))
+}
+
+/** A verdict that goes to a person: it blocks, or it comments and asks for a human seat. */
+function asksAPerson(claude: ClaudeAction, seats: SeatSet[]): boolean {
+  return claude === 'blocks' || (claude === 'comments' && seats.some(isHumanSeat))
+}
+
 /**
- * An always-human rule holds in every repository and can never let the supervisor merge: it is
- * enforced, marked `nested: inherit`, has no `if`, and neither its verdict nor any override of it
- * says `claude: approves`.
+ * An always-human rule holds in every repository and always goes to a person: it is enforced,
+ * marked `nested: inherit`, has no `if`, and its verdict, alone and under each override, blocks
+ * or comments with a human seat. A rule that comments with no seat, or with only a bot's, asks
+ * nobody.
  */
 export function isAlwaysHumanRule(rule: PolicyRule): boolean {
+  const { verdict } = rule
   return (
     rule.mode === 'enforce' &&
     rule.nested === 'inherit' &&
     rule.if.kind === 'literal' &&
     rule.if.value &&
-    rule.verdict !== undefined &&
-    rule.verdict.claude !== 'approves' &&
-    rule.override.every((override) => override.verdict?.claude !== 'approves')
+    verdict !== undefined &&
+    asksAPerson(verdict.claude, verdict.seats) &&
+    rule.override.every((override) =>
+      asksAPerson(
+        override.verdict?.claude ?? verdict.claude,
+        override.verdict?.seats ?? verdict.seats,
+      ),
+    )
   )
 }
 
@@ -62,17 +86,17 @@ export function isAlwaysHumanRule(rule: PolicyRule): boolean {
  * `root` is the policy file at the top of the supervisor policy directory, if there is one.
  */
 export function assertAlwaysHumanRules(
-  root: PolicyFile | undefined,
+  root: PolicyFile,
   file: string,
   required: readonly AlwaysHumanRequirement[],
 ): void {
-  const rules = (root?.rules ?? []).filter(isAlwaysHumanRule)
+  const rules = root.rules.filter(isAlwaysHumanRule)
   const errors = required.flatMap((requirement) => {
     const missing = requirement.samples.filter(
       (sample) => !rules.some((rule) => matchesRulePaths(sample, rule.paths)),
     )
     if (missing.length === 0) return []
-    const message = `Supervisor policy must send ${requirement.name} to a person: no rule with 'nested: inherit', no 'if' and no 'claude: approves' matches ${missing.map((sample) => `'${sample}'`).join(', ')}`
+    const message = `Supervisor policy must send ${requirement.name} to a person: no rule with 'nested: inherit', no 'if' and a verdict that blocks or asks for a human seat matches ${missing.map((sample) => `'${sample}'`).join(', ')}`
     return [{ file, path: 'rules', message }]
   })
   if (errors.length > 0) throw new PolicyLoadError(errors)
