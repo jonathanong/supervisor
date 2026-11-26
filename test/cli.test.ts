@@ -15,6 +15,8 @@ function createTestIo(env: Record<string, string | undefined> = {}) {
     stdout: (text) => stdoutChunks.push(text),
     stderr: (text) => stderrChunks.push(text),
     startMcp,
+    runProcess: vi.fn(),
+    now: () => new Date(0),
   }
   return {
     io,
