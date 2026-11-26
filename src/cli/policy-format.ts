@@ -3,7 +3,8 @@ import type { EvaluationResult, PolicyFile, PolicyRule, SeatSet } from '../polic
 
 function formatSeats(seats: SeatSet[]): string {
   if (seats.length === 0) return '0'
-  return seats.map((s) => `${s.count} from [${s.from.join(', ')}]`).join('; ')
+  // The evaluator lists a seat once per file that asks for it; print each distinct seat once.
+  return [...new Set(seats.map((s) => `${s.count} from [${s.from.join(', ')}]`))].join('; ')
 }
 
 export function formatRuleSummary(rule: PolicyRule): string {
