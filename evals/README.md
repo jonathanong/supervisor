@@ -17,7 +17,7 @@ The question: on a labelled set of pull requests, does the policy evaluator ever
 
 <!-- merge-classification:results:start (generated from cases.csv) -->
 
-Run: 2026-11-25 at commit `822ec48+dirty`. One deterministic attempt per case: no model, no judge, no arms, cost $0.
+Run: 2026-11-25 at commit `2204eb0`. One deterministic attempt per case: no model, no judge, no arms, cost $0.
 
 Gate (zero false merges): **pass**. False merges: 0. Missed merges: 1 (docs-06).
 
