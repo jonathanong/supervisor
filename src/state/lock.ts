@@ -1,12 +1,19 @@
 import { randomUUID } from 'node:crypto'
-import { link, readFile, rename, stat, unlink, writeFile } from 'node:fs/promises'
+import { readFile, rm, stat, unlink, writeFile } from 'node:fs/promises'
 import { setTimeout as delay } from 'node:timers/promises'
 
-/** A lock older than this is taken over even when its process still seems to be alive. */
+/**
+ * A lock older than this is taken over even when its process seems to be alive, in case the pid
+ * was reused after the owner died. A holder slower than this can lose an update, so no command
+ * may hold the lock anywhere near this long.
+ */
 const STALE_MS = 10 * 60 * 1000
+/** Breaking a lock takes milliseconds; a breaker file older than this was left by a dead process. */
+const BREAKER_STALE_MS = 30 * 1000
 
 export interface LockOptions {
   staleMs?: number
+  breakerStaleMs?: number
   sleep?: () => Promise<unknown>
   isAlive?: (pid: number) => boolean
 }
@@ -34,20 +41,31 @@ async function inspect(path: string): Promise<{ token: string; ageMs: number } |
 }
 
 /**
- * Remove a stale lock. The file is moved aside first, so two processes cannot both remove it; if
- * the moved file is not the one that was judged stale, a live lock was taken and is put back.
+ * Remove a stale lock. Only one process breaks a lock at a time: it holds `<path>.break`, made
+ * with exclusive create, and looks at the lock again while holding it. So a waiter that judged an
+ * older lock stale cannot remove the fresh lock another process has taken since. A breaker file
+ * that its process left behind is removed once it is older than `breakerStaleMs`. Returns false
+ * when another process holds the breaker, so the caller waits before it looks again.
  */
-async function breakStale(path: string, token: string): Promise<void> {
-  const aside = `${path}.${randomUUID()}`
+async function breakStale(path: string, token: string, breakerStaleMs: number): Promise<boolean> {
+  const breaker = `${path}.break`
   try {
-    await rename(path, aside)
+    await writeFile(breaker, token, { flag: 'wx' })
   } catch {
-    return
+    const other = await inspect(breaker)
+    if (other !== undefined && other.ageMs > breakerStaleMs) {
+      await rm(breaker, { force: true })
+    }
+    return false
   }
-  if ((await readFile(aside, 'utf8')) !== token) {
-    await link(aside, path)
+  try {
+    if ((await inspect(path))?.token === token) {
+      await rm(path, { force: true })
+    }
+  } finally {
+    await rm(breaker, { force: true })
   }
-  await unlink(aside)
+  return true
 }
 
 /**
@@ -61,6 +79,7 @@ export async function withLock<T>(
   options: LockOptions = {},
 ): Promise<T> {
   const { staleMs = STALE_MS, sleep = pause, isAlive = processAlive } = options
+  const breakerStaleMs = options.breakerStaleMs ?? BREAKER_STALE_MS
   const token = `${process.pid} ${randomUUID()}`
   for (;;) {
     try {
@@ -73,9 +92,8 @@ export async function withLock<T>(
     }
     const held = await inspect(path)
     const pid = Number(held?.token.split(' ')[0])
-    if (held !== undefined && ((pid > 0 && !isAlive(pid)) || held.ageMs > staleMs)) {
-      await breakStale(path, held.token)
-    } else {
+    const stale = held !== undefined && ((pid > 0 && !isAlive(pid)) || held.ageMs > staleMs)
+    if (!stale || !(await breakStale(path, held.token, breakerStaleMs))) {
       await sleep()
     }
   }

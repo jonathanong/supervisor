@@ -30,13 +30,28 @@ describe('state lock', () => {
 
   it('runs contending holders one at a time and removes the lock afterwards', async () => {
     const order: string[] = []
+    let waiting = 0
+    let release!: () => void
+    const released = new Promise<void>((resolve) => {
+      release = resolve
+    })
+    // The first holder keeps the lock until both contenders have found it taken and slept.
+    const sleep = async () => {
+      waiting += 1
+      if (waiting >= 2) release()
+      await new Promise((resolve) => setImmediate(resolve))
+    }
     const hold = (name: string) =>
-      withLock(lock, async () => {
-        order.push(`${name}:start`)
-        await new Promise((resolve) => setTimeout(resolve, 15))
-        order.push(`${name}:end`)
-        return name
-      })
+      withLock(
+        lock,
+        async () => {
+          order.push(`${name}:start`)
+          await released
+          order.push(`${name}:end`)
+          return name
+        },
+        { sleep },
+      )
     expect(await Promise.all([hold('a'), hold('b'), hold('c')])).toEqual(['a', 'b', 'c'])
     expect(order).toHaveLength(6)
     for (let i = 0; i < order.length; i += 2) {
@@ -77,7 +92,7 @@ describe('state lock', () => {
     expect(sleeps).toBe(2)
   })
 
-  it('puts back a live lock that replaced the stale one before it could be removed', async () => {
+  it('leaves a fresh lock that replaced the stale one before it could be removed', async () => {
     await writeFile(lock, '424242 stale-token')
     let first = true
     const isAlive = () => {
@@ -91,6 +106,35 @@ describe('state lock', () => {
       await rm(lock)
     }
     expect(await withLock(lock, async () => 'ran', { isAlive, sleep })).toBe('ran')
+    expect(await readdir(dir)).toEqual([])
+  })
+
+  it('lets only one waiter break a stale lock, so a fresh lock is never removed', async () => {
+    await writeFile(lock, '424242 stale-token')
+    await writeFile(`${lock}.break`, 'another breaker')
+    let sleeps = 0
+    const sleep = async () => {
+      sleeps += 1
+      // The other breaker finishes: it removed the stale lock and a third process took a fresh one.
+      if (sleeps === 1) {
+        await writeFile(lock, `${process.pid} fresh-token`)
+        await rm(`${lock}.break`)
+      } else {
+        expect(await readFile(lock, 'utf8')).toBe(`${process.pid} fresh-token`)
+        await rm(lock)
+      }
+    }
+    const isAlive = (pid: number) => pid === process.pid
+    expect(await withLock(lock, async () => 'ran', { isAlive, sleep })).toBe('ran')
+    expect(sleeps).toBe(2)
+    expect(await readdir(dir)).toEqual([])
+  })
+
+  it('removes a breaker file that a dead process left behind', async () => {
+    await writeFile(lock, '424242 stale-token')
+    await writeFile(`${lock}.break`, 'left behind')
+    const isAlive = () => false
+    expect(await withLock(lock, async () => 'ran', { isAlive, breakerStaleMs: -1 })).toBe('ran')
     expect(await readdir(dir)).toEqual([])
   })
 
