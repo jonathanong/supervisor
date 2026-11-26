@@ -180,7 +180,7 @@ Areas refer to pages in this directory: G1 [journal.md](journal.md), G2 [skill-f
 - **Context hygiene for long-running sessions.** Auto-compaction thrashing in long orchestrator sessions; `/compact` typed 66 times. The supervisor needs summaries and planned restarts.
 - **A PR scope check.** Changed paths against the title and milestone (one strong example).
 - **Release mechanics.** Publish approvals per registry, partial publishes, and version bumps in downstream repos.
-- **Report-only scopes.** One session in the window, setting up trusted publishing and a release. No recurring pattern yet.
+- **Trusted publishing and release setup.** One session in the window, setting up trusted publishing and a release. No recurring pattern yet.
 
 ## Seen once, low confidence
 

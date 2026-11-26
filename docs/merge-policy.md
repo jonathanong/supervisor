@@ -13,6 +13,8 @@ What may merge without a person is written in the format of Claude Approvals' `a
 
 They combine the way the format combines a root file and a directory's file. Where a repository has its own file, that file decides. Of the supervisor's rules, only those marked `nested: inherit` still hold there. So the always-human rules and the final-review seat are inherited rules. A repository file can add its own carve-outs or ask for more, and cannot remove them.
 
+**No label grants merge authority.** The policy alone decides what may merge. A label such as `automation` only marks a PR as opened by an agent, for the triage queue. A rule may still read `pr/labels` as a condition, for example to hold a PR for a person.
+
 A PR that changes a policy file is judged by the default branch's copy, and an inherited rule sends every change to a policy file to a person.
 
 ## Staying compatible with Claude Approvals

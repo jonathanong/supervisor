@@ -27,7 +27,7 @@ A scope is one GitHub owner and the repositories the supervisor covers there.
 
 - **`policy`** is the path to the supervisor policy. Merge rules are not in the config file. They live in that policy and in repository policies, in the `approvals.yml` format: see [merge-policy.md](merge-policy.md).
 - **`policyEngine`** picks the evaluation: the supervisor's own, the Claude Approvals check, or both compared. See [merge-policy.md](merge-policy.md#staying-compatible-with-claude-approvals).
-- **`hosts`, `models` and `attendedOnly`** limit merging to named machines, named models and an attended session. A session outside them can still run workers and sweeps, and hands its merges over.
+- **`hosts`, `models` and `attendedOnly`** are meant to limit merging to named machines, named models and an attended session, while a session outside them still runs workers and sweeps. Not enforced yet: nothing in the supervisor reads these three keys.
 
 ## Requesting the final review
 
