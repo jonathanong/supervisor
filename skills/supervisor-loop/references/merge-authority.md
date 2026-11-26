@@ -85,8 +85,10 @@ Other fields of the JSON:
   `merge` and `nextStep` is not, the policy allows the PR and a blocker or a check holds it: report
   that reason, and do not treat it as a policy refusal.
 - **`checks`** is the state of the checks on the head (`source`, `state`, `total`, `failing`,
-  `pending`, `notRequired`). Only checks GitHub requires for the PR hold the merge; `notRequired`
-  lists failing or pending checks that do not.
+  `pending`, `notRequired`, `mergeState`). Only checks GitHub requires for the PR hold the merge;
+  `notRequired` lists failing or pending checks that do not. `mergeState` is GitHub's merge state;
+  BLOCKED (a required check has not reported, a required review, or another branch rule) and UNKNOWN
+  (not worked out yet) each add a blocker.
 
 Rules around the check:
 

@@ -86,6 +86,11 @@ describe('the checks GitHub requires for a pull request', () => {
     expect(blocked.result.policyNextStep).toEqual({ action: 'merge' })
     expect(blocked.result.nextStep.action).toBe('escalate')
 
+    const unknown = await checkJson(fixture({ contexts, mergeState: 'UNKNOWN' }))
+    expect(unknown.code).toBe(1)
+    expect(unknown.result.blockers).toEqual(['GitHub has not worked out the merge state yet'])
+    expect(unknown.result.nextStep.action).toBe('escalate')
+
     for (const mergeState of ['CLEAN', 'UNSTABLE', 'BEHIND']) {
       const open = await checkJson(fixture({ contexts, mergeState }))
       expect(open.code).toBe(0)

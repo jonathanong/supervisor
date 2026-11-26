@@ -6,7 +6,9 @@ import { FactsError, ghObjects, text } from './facts-gh.js'
  * GitHub which checks the pull request requires and keeps no list of its own. When GitHub marks
  * any as required, only those hold the merge. When it marks none, every check on the head must
  * pass. A required check that has not reported yet is not in GitHub's list, so the supervisor
- * also reads GitHub's merge state, and holds when it is BLOCKED.
+ * also reads GitHub's merge state, and holds when it is BLOCKED or UNKNOWN. BLOCKED can also mean
+ * a required review or another branch rule; the supervisor holds either way, because GitHub
+ * would refuse the merge. UNKNOWN means GitHub is still working it out.
  */
 export interface CheckState {
   source: 'required-checks' | 'all-checks-on-head'
