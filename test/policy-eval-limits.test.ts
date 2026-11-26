@@ -109,6 +109,10 @@ rules:
     paths: ['src/**']
     if: "pr/repository = 'jonathanong/*'"
     verdict: { claude: approves, seats: 0 }
+  - purpose: Always a person, which a supervisor policy must have to load
+    paths: ['.github/workflows/**', 'release/**', 'signing/**', '**/.supervisor/**', '**/.claude/**']
+    nested: inherit
+    verdict: { claude: comments, seats: 1 }
   - purpose: Guard rule
     paths: ['src/**']
     findings: { resolution: nobody }

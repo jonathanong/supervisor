@@ -91,7 +91,7 @@ describe('supervisor policy above a repository policy', () => {
     expect(selected.decidingPolicy?.path).toBe('.supervisor/approvals.yml')
     expect(selected.rules.map((r) => r.purpose)).toEqual([
       'This repository tries to let CI workflows merge unreviewed.',
-      'CI workflows always go to a person.',
+      'CI workflows, release and signing always go to a person.',
     ])
     const result = evaluatePolicies(policies, {
       changedFiles: ['.github/workflows/ci.yml'],

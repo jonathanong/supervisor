@@ -1,12 +1,25 @@
 import { posix } from 'node:path'
+import {
+  DEFAULT_ALWAYS_HUMAN,
+  assertAlwaysHumanRules,
+  type AlwaysHumanRequirement,
+} from './always-human.js'
 import { matchesRulePaths, toRelativePath } from './glob.js'
 import { loadPolicyFile } from './load.js'
 import { scanPolicyFiles, type PolicyFolder } from './scan.js'
 import { POLICY_LIMITS, PolicyLoadError, type PolicyFile, type PolicyRule } from './types.js'
 
 export interface DiscoverPoliciesOptions {
-  /** Accept the supervisor-only facts `pr/repository` and `pr/labels`. */
+  /**
+   * Load `rootDir` as the supervisor policy: accept the supervisor-only facts `pr/repository` and
+   * `pr/labels`, and refuse the policy unless its root file has the always-human rules.
+   */
   supervisorPolicy?: boolean
+  /**
+   * The paths a supervisor policy must send to a person. Defaults to `DEFAULT_ALWAYS_HUMAN`; an
+   * empty list switches the check off. Read only with `supervisorPolicy`.
+   */
+  requiredAlwaysHuman?: readonly AlwaysHumanRequirement[]
   /** The folder that holds each policy file. Defaults to `.claude`. */
   folder?: PolicyFolder
   /** Locals of a policy file above `rootDir`, which every file found here inherits. */
@@ -58,6 +71,11 @@ export async function discoverPolicies(
     })
     loadedByDir.set(entry.dir, policy)
     loaded.push(policy)
+  }
+  if (opts.supervisorPolicy && loaded.length > 0) {
+    const root = loadedByDir.get('')
+    const file = root?.path ?? rootDir
+    assertAlwaysHumanRules(root, file, opts.requiredAlwaysHuman ?? DEFAULT_ALWAYS_HUMAN)
   }
   return loaded
 }
