@@ -72,9 +72,18 @@ export function formatPullCheck(result: PullCheckResult): string {
     return `Seat ${seat.count} from [${seat.from.join(', ')}]: filled by ${filled}`
   })
   lines.push(...new Set(seatLines))
-  lines.push(`Checks: ${checks.state} (${checks.total} on the head, required or not)`)
+  const basis =
+    checks.source === 'required-checks'
+      ? 'GitHub requires checks'
+      : 'none required, so all must pass'
+  lines.push(`Checks: ${checks.state} (${checks.total} on the head; ${basis})`)
   if (checks.failing.length > 0) lines.push(`Failing checks: ${checks.failing.join(', ')}`)
   if (checks.pending.length > 0) lines.push(`Pending checks: ${checks.pending.join(', ')}`)
+  if (checks.notRequired.length > 0) {
+    lines.push(
+      `Not required, failing or pending, and do not hold the merge: ${checks.notRequired.join(', ')}`,
+    )
+  }
   for (const blocker of result.blockers) {
     lines.push(`Blocker: ${blocker}`)
   }

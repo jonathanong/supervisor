@@ -14,9 +14,10 @@ const POLICY_HELP = `Usage:
                           [--repo-dir <checkout>]
 
 check <owner>/<repo> <pr> reads the pull request from GitHub with \`gh api\`: its current head,
-changed files, authors, labels, approvals of that head, and every check on that head. It then
+changed files, authors, labels, approvals of that head, and its checks. It then
 evaluates the policies in <dir>. The next step is merge only when the policy allows it and
-every check on the head passed.
+every check GitHub requires for the pull request passed (every check on the head, where the base
+branch requires none).
 
   --classifiers <json>  Classifier results to evaluate with: {"<name>": {"status": ...}}.
                         Without it no classifier has a result.

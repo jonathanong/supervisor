@@ -20,8 +20,9 @@ export async function ghApi(
   endpoint: string,
   jq: string,
   paginate = false,
+  fields: string[] = [],
 ): Promise<unknown[]> {
-  const args = ['api', ...(paginate ? ['--paginate'] : []), endpoint, '--jq', jq]
+  const args = ['api', ...(paginate ? ['--paginate'] : []), endpoint, ...fields, '--jq', jq]
   const done = await run('gh', args, { timeoutMs: GH_TIMEOUT_MS })
   if (done.code !== 0) {
     const detail = done.stderr.trim().slice(0, 200)
@@ -43,8 +44,9 @@ export async function ghObjects(
   endpoint: string,
   jq: string,
   paginate = false,
+  fields: string[] = [],
 ): Promise<Array<Record<string, unknown>>> {
-  const values = await ghApi(run, endpoint, jq, paginate)
+  const values = await ghApi(run, endpoint, jq, paginate, fields)
   if (!values.every(isObject)) {
     throw new FactsError(`gh api ${endpoint} printed something that is not an object`)
   }

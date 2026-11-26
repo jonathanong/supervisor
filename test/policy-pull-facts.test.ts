@@ -48,18 +48,21 @@ describe('supervisor policy check <owner>/<repo> <pr> --print-input', () => {
         total: 1,
         failing: [],
         pending: [],
+        notRequired: [],
+        mergeState: 'CLEAN',
       },
       blockers: [],
     })
     // Every call is a GET through an argument array, and its filter names no title or body.
     const pull = `repos/${REPO}/pulls/7`
-    expect(calls.map((args) => args.slice(0, -2))).toEqual([
+    const checkCall = calls.find((args) => args.includes('graphql'))!
+    expect(checkCall.join(' ')).toMatch(/isRequired\(pullRequestNumber[\s\S]*number=7/)
+    expect(calls.map((args) => args.slice(0, args.includes('graphql') ? 2 : -2))).toEqual([
       ['api', pull],
       ['api', '--paginate', `${pull}/files?per_page=100`],
       ['api', '--paginate', `${pull}/commits?per_page=100`],
       ['api', '--paginate', `${pull}/reviews?per_page=100`],
-      ['api', '--paginate', `repos/${REPO}/commits/${HEAD}/check-runs?per_page=100`],
-      ['api', '--paginate', `repos/${REPO}/commits/${HEAD}/status?per_page=100`],
+      ['api', 'graphql'],
       ['api', pull],
     ])
     for (const args of calls) {
@@ -184,8 +187,6 @@ describe('supervisor policy check <owner>/<repo> <pr> --print-input', () => {
       [{ files: [{ filename: null, previous: null }] }, 'GitHub returned no file name'],
       [{ files: [{ filename: 'a', previous: 4 }] }, 'GitHub returned no previous file name'],
       [{ commits: [commit(NOBODY, null as never)] }, 'GitHub returned no commit SHA'],
-      [{ runs: [{ name: null, status: 'completed' }] }, 'GitHub returned no check run name'],
-      [{ statuses: [{ name: '', state: 'success' }] }, 'GitHub returned no status context'],
     ]
     for (const [overrides, message] of cases) {
       for (const options of [PRINT, undefined]) {

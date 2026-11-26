@@ -24,7 +24,7 @@ function checksReason(checks: CheckState): string {
 
 /**
  * Evaluate collected facts. A blocker always escalates. A merge the policy allows still
- * escalates unless every check on the head passed; CI stays outside the policy itself.
+ * escalates unless the checks GitHub requires passed (every check, where none is required); CI stays outside the policy itself.
  */
 export function checkPull(policies: PolicyFile[], facts: PullFacts): PullCheckResult {
   const result = evaluatePolicies(policies, facts)

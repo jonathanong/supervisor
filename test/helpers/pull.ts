@@ -21,8 +21,13 @@ export interface GhFixture {
   files: unknown[]
   commits: unknown[]
   reviews: unknown[]
-  runs: unknown[]
-  statuses: unknown[]
+  /** The head's checks as GraphQL lists them; `null` is a head with no check rollup. */
+  contexts: unknown[] | null
+  /** The head GraphQL read the checks of, and whether it has more than 100 checks. */
+  checksHead: unknown
+  checksMore: boolean
+  /** GitHub's `mergeStateStatus` of the pull request. */
+  mergeState: unknown
   teams: Record<string, unknown[]>
   /** The head the pull request has when it is read again at the end. */
   headAfter: unknown
@@ -42,6 +47,20 @@ export const review = (reviewer: unknown, state: string, commitId = HEAD) => ({
   commit: commitId,
 })
 
+/** A check run as GraphQL lists it; `isRequired` is whether the base branch requires it. */
+export const checkRun = (
+  name: string,
+  status: string,
+  conclusion: string | null = null,
+  isRequired = false,
+) => ({ __typename: 'CheckRun', name, status, conclusion, isRequired })
+export const statusContext = (context: string, state: string, isRequired = false) => ({
+  __typename: 'StatusContext',
+  context,
+  state,
+  isRequired,
+})
+
 /** A one-file pull request by `dev-one` that the reviewer bot approved and whose checks passed. */
 export function fixture(overrides: Partial<GhFixture> = {}): GhFixture {
   const files = overrides.files ?? [file('src/index.ts')]
@@ -50,8 +69,10 @@ export function fixture(overrides: Partial<GhFixture> = {}): GhFixture {
     files,
     commits,
     reviews: [review(REVIEWER, 'APPROVED')],
-    runs: [{ name: 'test', status: 'completed', conclusion: 'success' }],
-    statuses: [],
+    contexts: [checkRun('test', 'COMPLETED', 'SUCCESS')],
+    checksHead: HEAD,
+    checksMore: false,
+    mergeState: 'CLEAN',
     teams: {},
     headAfter: HEAD,
     raw: {},
@@ -80,8 +101,10 @@ function reply(endpoint: string, jq: string, gh: GhFixture): string {
     return lines(gh.teams[`${org}/${slug}`]!)
   }
   if (endpoint.includes('/files?')) return lines(gh.files)
-  if (endpoint.includes('/check-runs?')) return lines(gh.runs)
-  if (endpoint.includes('/status?')) return lines(gh.statuses)
+  if (endpoint === 'graphql') {
+    const more = gh.contexts === null ? null : gh.checksMore
+    return lines([{ mergeState: gh.mergeState, oid: gh.checksHead, more, contexts: gh.contexts }])
+  }
   if (endpoint.includes('/commits?')) return lines(gh.commits)
   if (endpoint.includes('/reviews?')) return lines(gh.reviews)
   if (endpoint !== `repos/${REPO}/pulls/7`) throw new Error(`unexpected endpoint: ${endpoint}`)
@@ -94,7 +117,9 @@ export function fakeGh(gh: GhFixture): { run: RunProcess; calls: string[][] } {
   const run: RunProcess = async (command, args) => {
     if (command !== 'gh' || args[0] !== 'api') throw new Error(`unexpected process: ${command}`)
     calls.push(args)
-    const endpoint = args.find((arg) => arg.startsWith('repos/') || arg.startsWith('orgs/'))!
+    const endpoint = args.find(
+      (arg) => arg === 'graphql' || arg.startsWith('repos/') || arg.startsWith('orgs/'),
+    )!
     const raw = Object.entries(gh.raw).find(([part]) => endpoint.includes(part))?.[1]
     if (typeof raw === 'number') return done('', raw, 'gh: Not Found (HTTP 404)')
     return done(raw ?? reply(endpoint, args.at(-1)!, gh))

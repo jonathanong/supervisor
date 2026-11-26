@@ -117,7 +117,15 @@ export async function collectPullFacts(
     labels: labels as string[],
   }
   if (options.teams.length > 0) facts.teams = await collectTeams(run, options.teams)
-  const checks = await collectChecks(run, repository, head)
+  const checks = await collectChecks(run, repository, number, head)
+  if (checks.mergeState === 'BLOCKED') {
+    blockers.push(
+      'GitHub blocks the merge: a required check has not reported, or a branch rule is not met',
+    )
+  }
+  if (checks.mergeState === 'UNKNOWN') {
+    blockers.push('GitHub has not worked out the merge state yet')
+  }
 
   const [after] = await ghObjects(run, endpoint, '{head: .head.sha}')
   if (after?.head !== head) {
