@@ -15,7 +15,7 @@ into one browser call; run one call per owner. Skip scopes in `report` mode.
 1. Read the host's open tabs, then open one tab on `https://github.com/<owner>` (signed in, same
    origin, so the page's session and each form's own CSRF token are used).
 2. Print the script with
-   `supervisor state update-check-script --repo <owner>/<repo>[:<ecosystem>,...]` (repeat `--repo`
+   `supervisor state update-check-script --owner <owner> --repo <repo>[:<ecosystem>,...]` (repeat `--repo`
    for every target of that owner; `--dry` sets `DRY`) and pass it as the text of ONE call to the
    host's in-page JavaScript tool. It fills `ORG` and `TARGETS` in the script below, which stays the
    template. By hand, set `ORG` to the scope's `owner` and `TARGETS` to the target repositories

@@ -157,6 +157,4 @@ The record is one JSON object: `pr` (`<owner>/<repo>#N`), `head` (the `headRefOi
 (the `purpose` and `sourceFile` of each rule the check applied), `classifiers` (the classifier
 results given as input), `review` (the reviewer and state of the final review of that head, or
 `none`), `alwaysHuman` (`clear`, and who checked), and `at` (ISO time). Write the JSON to a file with
-a file-writing tool and pass its content; it holds no PR text. If the command refuses the field,
-append the same object as one line to `<stateDir>/merge-records.jsonl` and say so in the summary. A
-new head needs a new record.
+a file-writing tool and pass its content; it holds no PR text. A new head needs a new record.

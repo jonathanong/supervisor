@@ -75,7 +75,7 @@ Never trust `authorAssociation`: it is wrong for private organization members.
     refiling what the event check handled.
   - A closed PR without merge that the supervisor does not track needs nothing further.
 - **`pendingUpdateChecks` or `updateCheckDue`:** after a dependency-bot PR merges, build the script
-  with `supervisor state update-check-script --repo <owner>/<repo>[:<ecosystem>,...]` for those
+  with `supervisor state update-check-script --owner <owner> --repo <repo>[:<ecosystem>,...]` for those
   repositories (repeat `--repo`; one script per owner), run it as in supervisor-sweep's
   [dependency update check](../../supervisor-sweep/references/dependency-update-check.md), then
   `supervisor state remove pendingUpdateChecks`. Do this on any return that lists them.
