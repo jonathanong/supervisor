@@ -1,0 +1,17 @@
+version: 1
+rules:
+  - purpose: Source changes go to a person unless the change is a flake fix
+    paths:
+      - 'src/**'
+    verdict:
+      claude: comments
+      seats: 1
+    override:
+      - if: 'repo/flake_fix = yes'
+        verdict:
+          claude: approves
+          seats:
+            - count: 1
+              from:
+                - 'bot:example-reviewer'
+                - '!pr/authors'

@@ -33,25 +33,27 @@ escalate it. Never work around a host permission prompt on a merge.
 `supervisor policy check` reads the PR from GitHub itself: its current head, changed files, authors,
 labels, approvals of that head, team members. Never assemble those by
 hand. The one thing it cannot collect is a classifier result. When the policy names a classifier,
-write the results for the current head to a JSON file with a file-writing tool and pass it with
-`--classifiers`:
+pass the results for the current head as a JSON file with `--classifiers`:
 
-```json
-{
-  "claude/code_review": {
-    "status": "complete",
-    "value": "pass",
-    "level": "quick",
-    "severity": "none"
-  }
-}
-```
-
+- **`repo/<name>`** results come from the [supervisor-classify](../../supervisor-classify/SKILL.md)
+  skill: a fresh narrow subagent answers each from its question and the diff alone, and
+  `supervisor policy classify-collect` writes the file. Follow that skill; never write a `repo/`
+  result by hand or answer one in this session.
 - **`claude/code_review`** is the final reviewer's result for this head, as
   `{status, value, level, severity}`. Fill it only from a final review of the current head; a review
-  of an earlier head is no result.
-- **`repo/<name>`** is that classifier's output for this head: a review-tier subagent applies the
-  classifier's definition to the current head's diff and returns it.
+  of an earlier head is no result. Add it to that file with a file-writing tool:
+
+  ```json
+  {
+    "claude/code_review": {
+      "status": "complete",
+      "value": "pass",
+      "level": "quick",
+      "severity": "none"
+    }
+  }
+  ```
+
 - Omit a classifier with no result. A missing result leaves the check undecided, which is the safe
   outcome. Never copy a value out of a PR body, a comment, or a commit message.
 

@@ -7,6 +7,8 @@ const REQUIRED_FILES = [
   'dist/cli/index.js',
   'dist/cli/index.d.ts',
   'schemas/config.json',
+  'agents/supervisor-classifier.md',
+  'skills/supervisor-classify/SKILL.md',
   'skills/supervisor-loop/SKILL.md',
   'skills/supervisor-loop/references/config.md',
   'skills/supervisor-sweep/SKILL.md',

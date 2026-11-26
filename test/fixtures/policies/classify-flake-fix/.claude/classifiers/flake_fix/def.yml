@@ -1,0 +1,7 @@
+version: 1
+description: Is this change a fix for a flaky test or a flaky code path?
+model: haiku
+outputs:
+  answer:
+    type: criteria
+    values: [yes, no]

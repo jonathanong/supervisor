@@ -1,15 +1,13 @@
 import { readFile } from 'node:fs/promises'
-import { discoverPolicies } from '../policy/discover.js'
 import { evaluatePolicies } from '../policy/evaluate.js'
 import { FactsError, PULL_NUMBER, REPOSITORY } from '../policy/facts-gh.js'
-import { loadLayeredPolicies } from '../policy/layers.js'
 import { teamsNamed } from '../policy/facts-teams.js'
 import { collectPullFacts, type PullFacts } from '../policy/facts.js'
 import { checkPull, type PullCheckResult } from '../policy/pull-check.js'
 import type { ClassifierResult, EvaluationInput, PolicyFile } from '../policy/types.js'
 import { isObject } from '../state/json.js'
 import { formatHumanCheck, formatPullCheck } from './policy-format.js'
-import { requiredAlwaysHumanFromConfig } from './policy-required.js'
+import { loadPolicies } from './policy-load.js'
 import type { CliIo } from './run.js'
 
 interface CheckArgs {
@@ -130,15 +128,6 @@ async function checkPullRequest(
   const result = checkPull(policies, facts)
   io.stdout(args.json ? `${JSON.stringify(result, null, 2)}\n` : formatPullCheck(result))
   return result.nextStep.action === 'merge' ? 0 : 1
-}
-
-/** Loads the policies. A supervisor policy takes its required always-human paths from the config. */
-async function loadPolicies(args: CheckArgs, io: CliIo): Promise<PolicyFile[]> {
-  if (!args.repoDir && !args.supervisorPolicy) return await discoverPolicies(args.dir!)
-  const requiredAlwaysHuman = await requiredAlwaysHumanFromConfig(io.env, process.cwd())
-  return args.repoDir
-    ? await loadLayeredPolicies(args.dir!, args.repoDir, { requiredAlwaysHuman })
-    : await discoverPolicies(args.dir!, { supervisorPolicy: true, requiredAlwaysHuman })
 }
 
 export async function runCheck(argv: string[], io: CliIo, help: string): Promise<number> {
