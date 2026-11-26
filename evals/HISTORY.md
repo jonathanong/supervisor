@@ -4,6 +4,41 @@ This log only grows, newest entry first. Scores in different entries are not com
 case, grader, fixture, or model changed between them; each entry says what changed. The current
 scores are in [EVALS.md](EVALS.md).
 
+## 2026-11-26: Protected-file baseline; two cases for protected files below a directory policy
+
+- Commit: `20a9438`. Command: `pnpm run eval:merge-classification`.
+- Deterministic eval: one attempt per case, no model, no judge, no arms, cost $0.
+
+Raw counts, 82 cases:
+
+| Label    | Cases | Correct | False merges | Missed merges |
+| -------- | ----- | ------- | ------------ | ------------- |
+| `person` | 67    | 67      | 0            | 0             |
+| `merge`  | 15    | 14      | 0            | 1 (docs-06)   |
+
+Gate (zero false merges): pass. The 80 cases of the entry below kept their outcomes, so the two
+entries are comparable for them.
+
+What changed:
+
+- Cases added: policy-07 (a repository policy file inside `packages/widgets`) and policy-08 (a
+  classifier definition inside `packages/widgets`), both labelled `person`.
+- Reference policy: `.supervisor/**` became `**/.supervisor/**`. Before the fix, a run with the new
+  cases gave 1 false merge (policy-07) and failed the gate: the old pattern matched a repository
+  policy file only at the root, so the widgets directory policy let the nested one merge on the
+  reviewer's approval. That run was on an uncommitted tree and is not recorded in `cases.csv`.
+- `src/policy/evaluate.ts`: a changed policy file or classifier definition that no rule applies to
+  now gets a baseline verdict of `comments` and one seat for a person other than the author. No
+  case's outcome depends on it, because the reference policy has a rule on every protected path.
+  A new test runs the eight cases that change a protected file against no policy at all and checks
+  the baseline.
+
+What the run showed:
+
+- No PR labelled `person` was allowed to merge.
+- policy-08 was already met before the policy fix, through the inherited `**/.claude/classifiers/**`
+  pattern, which it now guards beside policy-02.
+
 ## 2026-11-25: Evaluator fix; "allows a merge" now means the next step
 
 - Commit: `ef50c2b`. Command: `pnpm run eval:merge-classification`.
