@@ -9,7 +9,8 @@ describe('supervisor state set, append, remove and show', () => {
   it('sets nested paths, creating parents, and writes a private indented file', async () => {
     const loop = await makeLoop()
     const key = 'lateReview.example-org/example-repo.scannedThrough'
-    const set = await loop.cli(['state', 'set', key, '--json', '"2026-01-01T00:00:00Z"'])
+    const keys = ['lateReview', 'example-org/example-repo', 'scannedThrough']
+    const set = await loop.cli(['state', 'set', ...keys, '--json', '"2026-01-01T00:00:00Z"'])
     expect(set).toEqual({ code: 0, stdout: `{"${key}": "2026-01-01T00:00:00Z"}\n`, stderr: '' })
     await loop.cli(['state', 'set', 'schedule', '--json', '{"id":"job-1","n":[1,2]}'])
     expect((await loop.cli(['state', 'set', 'lastSweepAt', '--json=""'])).stdout).toBe(
@@ -71,7 +72,9 @@ describe('supervisor state set, append, remove and show', () => {
       expect(result.stderr).toContain(`'${path}' must start with one of commandsThrough, `)
     }
     expect((await loop.cli(['state', 'set', '--json', '1'])).code).toBe(2)
-    expect((await loop.cli(['state', 'set', 'intake', 'extra', '--json', '1'])).code).toBe(2)
+    expect((await loop.cli(['state', 'set', 'intake', 'extra', '--json', '1'])).stderr).toBe(
+      'state.json: intake must be object, got array\n',
+    )
     expect((await loop.cli(['state', 'set', 'intake'])).stderr).toContain('--json is required')
   })
 

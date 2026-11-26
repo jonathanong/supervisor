@@ -17,11 +17,11 @@ with one line and exit ${STOPPED_EXIT}. Every other subcommand only records fact
 
 Subcommands:
   show [key]                              Print one key, or the top-level keys
-  set <path> --json <value>               Set a dotted path under a known field to a JSON value
+  set <path> --json <value>               Set a path under a known field to a JSON value
   append <path> --json <value> [--keep <n>]
-                                          Append a JSON value to the list at a dotted path;
+                                          Append a JSON value to the list at a path;
                                           --keep keeps only the newest n entries
-  remove <path>                           Remove the key at a dotted path
+  remove <path>                           Remove the key at a path
                                           (set and append refuse mergeRecords: use merge-record)
   sweep-start --id <id> [--ttl-minutes <n>]
                                           Claim the one running sweep; exits 1 while another id's
@@ -72,8 +72,14 @@ Subcommands:
 Fields (the first key of every <path>):
 ${FIELD_LINES}
 
-Keys that name a repository are <owner>/<repo>, for example
-  supervisor state set lateReview.example-org/example-repo.scannedThrough --json '"2026-01-01T00:00:00Z"'
+A <path> is its keys as separate arguments, or as one argument joined by dots:
+  supervisor state set schedule id --json '"job-1"'
+  supervisor state set schedule.id --json '"job-1"'
+Separate arguments are never split, so a key given that way can contain a dot. A key that names a
+repository is <owner>/<repo>, and a repository name can contain a dot, so a dotted path that goes
+on after such a key is refused (exit 1) instead of being split in the wrong place. Give those
+paths as separate arguments:
+  supervisor state set lateReview example-org/example.js scannedThrough --json '"2026-01-01T00:00:00Z"'
 
 Options:
   -h, --help                              Show help

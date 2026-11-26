@@ -47,8 +47,9 @@ found.
 
 Advance `scannedThrough` to the newest `mergedAt` scanned (or the sweep start) only after the scan
 succeeds. Advance `activityThrough` to the sweep start only after step 2 succeeds, and set
-`fullScanAt` after a full rescan. For example:
-`supervisor state set lateReview.<owner>/<repo>.scannedThrough --json '"<ISO time>"'`.
+`fullScanAt` after a full rescan. Pass each key as its own argument, because a repository name can
+contain a dot:
+`supervisor state set lateReview <owner>/<repo> scannedThrough --json '"<ISO time>"'`.
 
 The supervisor loop also runs this scan for one PR as soon as a wait reports it merged (see
 [handling a wait result](../../supervisor-loop/references/events.md#per-event)). That per-PR check

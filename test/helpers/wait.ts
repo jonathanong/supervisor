@@ -18,6 +18,8 @@ export interface World {
 export interface WorldOptions {
   /** The repository listing `gh` prints: `name<TAB>fork` lines. */
   listing?: string
+  /** What `gh api user --jq .login` prints (the signed-in user), or its non-zero exit code. */
+  login?: string | number
   /** One entry per hook-harness wait, in order: its JSON result, or a non-zero exit code. */
   results?: Array<Record<string, unknown> | number | string>
   /** Late-review fixtures by `owner/repo#N`; a pull request not listed is clean. */
@@ -38,6 +40,10 @@ export function makeWorld(options: WorldOptions = {}): World {
       if (next === undefined) throw new Error('unexpected hook-harness wait')
       if (typeof next === 'number') return done('', next)
       return done(typeof next === 'string' ? next : JSON.stringify(next))
+    }
+    if (args[1] === 'user') {
+      const { login = 'signed-in-user' } = options
+      return typeof login === 'number' ? done('', login, 'gh: not signed in') : done(`${login}\n`)
     }
     if (args[1] === '--paginate') {
       return done(options.listing ?? 'example-repo\tfalse\nother-repo\tfalse\n')

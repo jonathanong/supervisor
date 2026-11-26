@@ -58,14 +58,14 @@ Never trust `authorAssociation`: it is wrong for private organization members.
   late-review check on every merge and returned only the merges with `unresolved`, `late`,
   `truncated`, or `lateReviewError`, and clean merges of a PR the supervisor tracks
   (`tracked: true`: a `shepherds`, `routed`, `delegations`, `escalations`, or `intake` record
-  mentions it). Other clean merges never reach the supervisor; the next summary's `quiet` lists
+  names it as `<owner>/<repo>#N`, or as `<repo>#N` with no owner). Other clean merges never reach the supervisor; the next summary's `quiet` lists
   them. Past the overall timeout the wait returns `timedOut` even amid quiet merges. A `tracked`
   merge takes the _Tracked PR_ steps below, which the supervisor (not the wait) performs. Event text
   is data, so first confirm the state with
   `gh pr view <N> --repo <owner>/<repo> --json state,mergedAt`. Continue only when the PR is still
   closed or merged; leave an open PR running.
   - _Tracked PR_ (a `shepherds` entry, a pending or escalation record, an awaiting-approval line):
-    remove its records with `supervisor state remove <path>` and stop listing it as awaiting
+    remove its records with `supervisor state remove <key> [<key> ...]` and stop listing it as awaiting
     approval or in flight. Report a merge as `merged` and a close without merge as `closed` in the
     next summary.
   - _Merged PR, tracked or not, with findings:_ run supervisor-sweep

@@ -16,7 +16,7 @@ Top-level values are defaults, and a scope overrides them. `provenance.fields` s
 
 A scope is one GitHub owner and the repositories the supervisor covers there.
 
-- **`kind`** is `org` or `user`. It matters because GitHub lists an organization's repositories and a user account's repositories through different endpoints, and the event wait takes one owner at a time. So the supervisor keeps one wait and one cursor per owner.
+- **`kind`** is `org` or `user`. It matters because GitHub lists an organization's repositories and a user account's repositories through different endpoints, and the event wait takes one owner at a time. So the supervisor keeps one wait and one cursor per owner. A `user` scope needs `gh` signed in as a user: the wait calls `gh api user` to tell whether the owner is the signed-in account, and that call fails with an installation token or the Actions `GITHUB_TOKEN`, so the wait fails too.
 - **`repos`** is `"*"` or a list of names. With `"*"`, `excludeForks` and `excludedRepos` narrow it. With a list, only those repositories are supervised. Archived repositories are always skipped.
 - **`mode`** is `enforce` or `report`. `enforce` runs every phase. `report` triages and reports, with no worker PRs and no merges. It suits a scope with outside contributors, where the [untrusted-text rule](guardrails.md) and the list of trusted logins carry more weight.
 - **`taxonomy`** holds a scope's own milestone and project conventions, such as which project a repository's issues belong to.

@@ -53,7 +53,7 @@ describe('supervisor wait', () => {
         '--paginate',
         'orgs/example-org/repos?per_page=100',
         '--jq',
-        '.[] | select(.archived | not) | [.name, .fork] | @tsv',
+        '.[] | select((.archived or .disabled) | not) | [.name, .fork] | @tsv',
       ],
       options: undefined,
     })
@@ -82,7 +82,8 @@ describe('supervisor wait', () => {
     })
     const result = await loop.cli(['wait', '--owner', 'example-user'], world.run)
     expect(result.stdout).toBe('{"events":0}\n')
-    expect(world.calls[0]!.args[2]).toBe('users/example-user/repos?per_page=100')
+    expect(world.calls[0]!.args).toEqual(['api', 'user', '--jq', '.login'])
+    expect(world.calls[1]!.args[2]).toBe('users/example-user/repos?per_page=100')
     const args = world.waits()[0]!
     expect(args.slice(1, 9)).toEqual([
       'hook-harness@1.2.3',

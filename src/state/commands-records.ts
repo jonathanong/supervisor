@@ -2,6 +2,7 @@ import { readFile } from 'node:fs/promises'
 import { parseArgs } from 'node:util'
 import { FLAG, need, REPOSITORY, TEXT, UsageError, type StateContext } from './context.js'
 import { dumpsIndented, get, isObject, put, type Json, type JsonObject } from './json.js'
+import { PULL_REF } from './late-review.js'
 import {
   arrayField,
   expectArray,
@@ -90,6 +91,10 @@ export async function shepherd(args: string[], ctx: StateContext): Promise<void>
   const options = { pr: TEXT, remove: FLAG, by: TEXT, head: TEXT, category: TEXT }
   const { values } = parseArgs({ args, options })
   const pr = need(values.pr, 'pr')
+  // A new record always carries the owner; --remove still takes an old key that does not.
+  if (!values.remove && !PULL_REF.test(pr)) {
+    throw new StateError(`shepherd: '${pr}' must look like owner/repo#N`)
+  }
   const state = await loadState(ctx.dir)
   const shepherds = objectField(state, 'shepherds')
   if (values.remove) {

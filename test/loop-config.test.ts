@@ -101,9 +101,10 @@ describe('repository selection', () => {
     expect(repoListEndpoint({ owner: 'example-org', kind: 'org', repos: '*' })).toBe(
       'orgs/example-org/repos?per_page=100',
     )
-    expect(repoListEndpoint({ owner: 'example-user', kind: 'user', repos: '*' })).toBe(
-      'users/example-user/repos?per_page=100',
-    )
+    const user = { owner: 'example-user', kind: 'user', repos: '*' } as const
+    expect(repoListEndpoint(user)).toBe('users/example-user/repos?per_page=100')
+    expect(repoListEndpoint(user, 'someone-else')).toBe('users/example-user/repos?per_page=100')
+    expect(repoListEndpoint(user, 'Example-User')).toBe('user/repos?affiliation=owner&per_page=100')
   })
 
   it('parses the listing and applies repos, excludeForks and excludedRepos', () => {

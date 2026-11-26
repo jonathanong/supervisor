@@ -14,6 +14,10 @@ Runs hook-harness waits over the repositories the config selects for one owner (
 and returns only when something needs action. The config file is $SUPERVISOR_CONFIG, else
 .supervisor.json in the current directory. Run one wait per owner.
 
+Archived and disabled repositories are left out. A scope of kind "user" whose owner is the
+signed-in user ("gh api user") includes that user's private repositories; another user's scope
+lists public repositories only.
+
 A merged pull request is checked for unresolved or late review findings. A clean one is logged in
 state (quietMerges, and pendingUpdateChecks for a dependency-bot pull request), the cursor moves
 past it, and the wait continues. The wait returns on: a gap, an ejection or dequeue, a main-branch
