@@ -39,7 +39,8 @@ In a scope in `report` mode, run step 1 only and report what the later steps wou
    branch protection that dismisses stale approvals, which the consuming repository owns.
 
 6. **Merge through `pr-shepherd` (only with `--merge`, and only when step 5 said the supervisor may
-   merge this head).** Write the [merge record](merge-authority.md#merge-record), then run
+   merge this head).** Write the [merge record](merge-authority.md#merge-record) with
+   `supervisor state merge-record` and go on only when it exits 0, then run
    `pr-shepherd` as the `pr-shepherd` skill directs (a stack per [Stacks](#stacks)). The supervisor
    session runs each PR's shepherd poll itself. A subagent never runs a `pr-shepherd` poll
    (`pr-shepherd [PR]` or `pr-shepherd stack`); the fixer runs the printed post-push

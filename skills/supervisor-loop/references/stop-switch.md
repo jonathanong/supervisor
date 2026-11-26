@@ -33,7 +33,8 @@ mutation.
 - `supervisor wait` exits 3 with one line, at the start or between two of its rounds. Do not
   relaunch an owner's wait until the status is 0; pace the checks with the fallback job or a
   self-paced wake-up.
-- `supervisor state sweep-start` exits 3, so no sweep starts.
+- `supervisor state sweep-start` exits 3, so no sweep starts, and `supervisor state merge-record`
+  exits 3, so no merge is recorded or made.
 - `supervisor state` subcommands that record facts keep working. Use them to write down what was
   seen (a route, an escalation time, an intake report), and nothing else: recording is not acting.
 - Events are not lost. A wait that refuses moves no cursor, so the next wait after a resume returns

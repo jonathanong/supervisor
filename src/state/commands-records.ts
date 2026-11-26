@@ -1,6 +1,6 @@
 import { readFile } from 'node:fs/promises'
 import { parseArgs } from 'node:util'
-import { FLAG, need, TEXT, UsageError, type StateContext } from './context.js'
+import { FLAG, need, REPOSITORY, TEXT, UsageError, type StateContext } from './context.js'
 import { dumpsIndented, get, isObject, put, type Json, type JsonObject } from './json.js'
 import {
   arrayField,
@@ -12,8 +12,6 @@ import {
   saveState,
   StateError,
 } from './store.js'
-
-const REPOSITORY = /^[\w.-]+\/[\w.-]+$/
 
 export async function route(args: string[], ctx: StateContext): Promise<void> {
   const options = { what: TEXT, to: TEXT, evidence: TEXT, issue: TEXT, note: TEXT }

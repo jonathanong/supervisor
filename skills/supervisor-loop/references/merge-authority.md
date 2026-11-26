@@ -150,11 +150,25 @@ Every merge the supervisor makes is recorded before the merge command runs, so a
 traced to the rule that let it through:
 
 ```bash
-supervisor state append mergeRecords --json '<record>'
+supervisor state merge-record --pr <owner>/<repo>#<N> --head <headRefOid> \
+  --check <check file> --input <input file> \
+  --review '<reviewer> <state>' --always-human 'clear, <who checked>'
 ```
 
-The record is one JSON object: `pr` (`<owner>/<repo>#N`), `head` (the `headRefOid` checked), `rules`
-(the `purpose` and `sourceFile` of each rule the check applied), `classifiers` (the classifier
-results given as input), `review` (the reviewer and state of the final review of that head, or
-`none`), `alwaysHuman` (`clear`, and who checked), and `at` (ISO time). Write the JSON to a file with
-a file-writing tool and pass its content; it holds no PR text. A new head needs a new record.
+- `--check` is a file holding the JSON that `supervisor policy check --json` printed for this head
+  (save the output with a file-writing tool), and `--input` is the input file that check was given.
+- `--review` names the reviewer and the state of the final review of that head, or `none`.
+  `--always-human` says the result of the always-human check and who made it. Both hold names and
+  outcomes only, never PR text.
+- The command writes the record itself: `pr`, `head`, `at`, `rules` (the `purpose` and `sourceFile`
+  of each rule the check applied), `classifiers` (the results in the input), `seats` (each seat and
+  who filled it), `review`, and `alwaysHuman`.
+
+Merge only when it exits 0. It exits 1, and records nothing, unless the check's next step is `merge`
+with no author-only warning, the check names a rule, and the input is for this repository; it exits
+3 while the [stop switch](stop-switch.md) is set. `supervisor state set` and `append` refuse
+`mergeRecords`, so the record cannot be written another way. A new head needs a new check and a new
+record.
+
+To trace a merge, list the records, one JSON line each:
+`supervisor state merge-records [--repo <owner>/<repo>] [--rule <text in the rule's purpose>]`.
