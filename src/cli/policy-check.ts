@@ -2,6 +2,7 @@ import { readFile } from 'node:fs/promises'
 import { discoverPolicies } from '../policy/discover.js'
 import { evaluatePolicies } from '../policy/evaluate.js'
 import { FactsError, PULL_NUMBER, REPOSITORY } from '../policy/facts-gh.js'
+import { loadLayeredPolicies } from '../policy/layers.js'
 import { teamsNamed } from '../policy/facts-teams.js'
 import { collectPullFacts, type PullFacts } from '../policy/facts.js'
 import { checkPull, type PullCheckResult } from '../policy/pull-check.js'
@@ -15,15 +16,17 @@ interface CheckArgs {
   dir?: string
   input?: string
   classifiers?: string
+  repoDir?: string
   json: boolean
   supervisorPolicy: boolean
   printInput: boolean
 }
 
-const VALUE_OPTIONS: Record<string, 'dir' | 'input' | 'classifiers'> = {
+const VALUE_OPTIONS: Record<string, 'dir' | 'input' | 'classifiers' | 'repoDir'> = {
   '--dir': 'dir',
   '--input': 'input',
   '--classifiers': 'classifiers',
+  '--repo-dir': 'repoDir',
 }
 const FLAGS: Record<string, 'json' | 'supervisorPolicy' | 'printInput'> = {
   '--json': 'json',
@@ -124,7 +127,9 @@ export async function runCheck(argv: string[], io: CliIo, help: string): Promise
     return 2
   }
   try {
-    const policies = await discoverPolicies(args.dir!, { supervisorPolicy: args.supervisorPolicy })
+    const policies = args.repoDir
+      ? await loadLayeredPolicies(args.dir!, args.repoDir)
+      : await discoverPolicies(args.dir!, { supervisorPolicy: args.supervisorPolicy })
     if (args.positionals.length > 0) return await checkPullRequest(args, policies, io)
     const input = await readInput(args.input!)
     const collected = 'blockers' in input

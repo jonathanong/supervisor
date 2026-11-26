@@ -1,0 +1,5 @@
+version: 1
+rules:
+  - purpose: Everything goes to a person.
+    paths: ['**']
+    verdict: { claude: comments, seats: 1 }

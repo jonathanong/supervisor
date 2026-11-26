@@ -129,6 +129,8 @@ export interface PolicyFile {
   locals: Record<string, unknown>
   rules: PolicyRule[]
   effectiveObserve: boolean
+  /** Set on the supervisor policy when it is the root above a repository's own policy files. */
+  supervisorRoot?: true
 }
 
 export interface PolicyValidationError {

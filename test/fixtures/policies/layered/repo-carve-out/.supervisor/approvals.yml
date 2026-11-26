@@ -1,0 +1,9 @@
+# A repository policy: it decides for this repository, below the supervisor policy.
+version: 1
+rules:
+  - purpose: Docs merge once the reviewer approves.
+    paths: ['docs/**']
+    verdict: { claude: approves, seats: '@reviewed' }
+  - purpose: This repository tries to let CI workflows merge unreviewed.
+    paths: ['.github/workflows/**']
+    verdict: { claude: approves, seats: 0 }
