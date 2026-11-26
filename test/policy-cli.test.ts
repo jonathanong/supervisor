@@ -77,13 +77,14 @@ describe('supervisor policy CLI', () => {
         ],
         passJson.io,
       ),
-    ).toBe(0)
+    ).toBe(1)
     const parsed = JSON.parse(passJson.stdout()) as {
       reviewDepth: string
       nextStep: { action: string }
     }
     expect(parsed.reviewDepth).toBe('deep')
-    expect(parsed.nextStep.action).toBe('merge')
+    // A `comments` verdict goes to a person even when its seats are filled.
+    expect(parsed.nextStep.action).toBe('escalate')
 
     const reviewReq = createTestIo()
     expect(

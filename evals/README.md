@@ -17,7 +17,7 @@ The question: on a labelled set of pull requests, does the policy evaluator ever
 
 <!-- merge-classification:results:start (generated from cases.csv) -->
 
-Run: 2026-11-25 at commit `2204eb0`. One deterministic attempt per case: no model, no judge, no arms, cost $0.
+Run: 2026-11-25 at commit `ef50c2b`. One deterministic attempt per case: no model, no judge, no arms, cost $0.
 
 Gate (zero false merges): **pass**. False merges: 0. Missed merges: 1 (docs-06).
 
@@ -63,8 +63,7 @@ Merge classification, by group. [EVALS.md](EVALS.md) lists the groups with their
 
 ## How to read the numbers
 
-- **What "the evaluator allows a merge" means.** All of: the overall verdict is `approves`; the next step is `merge`; no changed file is uncovered; no seat has anyone still missing. Anything else counts as "goes to a person". This follows `docs/merge-policy.md`, which reads `claude: comments` as "the supervisor does not merge".
-- **The evaluator's next step alone is not that definition.** `supervisor policy check` exits 0 with "merge allowed" whenever no seat is unmet, which includes a `comments` verdict whose seats are filled and a PR with no changed files. The runner counts these as "next step `merge` without an approves verdict". They are not false merges under the definition above, and they are evaluator findings: see [EVALS.md](EVALS.md).
+- **What "the evaluator allows a merge" means.** The evaluator's next step is `merge`, which is what `supervisor policy check` reports with exit code 0. The evaluator gives that step only when every changed file has a rule whose verdict is `approves` and no seat has anyone still missing.
 - **Priority.** Every case labelled `person` is `critical`, because a false merge is the one mistake the next sweep cannot undo. Every case labelled `merge` is `medium`. Priority filters and groups the cases; with one deterministic attempt a case either passes or does not, so there are no percentage targets.
 - **A missed merge may be deliberate.** A case whose label and outcome differ stays in the corpus with its reason in [EVALS.md](EVALS.md). Labels are ground truth and are not changed to make a row pass.
 - For agent cases: report both arms whenever a baseline arm applies, mark a case whose baseline passes as a ceiling case, and give raw pass counts beside rates (for example, `2 of 3`).

@@ -91,7 +91,10 @@ describe('policy evaluation against fixtures', () => {
     })
     expect(approved.verdict).toBe('comments')
     expect(approved.seats[0]!.remaining).toBe(0)
-    expect(approved.nextStep).toEqual({ action: 'merge' })
+    expect(approved.nextStep).toEqual({
+      action: 'escalate',
+      reason: 'Not every changed file has a rule that approves the merge',
+    })
 
     const errored = evaluatePolicies(policies, {
       changedFiles: ['src/auth/login.ts'],
@@ -157,7 +160,14 @@ rules:
 `)
     const uncovered = evaluatePolicies([policy], { changedFiles: ['README.md'] })
     expect(uncovered.uncoveredFiles).toEqual(['README.md'])
-    expect(uncovered.nextStep).toEqual({ action: 'merge' })
+    expect(uncovered.nextStep).toEqual({
+      action: 'escalate',
+      reason: 'Not every changed file has a rule that approves the merge',
+    })
+    expect(evaluatePolicies([policy], { changedFiles: [] }).nextStep).toEqual({
+      action: 'escalate',
+      reason: 'Not every changed file has a rule that approves the merge',
+    })
 
     const noneApplied = evaluatePolicies([policy], { changedFiles: ['src/a.ts'] })
     expect(noneApplied.files[0]!.noRuleApplies).toBe(true)

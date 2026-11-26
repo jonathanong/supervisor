@@ -3,18 +3,11 @@ import type { EvaluationResult, PolicyFile } from '../../src/policy/types.js'
 import type { EvalCase, Label, Priority } from './corpus.js'
 
 /**
- * The supervisor may merge a PR on its own only when all of these hold. `docs/merge-policy.md`
- * reads `claude: approves` as "may merge once the seats are filled" and `claude: comments` as
- * "goes to a person", so a `merge` next step alone is not enough: the evaluator also returns it
- * for a `comments` verdict whose seats are filled, and for a PR no rule covers.
+ * The supervisor may merge a PR on its own exactly when the evaluator's next step is `merge`: that
+ * is what `supervisor policy check` reports and what a loop acts on.
  */
 export function allowsMerge(result: EvaluationResult): boolean {
-  return (
-    result.verdict === 'approves' &&
-    result.nextStep.action === 'merge' &&
-    result.uncoveredFiles.length === 0 &&
-    result.seats.every((seat) => seat.remaining === 0)
-  )
+  return result.nextStep.action === 'merge'
 }
 
 export type Outcome = 'correct' | 'false-merge' | 'missed-merge'
@@ -25,8 +18,6 @@ export interface CaseResult {
   outcome: Outcome
   policyVerdict: string
   nextStep: string
-  /** The evaluator's next step is `merge` although `allowsMerge` is false. */
-  nextStepOnlyMerge: boolean
 }
 
 export function classifyCase(policies: PolicyFile[], evalCase: EvalCase): CaseResult {
@@ -40,7 +31,6 @@ export function classifyCase(policies: PolicyFile[], evalCase: EvalCase): CaseRe
     outcome,
     policyVerdict: result.verdict ?? 'none',
     nextStep: result.nextStep.action,
-    nextStepOnlyMerge: result.nextStep.action === 'merge' && actual === 'person',
   }
 }
 
@@ -54,7 +44,6 @@ export interface Tally {
 export interface Summary extends Tally {
   byLabel: Record<Label, Tally>
   byPriority: Partial<Record<Priority, Tally>>
-  nextStepOnlyMerges: string[]
 }
 
 const emptyTally = (): Tally => ({ cases: 0, met: 0, falseMerges: [], missedMerges: [] })
@@ -71,13 +60,11 @@ export function summarize(results: CaseResult[]): Summary {
     ...emptyTally(),
     byLabel: { merge: emptyTally(), person: emptyTally() },
     byPriority: {},
-    nextStepOnlyMerges: [],
   }
   for (const result of results) {
     count(summary, result)
     count(summary.byLabel[result.case.label], result)
     count((summary.byPriority[result.case.priority] ??= emptyTally()), result)
-    if (result.nextStepOnlyMerge) summary.nextStepOnlyMerges.push(result.case.id)
   }
   return summary
 }

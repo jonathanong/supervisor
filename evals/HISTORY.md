@@ -4,6 +4,28 @@ This log only grows, newest entry first. Scores in different entries are not com
 case, grader, fixture, or model changed between them; each entry says what changed. The current
 scores are in [EVALS.md](EVALS.md).
 
+## 2026-11-25: Evaluator fix; "allows a merge" now means the next step
+
+- Commit: `ef50c2b`. Command: `pnpm run eval:merge-classification`.
+- Deterministic eval: one attempt per case, no model, no judge, no arms, cost $0.
+
+Raw counts, 80 cases: unchanged from the entry below. False merges 0; missed merges 1 (docs-06).
+Gate (zero false merges): pass.
+
+What changed:
+
+- `src/policy/evaluate.ts`: the next step is `merge` only when every changed file has a rule
+  whose verdict is `approves`. A `comments` verdict, a file no rule covers, and an empty change
+  now escalate. This closes both findings of the first run (human-04, scope-06).
+- Grader change: "the evaluator allows a merge" is now the evaluator's next step alone, in place
+  of the four-part check of the first run. No case changed outcome, so the two entries are
+  comparable. The separate count of merge next steps without an `approves` verdict is gone.
+
+What the run showed:
+
+- The evaluator's own answer, which `supervisor policy check` prints and a loop acts on, now
+  merges no case labelled `person`.
+
 ## 2026-11-25: First merge-classification run
 
 - Commit: `2204eb0`. Command: `pnpm run eval:merge-classification`.
