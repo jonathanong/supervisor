@@ -6,7 +6,7 @@ import { PolicyLoadError, type PolicyFile } from './types.js'
 export const SUPERVISOR_POLICY_LABEL = 'supervisor:'
 
 export interface LayeredPolicyOptions {
-  /** The paths the supervisor policy must send to a person. Defaults to `DEFAULT_ALWAYS_HUMAN`. */
+  /** The paths the supervisor policy must send to a person. Defaults to none. */
   requiredAlwaysHuman?: readonly AlwaysHumanRequirement[]
 }
 

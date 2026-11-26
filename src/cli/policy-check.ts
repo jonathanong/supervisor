@@ -9,6 +9,7 @@ import { checkPull, type PullCheckResult } from '../policy/pull-check.js'
 import type { ClassifierResult, EvaluationInput, PolicyFile } from '../policy/types.js'
 import { isObject } from '../state/json.js'
 import { formatHumanCheck, formatPullCheck } from './policy-format.js'
+import { requiredAlwaysHumanFromConfig } from './policy-required.js'
 import type { CliIo } from './run.js'
 
 interface CheckArgs {
@@ -120,6 +121,15 @@ async function checkPullRequest(
   return result.nextStep.action === 'merge' ? 0 : 1
 }
 
+/** Loads the policies. A supervisor policy takes its required always-human paths from the config. */
+async function loadPolicies(args: CheckArgs, io: CliIo): Promise<PolicyFile[]> {
+  if (!args.repoDir && !args.supervisorPolicy) return await discoverPolicies(args.dir!)
+  const requiredAlwaysHuman = await requiredAlwaysHumanFromConfig(io.env, process.cwd())
+  return args.repoDir
+    ? await loadLayeredPolicies(args.dir!, args.repoDir, { requiredAlwaysHuman })
+    : await discoverPolicies(args.dir!, { supervisorPolicy: true, requiredAlwaysHuman })
+}
+
 export async function runCheck(argv: string[], io: CliIo, help: string): Promise<number> {
   const args = parseArgs(argv)
   if (typeof args === 'string') {
@@ -127,9 +137,7 @@ export async function runCheck(argv: string[], io: CliIo, help: string): Promise
     return 2
   }
   try {
-    const policies = args.repoDir
-      ? await loadLayeredPolicies(args.dir!, args.repoDir)
-      : await discoverPolicies(args.dir!, { supervisorPolicy: args.supervisorPolicy })
+    const policies = await loadPolicies(args, io)
     if (args.positionals.length > 0) return await checkPullRequest(args, policies, io)
     const input = await readInput(args.input!)
     const collected = 'blockers' in input
