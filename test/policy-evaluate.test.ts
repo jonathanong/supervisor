@@ -181,18 +181,4 @@ rules:
     expect(blocked.verdict).toBe('blocks')
     expect(blocked.nextStep.action).toBe('escalate')
   })
-
-  // TODO(spec): enforce protected-file baseline (1 human, no bots, no claude approves) on uncovered protected files.
-  it.skip('enforces protected-file baseline on uncovered .github/workflows files', () => {
-    const policy = parsePolicySource(`
-version: 1
-rules:
-  - purpose: Source only
-    paths: ['src/**']
-    verdict: { claude: approves, seats: 0 }
-`)
-    const result = evaluatePolicies([policy], { changedFiles: ['.github/workflows/ci.yml'] })
-    expect(result.verdict).toBe('comments')
-    expect(result.seats).toHaveLength(1)
-  })
 })

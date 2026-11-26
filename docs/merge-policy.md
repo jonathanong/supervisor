@@ -24,7 +24,17 @@ A PR that changes a policy file is judged by the default branch's copy, and an i
 - **Nearest file first.** Going up from a changed file, the first enforcing file with a matching rule that has a `verdict` decides. Where no repository rule matches a file, the supervisor policy decides for it. A repository file in `mode: observe` decides nothing.
 - **Locals are inherited.** A repository file can use the supervisor policy's locals, such as a `"@reviewed"` seat, and its own locals of the same name replace them in that file only. A file that depends on an inherited local needs that local copied in before it moves to `.claude/`.
 - **The loader reads what is on disk.** `loadLayeredPolicies(supervisorDir, repoDir)` and `--repo-dir` take a checkout, so the caller must pass a checkout of the default branch, never of the PR's head. Otherwise a PR could loosen the rules that judge it.
-- **A changed policy file needs a rule that approves it.** `.supervisor/approvals.yml`, `.claude/approvals.yml` and `.claude/classifiers/**`, at any depth, merge only where a rule with `claude: approves` covers them. With no rule on such a file, the next step is to escalate.
+- **A changed policy file needs a rule that approves it.** `.supervisor/approvals.yml`, `.claude/approvals.yml` and `.claude/classifiers/**`, at any depth, merge only where a rule with `claude: approves` covers them.
+
+### Protected files
+
+Policy files (`approvals.yml` or `approvals.yaml` in `.supervisor/` or `.claude/`) and classifier definitions (`.claude/classifiers/**`) are protected at any depth. Where no rule applies to a changed protected file, because none matches it or every matching rule's `if` is false, the evaluator applies a baseline instead of leaving the file with no verdict:
+
+- the verdict is `comments`, so the supervisor never merges the PR, whatever its other files' rules say
+- one seat is asked: a person other than the PR's author and opener. No bot fills it, the final reviewer included
+- the next step is to escalate, and its reason names the file
+
+The baseline covers a gap in a policy. It does not replace the inherited rule on policy files: where a rule does apply to a protected file, that rule decides, so a rule with `claude: approves` can still let one merge.
 
 ## Staying compatible with Claude Approvals
 

@@ -14,6 +14,7 @@ import {
   replaceReadmeBlock,
 } from '../scripts/merge-classification/report.js'
 import { evaluatePolicies } from '../src/policy/evaluate.js'
+import { isProtectedPath } from '../src/policy/protected.js'
 import type { PolicyFile } from '../src/policy/types.js'
 
 /** Cases whose evaluator answer differs from their label. Each needs a reason in evals/EVALS.md. */
@@ -78,6 +79,25 @@ describe('merge-classification eval', () => {
     expect(result.seats.every((seat) => seat.remaining === 0)).toBe(true)
     expect(result.nextStep.action).toBe('escalate')
     expect(allowsMerge(result)).toBe(false)
+  })
+
+  it('holds the protected-file baseline for every protected case when no rule covers it', async () => {
+    const corpus = await loadCorpus(CORPUS_DIR)
+    const cases = corpus.filter((c) => c.input.changedFiles.some(isProtectedPath))
+    const ids = cases.map((c) => c.id).join()
+    expect(ids).toBe(
+      'nested-04,policy-01,policy-02,policy-03,policy-05,policy-06,policy-07,policy-08',
+    )
+
+    for (const protectedCase of cases) {
+      const result = evaluatePolicies([], protectedCase.input)
+
+      expect(protectedCase.label, protectedCase.id).toBe('person')
+      expect(result.verdict, protectedCase.id).toBe('comments')
+      expect(result.seats, protectedCase.id).toHaveLength(1)
+      expect(result.seats[0], protectedCase.id).toMatchObject({ filledBy: [], remaining: 1 })
+      expect(result.nextStep.action, protectedCase.id).toBe('escalate')
+    }
   })
 
   it('has a case that changes outcome for every rule, override, and path pattern', async () => {
