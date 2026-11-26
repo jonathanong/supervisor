@@ -33,7 +33,7 @@ export function evaluatePolicies(policies: PolicyFile[], input: EvaluationInput)
   let overallDepth: ReviewDepth | null = null
   let anyWaitingOnCodeReview = false
   let anyHardBlock = false
-  let blockReason = ''
+  const blockReasons = new Set<string>()
 
   // A changed protected file that no rule applies to takes the baseline instead: one person, no
   // bot, and never a merge by the supervisor, whatever the other files' rules say.
@@ -43,7 +43,9 @@ export function evaluatePolicies(policies: PolicyFile[], input: EvaluationInput)
     allSeats.push(...seats)
     overallVerdict = strictestClaude(overallVerdict, PROTECTED_BASELINE.claude)
     anyHardBlock = true
-    blockReason = `No rule applies to protected file '${file}': a person must approve it, and the supervisor never merges it`
+    blockReasons.add(
+      `No rule applies to protected file '${file}': a person must approve it, and the supervisor never merges it`,
+    )
     return seats
   }
 
@@ -92,7 +94,7 @@ export function evaluatePolicies(policies: PolicyFile[], input: EvaluationInput)
       if (ifRes === 'unknown') {
         unresolvedRuleIf = true
         anyHardBlock = true
-        blockReason = `Rule '${rule.purpose}' condition could not be evaluated`
+        blockReasons.add(`Rule '${rule.purpose}' condition could not be evaluated`)
         continue
       }
       const { verdict, overrideIndex, waitingOnCodeReview } = evaluateRuleVerdict(
@@ -128,7 +130,7 @@ export function evaluatePolicies(policies: PolicyFile[], input: EvaluationInput)
       fileSeats.push(...baseline)
     } else if (noRuleApplies) {
       anyHardBlock = true
-      blockReason = `No rule applies to '${file}'`
+      blockReasons.add(`No rule applies to '${file}'`)
     }
     if (fileVerdict) overallVerdict = strictestClaude(overallVerdict, fileVerdict)
     files.push({
@@ -148,7 +150,7 @@ export function evaluatePolicies(policies: PolicyFile[], input: EvaluationInput)
   const unmetSeats = allSeats.filter((s) => s.remaining > 0)
   let nextStep: NextStep
   if (anyHardBlock) {
-    nextStep = { action: 'escalate', reason: blockReason }
+    nextStep = { action: 'escalate', reason: [...blockReasons].join('; ') }
   } else if (
     anyWaitingOnCodeReview &&
     (overallVerdict === 'blocks' || unmetSeats.length > 0 || overallVerdict === 'comments')
