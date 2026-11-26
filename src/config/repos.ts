@@ -7,7 +7,7 @@ export interface ListedRepo {
 }
 
 /** The `--jq` filter for the repository listing: one `name<TAB>fork` line per live repository. */
-export const REPO_LIST_JQ = '.[] | select(.archived | not) | [.name, .fork] | @tsv'
+export const REPO_LIST_JQ = '.[] | select((.archived or .disabled) | not) | [.name, .fork] | @tsv'
 
 /** Every scope configured for one owner; an owner with none is a configuration error. */
 export function scopesForOwner(loaded: LoadedConfig, owner: string): Scope[] {
@@ -18,9 +18,19 @@ export function scopesForOwner(loaded: LoadedConfig, owner: string): Scope[] {
   return scopes
 }
 
-/** The REST path that lists a scope's repositories: organizations and users differ. */
-export function repoListEndpoint(scope: Scope): string {
-  return `${scope.kind === 'org' ? 'orgs' : 'users'}/${scope.owner}/repos?per_page=100`
+/**
+ * The REST path that lists a scope's repositories. `users/<owner>/repos` returns public
+ * repositories only, so a user scope whose owner is the signed-in user (`login`) lists through
+ * `user/repos`, which includes the private ones that user owns. Another user's scope has only the
+ * public endpoint.
+ */
+export function repoListEndpoint(scope: Scope, login?: string): string {
+  if (scope.kind === 'org') {
+    return `orgs/${scope.owner}/repos?per_page=100`
+  }
+  return login?.toLowerCase() === scope.owner.toLowerCase()
+    ? 'user/repos?affiliation=owner&per_page=100'
+    : `users/${scope.owner}/repos?per_page=100`
 }
 
 export function parseRepoList(stdout: string): ListedRepo[] {

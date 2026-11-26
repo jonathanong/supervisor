@@ -13,15 +13,28 @@ import { HarnessExit, WaitError, type WaitContext } from './context.js'
 const PRESETS = 'ejection,dependabot-pr,/shepherd,/plan,/fix'
 const CLOSED_PRS = '{"event": "pull_request", "action": "closed"}'
 
-/** `<owner>/<name>` for every live repository this owner's scopes select. */
+async function gh(ctx: WaitContext, args: string[], what: string): Promise<string> {
+  const result = await ctx.run('gh', args)
+  if (result.code !== 0) {
+    throw new WaitError(`${what} exited ${result.code}: ${result.stderr.trim().slice(0, 200)}`)
+  }
+  return result.stdout
+}
+
+/**
+ * `<owner>/<name>` for every live repository this owner's scopes select. A user scope first asks
+ * who is signed in: only that user's own listing includes private repositories. A wait that cannot
+ * tell fails, rather than quietly watching the public repositories alone.
+ */
 export async function listRepositories(ctx: WaitContext): Promise<string[]> {
   const scopes = scopesForOwner(ctx.loaded, ctx.owner)
-  const args = ['api', '--paginate', repoListEndpoint(scopes[0]!), '--jq', REPO_LIST_JQ]
-  const listed = await ctx.run('gh', args)
-  if (listed.code !== 0) {
-    throw new WaitError(`gh exited ${listed.code}: ${listed.stderr.trim().slice(0, 200)}`)
-  }
-  const names = selectRepos(scopes, parseRepoList(listed.stdout))
+  const scope = scopes[0]!
+  const login =
+    scope.kind === 'user'
+      ? (await gh(ctx, ['api', 'user', '--jq', '.login'], 'gh api user')).trim()
+      : undefined
+  const args = ['api', '--paginate', repoListEndpoint(scope, login), '--jq', REPO_LIST_JQ]
+  const names = selectRepos(scopes, parseRepoList(await gh(ctx, args, 'gh')))
   if (names.length === 0) {
     throw new WaitError('no repositories match the configuration')
   }

@@ -12,19 +12,33 @@ import {
   StateError,
 } from './store.js'
 
-function parsePath(path: string | undefined): { path: string; keys: string[]; last: string } {
-  if (path === undefined) {
-    throw new UsageError('a dotted path is required')
+/**
+ * The keys of a path. One argument is split on dots. Several arguments are one key each, so a key
+ * can contain a dot. A repository key (`<owner>/<repo>`, the only keys with a slash) can contain
+ * one, so a dotted path that continues after a repository key cannot be split and is refused
+ * rather than guessed at. `path` is the keys joined by dots, for messages only.
+ */
+function parsePath(given: string[]): { path: string; keys: string[]; last: string } {
+  if (given.length === 0) {
+    throw new UsageError('a path is required')
   }
-  const keys = path.split('.')
+  const dotted = given.length === 1
+  const keys = dotted ? given[0]!.split('.') : given
+  const written = given.join(' ')
   if (!Object.hasOwn(FIELDS, keys[0]!) || !keys.every(Boolean)) {
     const known = Object.keys(FIELDS).sort().join(', ')
-    throw new StateError(`supervisor state: '${path}' must start with one of ${known}`)
+    throw new StateError(`supervisor state: '${written}' must start with one of ${known}`)
   }
-  return { path, keys, last: keys.at(-1)! }
+  if (dotted && keys.slice(0, -1).some((key) => key.includes('/'))) {
+    throw new StateError(
+      `supervisor state: '${written}' is ambiguous: a repository name can contain a dot. ` +
+        'Pass each key as its own argument, with spaces in place of the dots between keys',
+    )
+  }
+  return { path: keys.join('.'), keys, last: keys.at(-1)! }
 }
 
-/** The object that holds the last key of a dotted path; `create` makes the missing ones. */
+/** The object that holds the last key of a path; `create` makes the missing ones. */
 function parentOf(state: JsonObject, keys: string[], create: boolean): JsonObject {
   let node = state
   keys.slice(0, -1).forEach((key, depth) => {
@@ -41,10 +55,7 @@ function parentOf(state: JsonObject, keys: string[], create: boolean): JsonObjec
 
 function onePath(args: string[], options: Record<string, typeof TEXT>) {
   const { values, positionals } = parseArgs({ args, options, allowPositionals: true })
-  if (positionals.length > 1) {
-    throw new UsageError(`unexpected arguments: ${positionals.slice(1).join(' ')}`)
-  }
-  return { values, ...parsePath(positionals[0]) }
+  return { values, ...parsePath(positionals) }
 }
 
 /** `mergeRecords` is written only by `merge-record`, which checks what it stores. */

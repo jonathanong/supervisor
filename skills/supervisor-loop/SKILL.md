@@ -32,8 +32,8 @@ procedure.
 - **State:** `state.json`, which also holds the sweep claim, lives in `stateDir`, outside any repository. Change
   `state.json` only through `supervisor state`, which checks field shapes, holds a lock for each
   whole read-modify-write, and writes atomically. Its `set`, `append`, and `remove` subcommands take
-  a dotted path under any field listed in Step 1 (for example
-  `supervisor state set lateReview.<owner>/<repo>.scannedThrough --json '"<ISO time>"'`); named
+  a path under any field listed in Step 1, one argument per key (for example
+  `supervisor state set lateReview <owner>/<repo> scannedThrough --json '"<ISO time>"'`); named
   subcommands cover the common updates. State keyed by repository uses `<owner>/<repo>`.
 - **Delegation rules:** an optional list of `{area, session, since, source}` in `state.json`
   `delegations` (for example a class of flaky test routed to a named agent session), changed only on
@@ -89,12 +89,12 @@ implementation-tier worker, never the supervisor session.
 ## Step 1 - Preflight
 
 1. Confirm the session is interactive and read the [configuration](#configuration).
-2. Enumerate repositories per scope, exhausting the list. For kind `org`:
-   `gh api --paginate 'orgs/<owner>/repos?per_page=100' --jq '.[] | select(.archived | not) | {name, fork}'`;
-   for kind `user`, the same with `users/<owner>/repos`. Keep the names in `repos` (all of them for
-   `"*"`), drop forks when `excludeForks` is true, and drop `excludedRepos`. The checkout of
-   `<name>` is `<checkoutRoot>/<name>` of its scope; work in a temporary worktree, never on its
-   current branch.
+2. Enumerate repositories per scope, exhausting the list:
+   `gh api --paginate '<endpoint>' --jq '.[] | select((.archived or .disabled) | not) | {name, fork}'`,
+   with the endpoint the [`kind` key](references/config.md#scopes) gives. Keep the names in `repos`
+   (all of them for `"*"`), drop forks when `excludeForks` is true, and drop `excludedRepos`. The
+   checkout of `<name>` is `<checkoutRoot>/<name>` of its scope; work in a temporary worktree, never
+   on its current branch.
 3. Open `stateDir`. `state.json` holds these fields (`supervisor state` creates the file on its
    first write):
    - `lastSweepAt`

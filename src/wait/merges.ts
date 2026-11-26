@@ -39,17 +39,35 @@ async function findings(
   return { ...compact(event), ...found, ...(result.truncated ? { truncated: true } : {}) }
 }
 
-/** True when a loop record (shepherd, routing, delegation, escalation, intake) names the PR. */
+/**
+ * True when `text` names the pull request `needle` as a whole: not inside a longer owner or
+ * repository name, and not as the start of a longer number. With `bare`, a match that follows a
+ * slash is skipped too, because that names the repository under some owner.
+ */
+function mentions(text: string, needle: string, bare: boolean): boolean {
+  for (let at = text.indexOf(needle); at !== -1; at = text.indexOf(needle, at + 1)) {
+    const before = text.charAt(at - 1)
+    const inName = /[\w.-]/.test(before) || (bare && before === '/')
+    if (!inName && !/\d/.test(text.charAt(at + needle.length))) {
+      return true
+    }
+  }
+  return false
+}
+
+/**
+ * True when a loop record (shepherd, routing, delegation, escalation, intake) names the PR as
+ * `<owner>/<repo>#N`, so the same-named repository of another owner does not match. A record that
+ * names it as `<repo>#N` with no owner (free text, or an entry from before records carried the
+ * owner) still matches: it cannot be told apart, and a merge reported once too often costs less
+ * than a tracked one that is missed.
+ */
 function tracked(state: JsonObject, ref: string): boolean {
-  const needle = ref.slice(ref.indexOf('/') + 1).toLowerCase()
+  const full = ref.toLowerCase()
+  const short = full.slice(full.indexOf('/') + 1)
   return TRACKING.some((key) => {
     const text = dumps(get(state, key) ?? '').toLowerCase()
-    for (let at = text.indexOf(needle); at !== -1; at = text.indexOf(needle, at + 1)) {
-      if (!/\d/.test(text.charAt(at + needle.length))) {
-        return true
-      }
-    }
-    return false
+    return mentions(text, full, false) || mentions(text, short, true)
   })
 }
 
