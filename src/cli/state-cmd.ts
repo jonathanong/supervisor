@@ -12,6 +12,7 @@ import {
   show,
   sweepDone,
 } from '../state/commands-records.js'
+import { sweepStart } from '../state/commands-sweep.js'
 import { watch } from '../state/commands-watch.js'
 import { UsageError, type StateContext } from '../state/context.js'
 import { dumps } from '../state/json.js'
@@ -19,7 +20,7 @@ import { FIELDS, timestamp, withStateLock } from '../state/store.js'
 import type { CliIo } from './run.js'
 
 const FIELD_NAMES = Object.keys(FIELDS)
-const FIELD_LINES = [0, 6, 12]
+const FIELD_LINES = [0, 6, 12, 18]
   .map((start) => `  ${FIELD_NAMES.slice(start, start + 6).join(', ')}`)
   .join(',\n')
 
@@ -36,7 +37,10 @@ Subcommands:
                                           Append a JSON value to the list at a dotted path;
                                           --keep keeps only the newest n entries
   remove <path>                           Remove the key at a dotted path
-  sweep-done                              Set lastSweepAt to now
+  sweep-start --id <id> [--ttl-minutes <n>]
+                                          Claim the one running sweep; exits 1 while another id's
+                                          claim is newer than the limit (default 120 minutes)
+  sweep-done                              Set lastSweepAt to now and release the sweep claim
   advance-hh --owner <owner>              Store the cursor and seen ids from hh-last.<owner>.json
                                           under hookHarness.<owner>
   route --what <text> --to <text> [--evidence <text>] [--issue <text>] [--note <text>]
@@ -88,6 +92,8 @@ async function dispatch(name: string, args: string[], ctx: StateContext): Promis
       return await locked(appendValue)
     case 'remove':
       return await locked(removeValue)
+    case 'sweep-start':
+      return await locked(sweepStart)
     case 'sweep-done':
       return await locked(sweepDone)
     case 'advance-hh':
