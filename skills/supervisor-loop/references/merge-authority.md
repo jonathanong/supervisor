@@ -31,7 +31,7 @@ escalate it. Never work around a host permission prompt on a merge.
 ## Classifier results
 
 `supervisor policy check` reads the PR from GitHub itself: its current head, changed files, authors,
-labels, approvals of that head, team members, and its checks. Never assemble those by
+labels, approvals of that head, team members. Never assemble those by
 hand. The one thing it cannot collect is a classifier result. When the policy names a classifier,
 write the results for the current head to a JSON file with a file-writing tool and pass it with
 `--classifiers`:
@@ -68,28 +68,26 @@ supervisor policy. Give it a checkout of the default branch, never of the PR's h
 loosen the rules that judge it. Save the JSON the command prints with a file-writing tool; the
 [merge record](#merge-record) needs it. The command exits 0 only when the next step is a merge.
 
-| Result                                                                  | The supervisor does                                                                                                                                                                                       |
-| ----------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Exit 0, `nextStep.action` is `merge`, and `authorOnlyWarnings` is empty | May merge the head in `pull.head`.                                                                                                                                                                        |
-| `nextStep.action` is `request_review`                                   | Requests a final review of this head at `nextStep.depth`, as `finalReview.request` says, leaves the PR ready, and reports `awaiting-final-review`.                                                        |
-| `nextStep.action` is `escalate`                                         | Leaves the PR ready and escalates with `nextStep.reason`.                                                                                                                                                 |
-| `authorOnlyWarnings` is not empty                                       | Does not merge, whatever the next step says: a seat the PR's author fills alone means nobody looked. Escalates, with the warning, so the policy rule gets fixed.                                          |
-| Exit 2, or output that is not the JSON above                            | Does not merge. Reports the error. Exit 2 also covers a PR that could not be read whole: too many files, a list shorter than the PR's count, a team it cannot read, or a head that moved during the read. |
+| Result                                                                  | The supervisor does                                                                                                                                                                                                             |
+| ----------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Exit 0, `nextStep.action` is `merge`, and `authorOnlyWarnings` is empty | May merge the head in `pull.head`.                                                                                                                                                                                              |
+| `nextStep.action` is `request_review`                                   | Requests a final review of this head at `nextStep.depth`, as `finalReview.request` says, leaves the PR ready, and reports `awaiting-final-review`.                                                                              |
+| `nextStep.action` is `escalate`                                         | Leaves the PR ready and escalates with `nextStep.reason`.                                                                                                                                                                       |
+| `nextStep.action` is `shepherd`                                         | Leaves the PR ready and runs `pr-shepherd` on it. The policy allows the merge but pr-shepherd would not merge the head yet, often a pending check. It needs no person, so it does not escalate yet. Rerun the check afterwards. |
+| `authorOnlyWarnings` is not empty                                       | Does not merge, whatever the next step says: a seat the PR's author fills alone means nobody looked. Escalates, with the warning, so the policy rule gets fixed.                                                                |
+| Exit 2, or output that is not the JSON above                            | Does not merge. Reports the error. Exit 2 also covers a PR that could not be read whole: too many files, a list shorter than the PR's count, a team it cannot read, or a head that moved during the read.                       |
 
 Other fields of the JSON:
 
 - **`pull`** is `{repository, number, head}`: the PR and the head the result holds for.
 - **`blockers`** lists what holds a merge whatever the policy says: a draft, a PR that is not open, a
   commit whose author has no login. Any blocker makes the next step `escalate`.
-- **`policyNextStep`** is what the policy alone says, before the blockers and the checks. When it is
-  `merge` and `nextStep` is not, the policy allows the PR and a blocker or a check holds it: report
-  that reason, and do not treat it as a policy refusal.
-- **`checks`** is the state of the checks on the head (`source`, `state`, `total`, `failing`,
-  `pending`, `notRequired`, `mergeState`). Only checks GitHub requires for the PR hold the merge;
-  `notRequired` lists failing or pending checks that do not. `mergeState` is GitHub's merge state;
-  BLOCKED (a required check has not reported, a required review, or another branch rule) and UNKNOWN
-  (not worked out yet) each add a blocker. An UNKNOWN state is read once more over REST before
-  the supervisor holds on it.
+- **`policyNextStep`** is what the policy alone says, before the blockers and pr-shepherd's answer.
+  When it is `merge` and `nextStep` is not, the policy allows the PR and a blocker or pr-shepherd
+  holds it: report that reason, and do not treat it as a policy refusal.
+- **`readiness`** is `{ready, action, summary?}`: what pr-shepherd's read-only `status` said about
+  this head. `ready` is true only when pr-shepherd's `action` is `merge` for this very head. The
+  supervisor reads no check or merge state itself.
 
 Rules around the check:
 
@@ -99,10 +97,11 @@ Rules around the check:
   its result.
 - **A PR that changes a policy file** (`.supervisor/**`, `.claude/approvals.yml`,
   `.claude/classifiers/**`) always goes to a person.
-- **CI is part of the check.** The check asks GitHub which checks the PR requires and does not say merge
-  unless they passed; where the base branch requires none, every check on the head must pass. A head
-  with no checks, or a failing or pending required check, escalates.
-  `pr-shepherd` still enforces the repository's required checks at merge time.
+- **CI is pr-shepherd's call.** The check asks pr-shepherd whether it would merge the head, and
+  does not say merge unless it would. A pending or failing check, a missing review or a branch rule
+  makes the next step `shepherd`: run `pr-shepherd` on the PR and rerun the check on the head it
+  reaches. It is not an escalation, since no person is needed. `pr-shepherd` still enforces the
+  repository's required checks at merge time.
 
 ## Judgments the policy cannot express
 
@@ -155,13 +154,13 @@ supervisor state merge-record --pr <owner>/<repo>#<N> --head <head> --check <che
   outcomes only, never PR text.
 - The command writes the record itself: `pr`, `head`, `at`, `rules` (the `purpose` and `sourceFile`
   of each rule the check applied), `classifiers` (the results the check evaluated with), `seats`
-  (each seat and who filled it), `checks` (`state` and `total`), `review`, and `alwaysHuman`.
+  (each seat and who filled it), `readiness` (`ready` and `action`), `review`, and `alwaysHuman`.
 
 Merge only when it exits 0. It exits 1, and records nothing, when:
 
 - the check file has no `pull` (a check made with `--input` is not a check of the real PR),
 - `pull` names another PR, or `pull.head` is not `--head`,
-- the next step is not `merge`, a blocker is listed, or `checks.state` is not `success`,
+- the next step is not `merge`, a blocker is listed, or `readiness.ready` is not true,
 - there is an author-only warning, or the check names no rule.
 
 It exits 3 while the [stop switch](stop-switch.md) is set. `supervisor state set` and `append`

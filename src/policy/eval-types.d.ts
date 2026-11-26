@@ -62,6 +62,8 @@ export type NextStep =
   | { action: 'merge' }
   | { action: 'request_review'; depth: ReviewDepth }
   | { action: 'escalate'; reason: string }
+  /** The policy allows the merge but pr-shepherd says the PR is not ready: run pr-shepherd. */
+  | { action: 'shepherd'; reason: string }
 
 export interface EvaluationResult {
   files: FileEvaluation[]

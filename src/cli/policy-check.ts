@@ -76,20 +76,26 @@ async function readJson(path: string, what: string): Promise<unknown> {
   }
 }
 
-const COLLECTED_KEYS = ['pull', 'checks', 'blockers'] as const
+const COLLECTED_KEYS = ['pull', 'readiness', 'blockers'] as const
 
 /**
- * A written input, or one that --print-input printed. A printed one carries the head's checks
- * and blockers, and they must hold a merge on replay as they do live, so it needs all three.
+ * A written input, or one that --print-input printed. A printed one carries the head, whether
+ * pr-shepherd would merge it, and the blockers; they must hold a merge on replay as they do
+ * live, so it needs all three. An input from before pr-shepherd, with `checks`, is refused.
  */
 async function readInput(path: string): Promise<EvaluationInput | PullFacts> {
   const raw = await readJson(path, 'input')
   if (!isObject(raw) || !Array.isArray(raw.changedFiles)) {
     throw new FactsError('Input JSON must be an object with a changedFiles array')
   }
+  if ('checks' in raw) {
+    throw new FactsError(
+      'This input has the old checks key: print it again with --print-input, which now carries readiness',
+    )
+  }
   if (COLLECTED_KEYS.some((key) => key in raw)) {
-    const whole = isObject(raw.pull) && isObject(raw.checks) && Array.isArray(raw.blockers)
-    if (!whole) throw new FactsError('A printed input needs pull, checks and blockers together')
+    const whole = isObject(raw.pull) && isObject(raw.readiness) && Array.isArray(raw.blockers)
+    if (!whole) throw new FactsError('A printed input needs pull, readiness and blockers together')
   }
   return raw as unknown as EvaluationInput | PullFacts
 }
@@ -110,6 +116,8 @@ async function checkPullRequest(
   const [repository, number] = args.positionals as [string, string]
   const facts = await collectPullFacts(io.runProcess, repository, Number(number), {
     teams: teamsNamed(policies),
+    status: io.shepherdStatus,
+    cwd: args.repoDir ?? process.cwd(),
     ...(args.classifiers ? { classifiers: await readClassifiers(args.classifiers) } : {}),
   })
   if (args.printInput) {

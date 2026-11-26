@@ -19,7 +19,7 @@ const allowed = {
   authorOnlyWarnings: [],
   nextStep: { action: 'merge' },
   pull: { repository: 'Example-Org/example-repo', number: 7, head: HEAD.toUpperCase() },
-  checks: { state: 'success', total: 3, failing: [], pending: [] },
+  readiness: { ready: true, action: 'merge', summary: 'all checks passed' },
   blockers: [],
   classifiers: { 'claude/code_review': review },
 }
@@ -63,7 +63,7 @@ describe('supervisor state merge-record', () => {
         ],
         classifiers: { 'claude/code_review': review },
         seats: [],
-        checks: { state: 'success', total: 1 },
+        readiness: { ready: true, action: 'merge' },
         review: 'reviewer-login approved',
         alwaysHuman: 'clear, checker-login',
       },
@@ -71,10 +71,10 @@ describe('supervisor state merge-record', () => {
     expect(JSON.parse(done.stdout)).toEqual(stored[0])
   })
 
-  it('keeps each applied rule once, the seats with who filled them, and the checks', async () => {
+  it('keeps each applied rule once, the seats with who filled them, and the readiness', async () => {
     const loop = await makeLoop()
     expect((await record(loop, allowed)).code).toBe(0)
-    const bare = { ...allowed, classifiers: undefined, checks: { state: 'success' } }
+    const bare = { ...allowed, classifiers: undefined, readiness: { ready: true } }
     expect((await record(loop, bare)).code).toBe(0)
     const [first, second] = (await loop.state()).mergeRecords
     expect(first).toMatchObject({
@@ -84,12 +84,12 @@ describe('supervisor state merge-record', () => {
         { count: 1, from: ['humans'], filledBy: ['reviewer-login'] },
         { count: null, from: [], filledBy: [] },
       ],
-      checks: { state: 'success', total: 3 },
+      readiness: { ready: true, action: 'merge' },
     })
     expect(Object.keys(first)).toEqual(
-      'pr head at rules classifiers seats checks review alwaysHuman'.split(' '),
+      'pr head at rules classifiers seats readiness review alwaysHuman'.split(' '),
     )
-    expect(second).toMatchObject({ classifiers: {}, checks: { state: 'success', total: null } })
+    expect(second).toMatchObject({ classifiers: {}, readiness: { ready: true, action: null } })
   })
 
   it('refuses a check of another pull request or head, or one not read from GitHub', async () => {
@@ -138,11 +138,9 @@ describe('supervisor state merge-record', () => {
         'merge-record: the check has blockers: ["The pull request is a draft"]\n',
       ],
       [{ ...allowed, blockers: undefined }, 'merge-record: the check has blockers: null\n'],
-      [
-        { ...allowed, checks: { state: 'pending', total: 2 } },
-        'merge-record: the checks on the head are "pending", not "success"\n',
-      ],
-      [{ ...allowed, checks: 7 }, 'merge-record: the checks on the head are null, not "success"\n'],
+      [{ ...allowed, readiness: { ready: false, action: 'wait' } }, '(its action is "wait")'],
+      [{ ...allowed, readiness: { action: 'merge' } }, '(its action is "merge")'],
+      [{ ...allowed, readiness: undefined }, 'ready to merge (its action is null)'],
       [{ ...allowed, authorOnlyWarnings: ['seat filled by the author'] }, 'author-only warnings'],
       [{ ...allowed, authorOnlyWarnings: undefined }, 'author-only warnings'],
       [{ ...allowed, files: [{ file: 'a', rules: [] }] }, 'names no rule that allowed the merge'],

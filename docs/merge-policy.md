@@ -76,7 +76,7 @@ A carve-out names the repositories it applies to with `pr/repository`. A scope t
 
 **Outside the policy:**
 
-- **Required CI:** the supervisor asks GitHub which checks the pull request requires and keeps no list of its own. Only required checks hold a merge. Where the base branch requires none, every check on the head must pass. A required check that has not reported is not in GitHub's list, so the supervisor also reads GitHub's merge state and holds when it is BLOCKED or UNKNOWN. BLOCKED can also mean a required review or another branch rule; the supervisor holds either way, because GitHub would refuse the merge. UNKNOWN means GitHub is still working it out, so the supervisor reads the state once more over REST before it holds on it.
+- **CI and merge readiness:** the supervisor reads no check and no merge state itself. It asks [pr-shepherd](https://github.com/jonathanong/pr-shepherd), through its read-only `status` call, whether it would merge the head, and holds the merge unless the answer is `merge`. pr-shepherd knows the checks the repository requires, the reviews and the branch rules.
 - **Host, model and attended session:** these decide who may merge at all, not what a PR needs, so they live in the [config](config.md).
 - **Decisions:** the policy covers the merge step. It grants nothing about architecture or trade-offs, which stay with a person.
 
@@ -129,8 +129,8 @@ The format takes no new keys, so full versus light review is expressed with what
 - the seats and who must fill them
 - which seats are filled on the current head
 - the review depth asked for
-- the checks on that head
-- the next step: merge, request a review at a given depth on that head, or escalate
+- whether pr-shepherd would merge that head
+- the next step: merge, request a review at a given depth on that head, escalate to a person, or run pr-shepherd when the policy allows the merge but the head is not ready
 
 It exits 0 only when the next step is merge. `--json` prints the same as one object, with the policy's own answer in `policyNextStep` and the final one in `nextStep`.
 
@@ -152,12 +152,14 @@ A GitHub App is written `bot:<app slug>`, so `dependabot[bot]` is `bot:dependabo
 
 **When it refuses.** The command exits 2 and evaluates nothing when it cannot read the PR whole: more files than the API lists (3000), a file or commit list shorter than the PR's own count, a team it cannot read, or a head that moved while it read.
 
-**What holds a merge the policy allows.** These change the next step to escalate, and `--json` lists them:
+**What holds a merge the policy allows.** `--json` lists these:
 
-- **A blocker:** a commit whose author has no GitHub login, a PR that is not open, or a draft. With an author unknown, `facts.authors` is left out, so a condition on `pr/authors` stays undecided.
-- **Checks:** the command asks GitHub which checks on the head are required for this PR, and keeps no list of its own. When GitHub marks any as required, only those hold the merge; a failing or pending check that is not required is listed in `notRequired` and does not hold it. Where the base branch requires none, every check on the head must pass. A required check that has not reported is not in that list, so the command also reads GitHub's merge state and adds a blocker when it is BLOCKED or UNKNOWN. BLOCKED can also mean a required review or another branch rule; the supervisor holds either way, because GitHub would refuse the merge. An UNKNOWN state is read once more over REST before the command holds on it. A head with no checks at all holds the merge too. A head with more than 100 checks is refused, as is a head that moved while the checks were read.
+- **A blocker** makes the next step `escalate`: a commit whose author has no GitHub login, a PR that is not open, or a draft. With an author unknown, `facts.authors` is left out, so a condition on `pr/authors` stays undecided.
+- **pr-shepherd not ready** makes the next step `shepherd`: the policy allows the merge, but pr-shepherd's read-only `status` does not answer `merge` for this head. That covers a pending or failing check, a missing review, a branch rule and any other reason pr-shepherd would not merge. The next step is to run pr-shepherd on the PR. A person is not needed, so it is not `escalate`. The result's `readiness` is `{ ready, action, summary? }`: pr-shepherd's action, whether it is `merge`, and its one-line reason when it gave one. An answer with no head, or a failed call, is never ready; a failed call exits 2. A head that moved while pr-shepherd read it exits 2.
 
-`--print-input` prints the collected input, with the head, the checks and the blockers, and evaluates nothing. `supervisor policy check --dir <policy dir> --input <json>` evaluates a written input file instead, for dry runs and the eval. A written input has no checks and no blockers. An input that `--print-input` printed carries both, and they hold the merge on replay as they did live.
+pr-shepherd reads its `.pr-shepherdrc.yml` from a checkout of the target repository. The command uses `--repo-dir` for that, and the current directory when `--repo-dir` is absent. Run it from a checkout of the target repository, or pass `--repo-dir`, so pr-shepherd applies that repository's config.
+
+`--print-input` prints the collected input, with the head, `readiness` and the blockers, and evaluates nothing. `supervisor policy check --dir <policy dir> --input <json>` evaluates a written input file instead, for dry runs and the eval. A written input has no readiness and no blockers. An input that `--print-input` printed carries both, and they hold the merge on replay as they did live. An input with the old `checks` key is refused: print it again.
 
 `--repo-dir <checkout>` adds the repository's own policy files below the supervisor policy, on either form of the command; without it, `--dir` alone is evaluated.
 

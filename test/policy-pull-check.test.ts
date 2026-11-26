@@ -2,22 +2,10 @@ import { mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
-import {
-  check,
-  checkRun,
-  statusContext,
-  DEV,
-  file,
-  fixture,
-  HEAD,
-  policyDir,
-  REPO,
-  type GhFixture,
-} from './helpers/pull.js'
+import { check, DEV, file, fixture, HEAD, policyDir, REPO, type GhFixture } from './helpers/pull.js'
+import type { ShepherdAnswer } from '../src/policy/facts-readiness.js'
 
 const DIR = ['--dir', policyDir('pull-facts')]
-const run = checkRun
-const passed = (name: string, required = false) => run(name, 'COMPLETED', 'SUCCESS', required)
 
 let temp: string
 let classifiers: string
@@ -43,21 +31,14 @@ async function checkJson(gh: GhFixture, options: string[] = []) {
 }
 
 describe('supervisor policy check <owner>/<repo> <pr>', () => {
-  it('allows the merge when the policy does and every check on the head passed', async () => {
-    const gh = fixture({
-      contexts: [
-        passed('test'),
-        run('docs', 'COMPLETED', 'SKIPPED'),
-        run('lint', 'COMPLETED', 'NEUTRAL'),
-        statusContext('coverage', 'SUCCESS'),
-      ],
-    })
+  it('allows the merge when the policy does and pr-shepherd would merge the head', async () => {
+    const gh = fixture({ shepherd: { action: 'merge', headSha: HEAD, log: 'all checks passed' } })
     const { code, result } = await checkJson(gh)
     expect(code).toBe(0)
     expect(result.nextStep).toEqual({ action: 'merge' })
     expect(result.policyNextStep).toEqual({ action: 'merge' })
     expect(result.pull).toEqual({ repository: REPO, number: 7, head: HEAD })
-    expect(result.checks).toMatchObject({ state: 'success', total: 4 })
+    expect(result.readiness).toEqual({ ready: true, action: 'merge', summary: 'all checks passed' })
     expect(result.seats[0].filledBy).toEqual(['bot:example-reviewer'])
 
     const human = await check(gh, DIR)
@@ -68,51 +49,47 @@ describe('supervisor policy check <owner>/<repo> <pr>', () => {
         'Seats: 1 from [bot:example-reviewer, !pr/authors]\n' +
         '- src/index.ts: Source changes merge once the reviewer bot approves -> approves\n' +
         'Seat 1 from [bot:example-reviewer, !pr/authors]: filled by bot:example-reviewer\n' +
-        'Checks: success (4 on the head; none required, so all must pass)\n' +
+        'pr-shepherd: merge (ready to merge)\n' +
+        'pr-shepherd said: all checks passed\n' +
         'Next step: merge allowed\n',
     )
   })
 
-  it('does not allow a merge the policy allows unless the checks passed', async () => {
-    const cases: Array<[Partial<GhFixture>, string, string]> = [
-      [
-        {
-          contexts: [
-            passed('test'),
-            run('lint', 'COMPLETED', 'FAILURE'),
-            run('e2e', 'IN_PROGRESS'),
-          ],
-        },
-        'failure',
-        'Checks failed on the head: lint',
-      ],
-      [
-        { contexts: [statusContext('deploy', 'ERROR')] },
-        'failure',
-        'Checks failed on the head: deploy',
-      ],
-      [
-        { contexts: [run('e2e', 'QUEUED'), statusContext('coverage', 'PENDING')] },
-        'pending',
-        'Checks have not finished on the head: e2e, coverage',
-      ],
-      [{ contexts: [] }, 'none', 'The head has no checks'],
-      [{ contexts: null }, 'none', 'The head has no checks'],
+  it('does not allow a merge the policy allows unless pr-shepherd would merge the head', async () => {
+    const cases: Array<[ShepherdAnswer, string, string | undefined]> = [
+      [{ action: 'wait', headSha: HEAD, log: 'checks pending' }, 'wait', 'checks pending'],
+      [{ action: 'triage', headSha: HEAD }, 'triage', undefined],
+      [{ action: 'escalate', headSha: HEAD }, 'escalate', undefined],
+      [{ action: 'merge' }, 'merge', 'pr-shepherd did not report its head'],
     ]
-    for (const [overrides, state, reason] of cases) {
-      const { code, result } = await checkJson(fixture(overrides))
+    for (const [answer, action, summary] of cases) {
+      const { code, result } = await checkJson(fixture({ shepherd: answer }))
       expect(code).toBe(1)
-      expect(result.checks.state).toBe(state)
+      expect(result.readiness).toEqual({ ready: false, action, ...(summary ? { summary } : {}) })
       expect(result.policyNextStep).toEqual({ action: 'merge' })
-      expect(result.nextStep).toEqual({ action: 'escalate', reason })
+      expect(result.nextStep.action).toBe('shepherd')
+      expect(result.nextStep.reason).toContain(`pr-shepherd says "${action}"`)
     }
+  })
+
+  it('tells the reader to run pr-shepherd, without a person, when the head is not ready', async () => {
+    const gh = fixture({ shepherd: { action: 'wait', headSha: HEAD, log: 'checks pending' } })
+    const human = await check(gh, DIR)
+    expect(human.code).toBe(1)
+    expect(human.stdout).toContain('pr-shepherd: wait (not ready to merge)\n')
+    expect(human.stdout).toContain('pr-shepherd said: checks pending\n')
+    expect(human.stdout).toContain(
+      'Next step: run pr-shepherd on the pull request (pr-shepherd says "wait", so the head is ' +
+        'not ready to merge: checks pending)\n',
+    )
+    expect(human.stdout).not.toContain('escalate')
   })
 
   it("keeps the policy's own next step when it is not a merge, and prints what holds it", async () => {
     const gh = fixture({
       files: [file('src/index.ts'), file('src/other.ts'), file('scripts/run.ts')],
       reviews: [],
-      contexts: [run('lint', 'COMPLETED', 'FAILURE'), run('e2e', 'QUEUED')],
+      shepherd: { action: 'wait', headSha: HEAD },
       pull: { draft: true },
     })
     const human = await check(gh, DIR)
@@ -122,10 +99,7 @@ describe('supervisor policy check <owner>/<repo> <pr>', () => {
     expect(human.stdout.match(/^Seat .*: filled by nobody$/gm)).toEqual([
       'Seat 1 from [bot:example-reviewer, !pr/authors]: filled by nobody',
     ])
-    expect(human.stdout).toContain(
-      'Checks: failure (2 on the head; none required, so all must pass)\n',
-    )
-    expect(human.stdout).toContain('Failing checks: lint\nPending checks: e2e\n')
+    expect(human.stdout).toContain('pr-shepherd: wait (not ready to merge)\n')
     expect(human.stdout).toContain('Blocker: The pull request is a draft\n')
     expect(human.stdout).toContain(
       'Next step: escalate to a person (The pull request is a draft)\n',

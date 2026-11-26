@@ -1,6 +1,6 @@
 import type { RunProcess } from '../state/process.js'
-import { collectChecks, resolveMergeState, type CheckState } from './facts-checks.js'
 import { accountName, commitSha, count, FactsError, ghObjects, text } from './facts-gh.js'
+import { collectReadiness, type Readiness, type ShepherdStatus } from './facts-readiness.js'
 import { collectTeams } from './facts-teams.js'
 import type { ClassifierResult, EvaluationFacts, EvaluationInput } from './types.js'
 
@@ -18,11 +18,11 @@ const DECIDING_STATES = new Set(['APPROVED', 'CHANGES_REQUESTED', 'DISMISSED'])
 
 /**
  * A pull request's facts as `supervisor policy check --input` reads them, plus what the policy
- * does not judge: the head they describe, its checks, and reasons this head cannot merge.
+ * does not judge: the head they describe, whether pr-shepherd would merge it, and reasons this head cannot merge.
  */
 export interface PullFacts extends EvaluationInput {
   pull: { repository: string; number: number; head: string }
-  checks: CheckState
+  readiness: Readiness
   blockers: string[]
 }
 
@@ -30,6 +30,10 @@ export interface CollectOptions {
   /** Each `<org>/<team>` the policy names. */
   teams: string[]
   classifiers?: Record<string, ClassifierResult>
+  /** Asks pr-shepherd whether the head can merge. */
+  status: ShepherdStatus
+  /** A checkout of the repository, where pr-shepherd reads its config. */
+  cwd: string
 }
 
 function changedFiles(files: Array<Record<string, unknown>>): string[] {
@@ -117,30 +121,18 @@ export async function collectPullFacts(
     labels: labels as string[],
   }
   if (options.teams.length > 0) facts.teams = await collectTeams(run, options.teams)
-  const graphqlChecks = await collectChecks(run, repository, number, head)
+  const readiness = await collectReadiness(options.status, repository, number, head, options.cwd)
 
-  const [after] = await ghObjects(run, endpoint, '{head: .head.sha, mergeState: .mergeable_state}')
+  const [after] = await ghObjects(run, endpoint, '{head: .head.sha}')
   if (after?.head !== head) {
     throw new FactsError(`${repository}#${number} got a new head while its facts were read`)
-  }
-  const checks = {
-    ...graphqlChecks,
-    mergeState: resolveMergeState(graphqlChecks.mergeState, after.mergeState),
-  }
-  if (checks.mergeState === 'BLOCKED') {
-    blockers.push(
-      'GitHub blocks the merge: a required check has not reported, or a branch rule is not met',
-    )
-  }
-  if (checks.mergeState === 'UNKNOWN') {
-    blockers.push('GitHub has not worked out the merge state yet')
   }
   return {
     changedFiles: changedFiles(files),
     facts,
     ...(options.classifiers ? { classifiers: options.classifiers } : {}),
     pull: { repository, number, head },
-    checks,
+    readiness,
     blockers,
   }
 }

@@ -147,6 +147,7 @@ rules:
       stderr: (t) => err.push(t),
       startMcp: vi.fn(async () => undefined),
       runProcess: vi.fn(),
+      shepherdStatus: vi.fn(),
       now: () => new Date(0),
     }
     expect(await runCli(['policy', 'explain', guardDir], io)).toBe(0)

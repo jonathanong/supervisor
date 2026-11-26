@@ -37,6 +37,9 @@ async function replay(name: string, input: unknown, extra: string[] = ['--json']
     runProcess: async () => {
       throw new Error('a replay reads nothing from GitHub')
     },
+    shepherdStatus: async () => {
+      throw new Error('a replay does not ask pr-shepherd')
+    },
     now: () => new Date(0),
   })
   return { code, stdout: out.join(''), stderr: err.join('') }
@@ -45,7 +48,7 @@ async function replay(name: string, input: unknown, extra: string[] = ['--json']
 describe('policy check --input on a printed input', () => {
   const print = ['--print-input', '--classifiers']
 
-  it('holds the merge that a draft or a failing check held live', async () => {
+  it('holds the merge that a draft or a pr-shepherd wait held live', async () => {
     const files = [file('docs/guide.md')]
     const draft = fixture({ files, reviews: [], pull: { draft: true } })
     const printed = JSON.parse((await check(draft, [...DIR, ...print, classifiers])).stdout)
@@ -60,22 +63,44 @@ describe('policy check --input on a printed input', () => {
     expect(JSON.parse(replayed.stdout).policyNextStep).toEqual({ action: 'merge' })
     expect((await replay('draft.json', printed, [])).stdout).toContain('Blocker: ')
 
-    const failing = { ...printed, blockers: [], checks: { ...printed.checks, state: 'failure' } }
-    expect((await replay('failing.json', failing)).code).toBe(1)
-    const passing = { ...printed, blockers: [], checks: { ...printed.checks, state: 'success' } }
-    expect((await replay('passing.json', passing)).code).toBe(0)
+    const waiting = { ...printed, blockers: [], readiness: { ready: false, action: 'wait' } }
+    const held = await replay('waiting.json', waiting)
+    expect(held.code).toBe(1)
+    expect(JSON.parse(held.stdout).nextStep.action).toBe('shepherd')
+    const ready = { ...printed, blockers: [], readiness: { ready: true, action: 'merge' } }
+    expect((await replay('ready.json', ready)).code).toBe(0)
   })
 
-  it('refuses a printed input that lost its checks or blockers', async () => {
+  it('refuses a printed input that lost its readiness or blockers', async () => {
     const open = fixture({ files: [file('docs/guide.md')], reviews: [] })
     const printed = JSON.parse((await check(open, [...DIR, ...print, classifiers])).stdout)
-    for (const key of ['pull', 'checks', 'blockers']) {
+    for (const key of ['pull', 'readiness', 'blockers']) {
       const partial = { ...printed }
       delete partial[key]
       const result = await replay(`no-${key}.json`, partial)
       expect(result.code).toBe(2)
-      expect(result.stderr).toBe('A printed input needs pull, checks and blockers together\n')
+      expect(result.stderr).toBe('A printed input needs pull, readiness and blockers together\n')
     }
+  })
+})
+
+describe('an input from before pr-shepherd', () => {
+  it('is refused, with the way to print a new one', async () => {
+    const open = fixture({ files: [file('docs/guide.md')], reviews: [] })
+    const printed = JSON.parse((await check(open, [...DIR, '--print-input'])).stdout)
+    const { readiness: _, ...rest } = printed
+    const old = { ...rest, checks: { state: 'success', total: 1 } }
+    const result = await replay('old.json', old)
+    expect(result.code).toBe(2)
+    expect(result.stderr).toContain('old checks key')
+    expect(result.stderr).toContain('--print-input')
+  })
+
+  it('carries the readiness a printed input holds', async () => {
+    const open = fixture({ files: [file('docs/guide.md')], reviews: [] })
+    const printed = JSON.parse((await check(open, [...DIR, '--print-input'])).stdout)
+    expect(printed.readiness).toEqual({ ready: true, action: 'merge' })
+    expect('checks' in printed).toBe(false)
   })
 })
 
