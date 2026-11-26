@@ -31,7 +31,7 @@ escalate it. Never work around a host permission prompt on a merge.
 ## Classifier results
 
 `supervisor policy check` reads the PR from GitHub itself: its current head, changed files, authors,
-labels, approvals of that head, team members, and every check on that head. Never assemble those by
+labels, approvals of that head, team members, and its checks. Never assemble those by
 hand. The one thing it cannot collect is a classifier result. When the policy names a classifier,
 write the results for the current head to a JSON file with a file-writing tool and pass it with
 `--classifiers`:
@@ -84,8 +84,9 @@ Other fields of the JSON:
 - **`policyNextStep`** is what the policy alone says, before the blockers and the checks. When it is
   `merge` and `nextStep` is not, the policy allows the PR and a blocker or a check holds it: report
   that reason, and do not treat it as a policy refusal.
-- **`checks`** is the state of every check run and commit status on the head (`state`, `total`,
-  `failing`, `pending`), required or not.
+- **`checks`** is the state of the checks on the head (`source`, `state`, `total`, `failing`,
+  `pending`, `notRequired`). Only checks GitHub requires for the PR hold the merge; `notRequired`
+  lists failing or pending checks that do not.
 
 Rules around the check:
 
@@ -95,8 +96,9 @@ Rules around the check:
   its result.
 - **A PR that changes a policy file** (`.supervisor/**`, `.claude/approvals.yml`,
   `.claude/classifiers/**`) always goes to a person.
-- **CI is part of the check.** The check reads every check on the head and does not say merge
-  unless all of them passed; a head with no checks, or with one failing or pending, escalates.
+- **CI is part of the check.** The check asks GitHub which checks the PR requires and does not say merge
+  unless they passed; where the base branch requires none, every check on the head must pass. A head
+  with no checks, or a failing or pending required check, escalates.
   `pr-shepherd` still enforces the repository's required checks at merge time.
 
 ## Judgments the policy cannot express

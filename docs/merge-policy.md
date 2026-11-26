@@ -67,7 +67,7 @@ A carve-out names the repositories it applies to with `pr/repository`. A scope t
 
 **Outside the policy:**
 
-- **Required CI:** the supervisor merges only once required checks pass, as the format leaves CI to GitHub.
+- **Required CI:** the supervisor asks GitHub which checks the pull request requires and keeps no list of its own. Only required checks hold a merge. Where the base branch requires none, every check on the head must pass.
 - **Host, model and attended session:** these decide who may merge at all, not what a PR needs, so they live in the [config](config.md).
 - **Decisions:** the policy covers the merge step. It grants nothing about architecture or trade-offs, which stay with a person.
 
@@ -146,7 +146,7 @@ A GitHub App is written `bot:<app slug>`, so `dependabot[bot]` is `bot:dependabo
 **What holds a merge the policy allows.** These change the next step to escalate, and `--json` lists them:
 
 - **A blocker:** a commit whose author has no GitHub login, a PR that is not open, or a draft. With an author unknown, `facts.authors` is left out, so a condition on `pr/authors` stays undecided.
-- **Checks:** the command reads every check run and commit status on the head, not only the required ones, since branch protection is often unreadable. The next step is merge only when all of them passed. A failing or pending check that is not required holds the merge too, and so does a head with no checks at all.
+- **Checks:** the command asks GitHub which checks on the head are required for this PR, and keeps no list of its own. When GitHub marks any as required, only those hold the merge; a failing or pending check that is not required is listed in `notRequired` and does not hold it. Where the base branch requires none, every check on the head must pass. A head with no checks at all holds the merge too. A head with more than 100 checks is refused, as is a head that moved while the checks were read.
 
 `--print-input` prints the collected input, with the head, the checks and the blockers, and evaluates nothing. `supervisor policy check --dir <policy dir> --input <json>` evaluates a written input file instead, for dry runs and the eval. A written input has no checks and no blockers. An input that `--print-input` printed carries both, and they hold the merge on replay as they did live.
 

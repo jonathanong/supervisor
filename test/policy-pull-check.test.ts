@@ -2,15 +2,22 @@ import { mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
-import { check, DEV, file, fixture, HEAD, policyDir, REPO, type GhFixture } from './helpers/pull.js'
+import {
+  check,
+  checkRun,
+  statusContext,
+  DEV,
+  file,
+  fixture,
+  HEAD,
+  policyDir,
+  REPO,
+  type GhFixture,
+} from './helpers/pull.js'
 
 const DIR = ['--dir', policyDir('pull-facts')]
-const run = (name: string, status: string, conclusion: string | null = null) => ({
-  name,
-  status,
-  conclusion,
-})
-const passed = (name: string) => run(name, 'completed', 'success')
+const run = checkRun
+const passed = (name: string, required = false) => run(name, 'COMPLETED', 'SUCCESS', required)
 
 let temp: string
 let classifiers: string
@@ -38,12 +45,12 @@ async function checkJson(gh: GhFixture, options: string[] = []) {
 describe('supervisor policy check <owner>/<repo> <pr>', () => {
   it('allows the merge when the policy does and every check on the head passed', async () => {
     const gh = fixture({
-      runs: [
+      contexts: [
         passed('test'),
-        run('docs', 'completed', 'skipped'),
-        run('lint', 'completed', 'neutral'),
+        run('docs', 'COMPLETED', 'SKIPPED'),
+        run('lint', 'COMPLETED', 'NEUTRAL'),
+        statusContext('coverage', 'SUCCESS'),
       ],
-      statuses: [{ name: 'coverage', state: 'success' }],
     })
     const { code, result } = await checkJson(gh)
     expect(code).toBe(0)
@@ -61,7 +68,7 @@ describe('supervisor policy check <owner>/<repo> <pr>', () => {
         'Seats: 1 from [bot:example-reviewer, !pr/authors]\n' +
         '- src/index.ts: Source changes merge once the reviewer bot approves -> approves\n' +
         'Seat 1 from [bot:example-reviewer, !pr/authors]: filled by bot:example-reviewer\n' +
-        'Checks: success (4 on the head, required or not)\n' +
+        'Checks: success (4 on the head; none required, so all must pass)\n' +
         'Next step: merge allowed\n',
     )
   })
@@ -69,21 +76,28 @@ describe('supervisor policy check <owner>/<repo> <pr>', () => {
   it('does not allow a merge the policy allows unless the checks passed', async () => {
     const cases: Array<[Partial<GhFixture>, string, string]> = [
       [
-        { runs: [passed('test'), run('lint', 'completed', 'failure'), run('e2e', 'in_progress')] },
+        {
+          contexts: [
+            passed('test'),
+            run('lint', 'COMPLETED', 'FAILURE'),
+            run('e2e', 'IN_PROGRESS'),
+          ],
+        },
         'failure',
         'Checks failed on the head: lint',
       ],
       [
-        { statuses: [{ name: 'deploy', state: 'error' }] },
+        { contexts: [statusContext('deploy', 'ERROR')] },
         'failure',
         'Checks failed on the head: deploy',
       ],
       [
-        { runs: [run('e2e', 'queued')], statuses: [{ name: 'coverage', state: 'pending' }] },
+        { contexts: [run('e2e', 'QUEUED'), statusContext('coverage', 'PENDING')] },
         'pending',
         'Checks have not finished on the head: e2e, coverage',
       ],
-      [{ runs: [] }, 'none', 'The head has no checks'],
+      [{ contexts: [] }, 'none', 'The head has no checks'],
+      [{ contexts: null }, 'none', 'The head has no checks'],
     ]
     for (const [overrides, state, reason] of cases) {
       const { code, result } = await checkJson(fixture(overrides))
@@ -98,7 +112,7 @@ describe('supervisor policy check <owner>/<repo> <pr>', () => {
     const gh = fixture({
       files: [file('src/index.ts'), file('src/other.ts'), file('scripts/run.ts')],
       reviews: [],
-      runs: [run('lint', 'completed', 'failure'), run('e2e', 'queued')],
+      contexts: [run('lint', 'COMPLETED', 'FAILURE'), run('e2e', 'QUEUED')],
       pull: { draft: true },
     })
     const human = await check(gh, DIR)
@@ -108,7 +122,9 @@ describe('supervisor policy check <owner>/<repo> <pr>', () => {
     expect(human.stdout.match(/^Seat .*: filled by nobody$/gm)).toEqual([
       'Seat 1 from [bot:example-reviewer, !pr/authors]: filled by nobody',
     ])
-    expect(human.stdout).toContain('Checks: failure (2 on the head, required or not)\n')
+    expect(human.stdout).toContain(
+      'Checks: failure (2 on the head; none required, so all must pass)\n',
+    )
     expect(human.stdout).toContain('Failing checks: lint\nPending checks: e2e\n')
     expect(human.stdout).toContain('Blocker: The pull request is a draft\n')
     expect(human.stdout).toContain(
