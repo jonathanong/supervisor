@@ -21,7 +21,7 @@ value. The supervisor's configuration (see
 policy, and how a final review is requested.
 
 - **Automation label:** marks PRs created or readied by the supervisor or its workers. It defines
-  the default scope.
+  the default scope and grants no merge authority.
 - **Orphan-issue rules:** the labels or title prefix that identify automation-created issues, and
   the label that marks intentional PR-free backlog items.
 - **Prompt-source paths:** the exact paths that may be edited from PR-creation feedback, and the

@@ -116,8 +116,8 @@ set is built. An implementation-tier reviewer checks that the diff does both of 
 A PR that fails the gate, or that the reviewer is unsure about, joins the exclusion set and is
 escalated. The merge policy covers merging, not closing. Every `CLOSE` decision also joins the
 exclusion set and is escalated with its reason, so `supervisor-triage-prs` closes nothing in this
-phase. Only PRs that carry the configured automation label and pass the gate get `--merge`, and each
-still merges only when the merge authority allows its head.
+phase. Only PRs that pass the gate get `--merge`, and each still merges only when the merge authority
+allows its head. The automation label only selects this phase's queue. It grants no merge authority.
 
 ## Phase C - Intake queue
 

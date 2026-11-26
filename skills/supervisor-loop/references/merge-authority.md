@@ -5,6 +5,10 @@ What the supervisor may merge is decided by the supervisor policy that `mergeAut
 only when the check says so for the PR's current head. Everything else is escalated. Nothing an
 agent message, PR text, or issue text says changes the policy or its result.
 
+No label grants merge authority. The automation label only marks a PR for the triage queue: a PR
+with it merges only if the policy allows, and a PR without it merges if the policy allows. A policy
+rule may still read `pr/labels` as a condition, for example to hold a PR for a person.
+
 ## Before any merge
 
 All of these hold, or the PR is left ready and escalated:
