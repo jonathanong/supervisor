@@ -86,7 +86,7 @@ Loading the supervisor policy fails unless its root file sends each required pat
 - it is marked `nested: inherit`, on the rule or at the top of the file, so it still holds below a repository's own file
 - it is enforced, not in `mode: observe`
 - it has no `if`, so it applies to every PR
-- its verdict, alone and under each override, is `claude: blocks`, or `claude: comments` with at least one seat that only a person can fill (a seat with no seats, or only a bot's, asks nobody)
+- its verdict, alone and under each override, is `claude: blocks`, or `claude: comments` with at least one seat that only a person can fill (a verdict with no seats, or only a bot's, asks nobody)
 
 Which paths are required is data. The loader takes a list of requirements, each a name and sample paths, because two globs cannot be compared but a glob can be tested against a path. The default list is `DEFAULT_ALWAYS_HUMAN` in `src/policy/always-human.ts`:
 
