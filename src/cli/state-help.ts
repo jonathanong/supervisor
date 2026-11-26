@@ -12,8 +12,8 @@ Typed, locked, atomic updates to <stateDir>/state.json. The config file is $SUPE
 else .supervisor.json in the current directory. Each subcommand holds the state lock for its whole
 read-modify-write, checks the shape of the fields it touches, and replaces the file atomically.
 
-While the stop switch is set (see: supervisor stop --help), sweep-start refuses with one line and
-exit ${STOPPED_EXIT}. Every other subcommand only records facts and keeps working.
+While the stop switch is set (see: supervisor stop --help), sweep-start and merge-record refuse
+with one line and exit ${STOPPED_EXIT}. Every other subcommand only records facts and keeps working.
 
 Subcommands:
   show [key]                              Print one key, or the top-level keys
@@ -22,11 +22,27 @@ Subcommands:
                                           Append a JSON value to the list at a dotted path;
                                           --keep keeps only the newest n entries
   remove <path>                           Remove the key at a dotted path
+                                          (set and append refuse mergeRecords: use merge-record)
   sweep-start --id <id> [--ttl-minutes <n>]
                                           Claim the one running sweep; exits 1 while another id's
                                           claim is newer than the limit (default 120 minutes), and
                                           ${STOPPED_EXIT} while the stop switch is set
   sweep-done                              Set lastSweepAt to now and release the sweep claim
+  merge-record --pr <owner/repo#N> --head <sha> --check <file>
+               --review <text> --always-human <text>
+                                          Record one autonomous merge before it is made. <sha> is
+                                          the full head commit, --check the JSON that
+                                          "supervisor policy check <owner>/<repo> <N> --json"
+                                          printed, --review who reviewed the head and the outcome,
+                                          --always-human who checked the always-human list. Exits
+                                          1 unless the check is of that pull request at that head
+                                          (one made with --input is refused) and its next step is
+                                          merge with no blocker, every check passed, and no
+                                          author-only warning; ${STOPPED_EXIT} while the stop switch is set
+  merge-records [--repo <owner/repo>] [--rule <text>]
+                                          Print the merge records, one JSON line each: all, or
+                                          those of one repository, or those with a rule whose
+                                          purpose contains <text> (takes no lock)
   advance-hh --owner <owner>              Store the cursor and seen ids from hh-last.<owner>.json
                                           under hookHarness.<owner>
   route --what <text> --to <text> [--evidence <text>] [--issue <text>] [--note <text>]

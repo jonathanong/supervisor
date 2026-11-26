@@ -41,3 +41,6 @@ export function need(value: string | undefined, flag: string): string {
 
 /** Owner and repository names: safe in a file name, a URL path, and generated script text. */
 export const NAME = /^[\w.-]+$/
+
+/** `<owner>/<repo>`, the key of every per-repository record. */
+export const REPOSITORY = /^[\w.-]+\/[\w.-]+$/

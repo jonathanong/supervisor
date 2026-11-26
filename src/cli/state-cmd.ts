@@ -1,6 +1,7 @@
 import { DEFAULT_PROMPT_HISTORY } from '../config/defaults.js'
 import { loadConfig, requireStateDir } from '../config/load.js'
 import { advanceHookHarness, lateReview, updateCheck } from '../state/commands-external.js'
+import { mergeRecord, mergeRecords } from '../state/commands-merge.js'
 import { appendValue, removeValue, setValue } from '../state/commands-path.js'
 import {
   annotateRoute,
@@ -31,6 +32,7 @@ const LOCKED: Record<string, Locked> = {
   remove: removeValue,
   'sweep-start': sweepStart,
   'sweep-done': sweepDone,
+  'merge-record': mergeRecord,
   'advance-hh': advanceHookHarness,
   route,
   'annotate-route': annotateRoute,
@@ -41,16 +43,22 @@ const LOCKED: Record<string, Locked> = {
   watch,
 }
 
-/** The subcommands that start or allow an action, so they refuse while the stop switch is set. */
-const ACTS = ['sweep-start']
-
-async function dispatch(name: string, args: string[], ctx: StateContext): Promise<number> {
-  if (name === 'late-review') {
-    return await lateReview(args, ctx)
-  }
-  if (name === 'update-check-script') {
+/** The subcommands that read only, or call the forge, and take no lock. */
+const UNLOCKED: Record<string, (args: string[], ctx: StateContext) => Promise<number>> = {
+  'late-review': lateReview,
+  'merge-records': mergeRecords,
+  'update-check-script': async (args, ctx) => {
     updateCheck(args, ctx)
     return 0
+  },
+}
+
+/** The subcommands that start or allow an action, so they refuse while the stop switch is set. */
+const ACTS = ['sweep-start', 'merge-record']
+
+async function dispatch(name: string, args: string[], ctx: StateContext): Promise<number> {
+  if (Object.hasOwn(UNLOCKED, name)) {
+    return await UNLOCKED[name]!(args, ctx)
   }
   const command = Object.hasOwn(LOCKED, name) ? LOCKED[name] : undefined
   if (command === undefined) {

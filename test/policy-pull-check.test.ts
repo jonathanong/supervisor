@@ -125,10 +125,14 @@ describe('supervisor policy check <owner>/<repo> <pr>', () => {
     const without = await checkJson(gh)
     expect(without.code).toBe(1)
     expect(without.result.nextStep).toEqual({ action: 'request_review', depth: 'quick' })
+    expect(without.result.classifiers).toEqual({})
 
     const given = await checkJson(gh, ['--classifiers', classifiers])
     expect(given.code).toBe(0)
     expect(given.result.nextStep).toEqual({ action: 'merge' })
+    expect(given.result.classifiers).toEqual({
+      'claude/code_review': { status: 'complete', value: 'pass', level: 'quick' },
+    })
 
     const printed = await check(gh, [...DIR, '--print-input', '--classifiers', classifiers])
     expect(JSON.parse(printed.stdout).classifiers['claude/code_review'].value).toBe('pass')

@@ -12,10 +12,10 @@ const STOP_HELP = `Usage: supervisor stop [--reason <text>]
 
 The stop switch is one file, <stateDir>/stop. While it exists the supervisor takes no action:
 "supervisor wait" refuses to start and ends a wait in progress between two hook-harness rounds,
-"supervisor state sweep-start" refuses, and the skills run "supervisor stop --status" before every
-tick, every mutation, and every merge. A command that refuses prints one line and exits ${STOPPED_EXIT}. The
-"supervisor state" subcommands that only record facts keep working, so a session can still write
-down what it saw.
+"supervisor state sweep-start" and "supervisor state merge-record" refuse, and the skills run
+"supervisor stop --status" before every tick, every mutation, and every merge. A command that
+refuses prints one line and exits ${STOPPED_EXIT}. The "supervisor state" subcommands that only record facts
+keep working, so a session can still write down what it saw.
 
   stop [--reason <text>]   Create the file, recording the time and the reason as JSON; a second
                            stop replaces the first

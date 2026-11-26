@@ -47,6 +47,16 @@ function onePath(args: string[], options: Record<string, typeof TEXT>) {
   return { values, ...parsePath(positionals[0]) }
 }
 
+/** `mergeRecords` is written only by `merge-record`, which checks what it stores. */
+function checked(keys: string[]): string[] {
+  if (keys[0] === 'mergeRecords') {
+    throw new StateError(
+      'supervisor state: mergeRecords is written only by "supervisor state merge-record"',
+    )
+  }
+  return keys
+}
+
 export async function setValue(args: string[], ctx: StateContext): Promise<void> {
   const { values, path, keys, last } = onePath(args, { json: TEXT })
   const value = parseJson(need(values.json, 'json'), '--json')
@@ -54,7 +64,7 @@ export async function setValue(args: string[], ctx: StateContext): Promise<void>
     expectKind(value, FIELDS[last]!, last)
   }
   const state = await loadState(ctx.dir)
-  put(parentOf(state, keys, true), last, value)
+  put(parentOf(state, checked(keys), true), last, value)
   await saveState(ctx.dir, state)
   ctx.print({ [path]: value })
 }
@@ -67,7 +77,7 @@ export async function appendValue(args: string[], ctx: StateContext): Promise<vo
   }
   const keep = Number(values.keep ?? 0)
   const state = await loadState(ctx.dir)
-  const parent = parentOf(state, keys, true)
+  const parent = parentOf(state, checked(keys), true)
   const items = arrayField(parent, last, path)
   items.push(value)
   const kept = keep === 0 ? items : items.slice(-keep)
