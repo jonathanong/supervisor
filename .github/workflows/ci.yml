@@ -40,3 +40,19 @@ jobs:
           token: ${{ secrets.CODECOV_TOKEN }}
           files: ./coverage/lcov.info
           fail_ci_if_error: false
+
+  # The one check to mark as required. It reports on every run, and passes only when every job it
+  # needs succeeded, so a new job is gated by adding it to `needs` and not by a settings change.
+  gate:
+    if: always()
+    needs: [ci]
+    runs-on: ubuntu-slim
+    timeout-minutes: 5
+    steps:
+      - name: Show the result of each needed job
+        env:
+          RESULTS: ${{ toJSON(needs) }}
+        run: printf '%s\n' "$RESULTS"
+      - name: Fail unless every needed job succeeded
+        if: contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled') || contains(needs.*.result, 'skipped')
+        run: exit 1
