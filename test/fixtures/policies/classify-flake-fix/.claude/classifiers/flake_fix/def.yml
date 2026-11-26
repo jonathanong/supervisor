@@ -4,4 +4,4 @@ model: haiku
 outputs:
   answer:
     type: criteria
-    values: [yes, no]
+    values: ["yes", "no"]
