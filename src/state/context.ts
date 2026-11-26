@@ -4,6 +4,14 @@ import type { RunProcess } from './process.js'
 /** A subcommand called with arguments it cannot accept; the caller prints the help and exits 2. */
 export class UsageError extends Error {}
 
+/** True for a `UsageError` and for an argument `parseArgs` rejected. */
+export function isUsageError(error: unknown): boolean {
+  const code = (error as { code?: unknown }).code
+  return (
+    error instanceof UsageError || (typeof code === 'string' && code.startsWith('ERR_PARSE_ARGS'))
+  )
+}
+
 /** What every `supervisor state` subcommand works with. */
 export interface StateContext {
   /** The state directory. */

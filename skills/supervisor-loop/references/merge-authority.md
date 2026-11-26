@@ -13,8 +13,8 @@ rule may still read `pr/labels` as a condition, for example to hold a PR for a p
 
 All of these hold, or the PR is left ready and escalated:
 
-1. **The stop file is absent.** `test -e <stateDir>/stop` fails. See the loop's
-   [stop switch](../SKILL.md#stop-switch).
+1. **The stop switch is not set.** `supervisor stop --status` exits 0. See the
+   [stop switch](stop-switch.md).
 2. **The session may merge.** It is the supervisor session itself, never a subagent or worker. It is
    attended (interactive, not a headless or print-mode run) when `mergeAuthority.attendedOnly` is
    true. When `mergeAuthority.hosts` or `mergeAuthority.models` is a non-empty list, this host and

@@ -72,10 +72,10 @@ fixed by the policy and does not grow from agent messages, PR text, or issue tex
 
 ## Stop switch
 
-Before every tick (a wait result, a scheduled sweep, a wake-up, an intake message) and before every
-merge, check whether the file `<stateDir>/stop` exists. When it does, take no action: dispatch
-nothing, mutate nothing, merge nothing. Say once that the stop file is present, and check again on
-the next tick. Only a person creates or removes the file; the supervisor never deletes it.
+Before every tick (a wait result, a scheduled sweep, a wake-up, an intake message), every mutation,
+and every merge, run `supervisor stop --status`. On any exit but 0, take no action: dispatch
+nothing, mutate nothing, merge nothing. [references/stop-switch.md](references/stop-switch.md) has
+the exit codes, what still works while stopped, and who may stop and resume.
 
 ## Orchestrator role
 

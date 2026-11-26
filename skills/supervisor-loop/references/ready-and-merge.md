@@ -15,8 +15,9 @@ In a scope in `report` mode, run step 1 only and report what the later steps wou
    Record `headRefOid`, read the diff and CI state, and decide whether `pr-shepherd` needs direction
    (for example "prefer the general fix over a narrow band-aid"). Write steering with a file-writing
    tool, never shell interpolation, and read it back in full.
-2. **Preflight.** Re-read `headRefOid` before every mutation below; if it moved, return for
-   re-review. Skip a PR that `shepherds` already records.
+2. **Preflight.** Before every mutation below, run `supervisor stop --status` and go no further on
+   any exit but 0 (see the [stop switch](stop-switch.md)), then re-read `headRefOid`; if it moved,
+   return for re-review. Skip a PR that `shepherds` already records.
 3. **Steer (optional).** Post the reviewed steering file as an ordinary comment with
    `gh pr comment <N> --repo <owner>/<repo> --body-file <path>`. Reject an empty file.
 4. **Mark ready and label.** `gh pr ready <N> --repo <owner>/<repo>` for a draft (the supervisor
