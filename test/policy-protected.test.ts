@@ -113,6 +113,14 @@ describe('protected-file baseline', () => {
     expect(result.seats[0]!.from).toEqual(baselineFrom)
     expect(result.nextStep).toEqual({ action: 'escalate', reason: reasonFor(file) })
 
+    // A later file with its own reason does not replace the protected file's.
+    const settings = 'packages/app/.claude/settings.json'
+    const both = evaluatePolicies([policy], { changedFiles: [file, settings], facts: author })
+    expect(both.nextStep).toEqual({
+      action: 'escalate',
+      reason: `${reasonFor(file)}; No rule applies to '${settings}'`,
+    })
+
     const ordinary = evaluatePolicies([policy], {
       changedFiles: ['packages/app/.claude/settings.json'],
     })
