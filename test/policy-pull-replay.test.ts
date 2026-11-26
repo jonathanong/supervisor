@@ -81,6 +81,11 @@ describe('policy check --input on a printed input', () => {
       expect(result.code).toBe(2)
       expect(result.stderr).toBe('A printed input needs pull, readiness and blockers together\n')
     }
+    // A string would count as true: only a boolean says whether pr-shepherd would merge.
+    const text = { ...printed, readiness: { ready: 'false', action: 'wait' } }
+    const result = await replay('text-ready.json', text)
+    expect(result.code).toBe(2)
+    expect(result.stderr).toBe('A printed input needs readiness.ready as true or false\n')
   })
 })
 

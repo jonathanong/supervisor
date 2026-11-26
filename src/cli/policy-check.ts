@@ -96,6 +96,9 @@ async function readInput(path: string): Promise<EvaluationInput | PullFacts> {
   if (COLLECTED_KEYS.some((key) => key in raw)) {
     const whole = isObject(raw.pull) && isObject(raw.readiness) && Array.isArray(raw.blockers)
     if (!whole) throw new FactsError('A printed input needs pull, readiness and blockers together')
+    if (typeof (raw.readiness as { ready?: unknown }).ready !== 'boolean') {
+      throw new FactsError('A printed input needs readiness.ready as true or false')
+    }
   }
   return raw as unknown as EvaluationInput | PullFacts
 }
