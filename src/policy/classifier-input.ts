@@ -11,7 +11,9 @@ function describeOutput(name: string, output: ClassifierOutput): string {
 
 /** The longest run of backticks in the diff, so its fence can be longer than any of them. */
 function fenceFor(diff: string): string {
-  const longest = Math.max(0, ...(diff.match(/`+/g) ?? []).map((run) => run.length))
+  // A loop, not a spread into Math.max: a large diff has more runs than a call takes arguments.
+  let longest = 0
+  for (const run of diff.match(/`+/g) ?? []) longest = Math.max(longest, run.length)
   return '`'.repeat(Math.max(3, longest + 1))
 }
 
