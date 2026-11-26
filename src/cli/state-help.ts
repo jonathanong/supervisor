@@ -28,16 +28,17 @@ Subcommands:
                                           claim is newer than the limit (default 120 minutes), and
                                           ${STOPPED_EXIT} while the stop switch is set
   sweep-done                              Set lastSweepAt to now and release the sweep claim
-  merge-record --pr <owner/repo#N> --head <sha> --check <file> --input <file>
+  merge-record --pr <owner/repo#N> --head <sha> --check <file>
                --review <text> --always-human <text>
                                           Record one autonomous merge before it is made. <sha> is
                                           the full head commit, --check the JSON that
-                                          "supervisor policy check --json" printed for that head,
-                                          --input the input file that check was given, --review who
-                                          reviewed the head and the outcome, --always-human who
-                                          checked the always-human list. Exits 1 unless the
-                                          check's next step is merge with no author-only warning,
-                                          and ${STOPPED_EXIT} while the stop switch is set
+                                          "supervisor policy check <owner>/<repo> <N> --json"
+                                          printed, --review who reviewed the head and the outcome,
+                                          --always-human who checked the always-human list. Exits
+                                          1 unless the check is of that pull request at that head
+                                          (one made with --input is refused) and its next step is
+                                          merge with no blocker, every check passed, and no
+                                          author-only warning; ${STOPPED_EXIT} while the stop switch is set
   merge-records [--repo <owner/repo>] [--rule <text>]
                                           Print the merge records, one JSON line each: all, or
                                           those of one repository, or those with a rule whose

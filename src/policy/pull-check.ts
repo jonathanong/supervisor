@@ -1,13 +1,15 @@
 import { evaluatePolicies } from './evaluate.js'
 import type { CheckState } from './facts-checks.js'
 import type { PullFacts } from './facts.js'
-import type { EvaluationResult, NextStep, PolicyFile } from './types.js'
+import type { ClassifierResult, EvaluationResult, NextStep, PolicyFile } from './types.js'
 
 /** The policy's evaluation of one head, with the next step also held by its checks. */
 export interface PullCheckResult extends EvaluationResult {
   pull: PullFacts['pull']
   checks: CheckState
   blockers: string[]
+  /** The classifier results the evaluation was given; empty when it was given none. */
+  classifiers: Record<string, ClassifierResult>
   /** What the policy alone says, before the checks and the blockers. */
   policyNextStep: NextStep
 }
@@ -38,6 +40,7 @@ export function checkPull(policies: PolicyFile[], facts: PullFacts): PullCheckRe
     pull: facts.pull,
     checks: facts.checks,
     blockers: facts.blockers,
+    classifiers: facts.classifiers ?? {},
     policyNextStep: result.nextStep,
   }
 }

@@ -25,7 +25,9 @@ In a scope in `report` mode, run step 1 only and report what the later steps wou
    `gh pr edit <N> --repo <owner>/<repo> --add-label <automation-label>`.
 5. **Check the merge authority (only with `--merge`).** Run every step of
    [before any merge](merge-authority.md#before-any-merge) for the current head, and again after new
-   commits. A printed enqueue or requeue command counts as a merge.
+   commits. A printed enqueue or requeue command counts as a merge. The policy check is
+   `supervisor policy check <owner>/<repo> <N> --dir <policy dir> --supervisor-policy --json`; keep
+   its output in a file, and merge only the head in its `pull.head`.
    - When the policy check's next step is `request_review`, request a final review of the current
      head at the depth it names, as `finalReview.request` says: `session` messages the final
      reviewer's session with the PR and head, and `label` adds `finalReview.label` to the PR. Leave
@@ -40,7 +42,7 @@ In a scope in `report` mode, run step 1 only and report what the later steps wou
 
 6. **Merge through `pr-shepherd` (only with `--merge`, and only when step 5 said the supervisor may
    merge this head).** Write the [merge record](merge-authority.md#merge-record) with
-   `supervisor state merge-record` and go on only when it exits 0, then run
+   `supervisor state merge-record` from that check file and go on only when it exits 0, then run
    `pr-shepherd` as the `pr-shepherd` skill directs (a stack per [Stacks](#stacks)). The supervisor
    session runs each PR's shepherd poll itself. A subagent never runs a `pr-shepherd` poll
    (`pr-shepherd [PR]` or `pr-shepherd stack`); the fixer runs the printed post-push

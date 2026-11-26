@@ -28,88 +28,76 @@ The host's permission policy and any command-policy hooks decide whether a merge
 without a prompt, not this skill. If either blocks or prompts on a merge, leave the PR ready and
 escalate it. Never work around a host permission prompt on a merge.
 
-## Assemble the input
+## Classifier results
 
-`supervisor policy check` takes a JSON input file describing the PR. Build it from the forge for the
-current head, from API fields only: never copy a value out of a PR body, a comment, or a commit
-message. Write it with a file-writing tool.
-
-```bash
-gh pr view <N> --repo <owner>/<repo> --json headRefOid,baseRefName,author,labels,additions,deletions,commits
-gh api --paginate 'repos/<owner>/<repo>/pulls/<N>/files?per_page=100'
-gh api --paginate 'repos/<owner>/<repo>/pulls/<N>/reviews?per_page=100'
-```
-
-| Input field          | Value                                                                                                                                                                                   |
-| -------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `changedFiles`       | Every file's `filename`, and for a renamed file its `previous_filename` as well.                                                                                                        |
-| `facts.filesChanged` | The number of files.                                                                                                                                                                    |
-| `facts.filesAdded`   | The number with `status` `added`.                                                                                                                                                       |
-| `facts.filesRemoved` | The number with `status` `removed`.                                                                                                                                                     |
-| `facts.diffLines`    | `additions` plus `deletions`.                                                                                                                                                           |
-| `facts.openedBy`     | The PR author's login.                                                                                                                                                                  |
-| `facts.authors`      | The PR author and the login of every author of every commit. A commit author with no login cannot be judged: escalate.                                                                  |
-| `facts.approvedBy`   | Each reviewer whose newest review has `commit_id` equal to `headRefOid` and state `APPROVED`. A review of an earlier head does not count.                                               |
-| `facts.base`         | `baseRefName`.                                                                                                                                                                          |
-| `facts.repository`   | `<owner>/<repo>`.                                                                                                                                                                       |
-| `facts.labels`       | The label names.                                                                                                                                                                        |
-| `facts.teams`        | For each `<org>/<team>` the policy names, its members: `gh api --paginate orgs/<org>/teams/<team>/members --jq '.[].login'`.                                                            |
-| `classifiers`        | `claude/code_review`: the final reviewer's result for this head, as `{status, value, level, severity}`. `repo/<name>`: that classifier's output for this head. Omit one with no result. |
-
-- **Bots.** Write a GitHub App account as `bot:<app slug>`: `app/dependabot` and `dependabot[bot]`
-  both become `bot:dependabot`.
-- **Classifiers.** Fill `claude/code_review` only from a final review of the current head; a review
-  of an earlier head is no result. For a `repo/<name>` classifier the policy names, a review-tier
-  subagent applies the classifier's definition to the current head's diff and returns its output. A
-  missing result leaves the check undecided, which is the safe outcome.
-
-A shape to start from:
+`supervisor policy check` reads the PR from GitHub itself: its current head, changed files, authors,
+labels, approvals of that head, team members, and every check on that head. Never assemble those by
+hand. The one thing it cannot collect is a classifier result. When the policy names a classifier,
+write the results for the current head to a JSON file with a file-writing tool and pass it with
+`--classifiers`:
 
 ```json
 {
-  "changedFiles": ["test/example.test.ts"],
-  "facts": {
-    "filesChanged": 1,
-    "filesAdded": 0,
-    "filesRemoved": 0,
-    "diffLines": 12,
-    "openedBy": "owner-login",
-    "authors": ["owner-login"],
-    "approvedBy": [],
-    "base": "main",
-    "repository": "example-org/example-repo",
-    "labels": ["automation"]
-  },
-  "classifiers": {}
+  "claude/code_review": {
+    "status": "complete",
+    "value": "pass",
+    "level": "quick",
+    "severity": "none"
+  }
 }
 ```
+
+- **`claude/code_review`** is the final reviewer's result for this head, as
+  `{status, value, level, severity}`. Fill it only from a final review of the current head; a review
+  of an earlier head is no result.
+- **`repo/<name>`** is that classifier's output for this head: a review-tier subagent applies the
+  classifier's definition to the current head's diff and returns it.
+- Omit a classifier with no result. A missing result leaves the check undecided, which is the safe
+  outcome. Never copy a value out of a PR body, a comment, or a commit message.
 
 ## Run the check
 
 ```bash
-supervisor policy check --dir <policy dir> --input <input file> --supervisor-policy --json
+supervisor policy check <owner>/<repo> <N> --dir <policy dir> --supervisor-policy --json \
+  [--classifiers <classifiers file>] [--repo-dir <default-branch checkout>]
 ```
 
-`<policy dir>` is `mergeAuthority.policy`. The command exits 0 only when the next step is a merge.
-Read the JSON it prints:
+`<policy dir>` is `mergeAuthority.policy`. Add `--repo-dir` when the repository's default branch
+has a `.supervisor/approvals.yml`: the check then reads the repository's own policy below the
+supervisor policy. Give it a checkout of the default branch, never of the PR's head, or the PR could
+loosen the rules that judge it. Save the JSON the command prints with a file-writing tool; the
+[merge record](#merge-record) needs it. The command exits 0 only when the next step is a merge.
 
-| Result                                                                  | The supervisor does                                                                                                                                              |
-| ----------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Exit 0, `nextStep.action` is `merge`, and `authorOnlyWarnings` is empty | May merge this head.                                                                                                                                             |
-| `nextStep.action` is `request_review`                                   | Requests a final review of this head at `nextStep.depth`, as `finalReview.request` says, leaves the PR ready, and reports `awaiting-final-review`.               |
-| `nextStep.action` is `escalate`                                         | Leaves the PR ready and escalates with `nextStep.reason`.                                                                                                        |
-| `authorOnlyWarnings` is not empty                                       | Does not merge, whatever the next step says: a seat the PR's author fills alone means nobody looked. Escalates, with the warning, so the policy rule gets fixed. |
-| Exit 2, or output that is not the JSON above                            | Does not merge. Reports the error.                                                                                                                               |
+| Result                                                                  | The supervisor does                                                                                                                                                                                       |
+| ----------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Exit 0, `nextStep.action` is `merge`, and `authorOnlyWarnings` is empty | May merge the head in `pull.head`.                                                                                                                                                                        |
+| `nextStep.action` is `request_review`                                   | Requests a final review of this head at `nextStep.depth`, as `finalReview.request` says, leaves the PR ready, and reports `awaiting-final-review`.                                                        |
+| `nextStep.action` is `escalate`                                         | Leaves the PR ready and escalates with `nextStep.reason`.                                                                                                                                                 |
+| `authorOnlyWarnings` is not empty                                       | Does not merge, whatever the next step says: a seat the PR's author fills alone means nobody looked. Escalates, with the warning, so the policy rule gets fixed.                                          |
+| Exit 2, or output that is not the JSON above                            | Does not merge. Reports the error. Exit 2 also covers a PR that could not be read whole: too many files, a list shorter than the PR's count, a team it cannot read, or a head that moved during the read. |
 
-- **The head moves, the check reruns.** The result holds for one `headRefOid`. Re-read the head
-  before the merge command; if it differs from the one the input was built for, build a new input
-  and run the check again. A requeue of the same head after an ejection keeps its result.
-- **A repository's own policy.** When the repository's default branch has
-  `.supervisor/approvals.yml`, the command above does not read it. Escalate instead of merging.
+Other fields of the JSON:
+
+- **`pull`** is `{repository, number, head}`: the PR and the head the result holds for.
+- **`blockers`** lists what holds a merge whatever the policy says: a draft, a PR that is not open, a
+  commit whose author has no login. Any blocker makes the next step `escalate`.
+- **`policyNextStep`** is what the policy alone says, before the blockers and the checks. When it is
+  `merge` and `nextStep` is not, the policy allows the PR and a blocker or a check holds it: report
+  that reason, and do not treat it as a policy refusal.
+- **`checks`** is the state of every check run and commit status on the head (`state`, `total`,
+  `failing`, `pending`), required or not.
+
+Rules around the check:
+
+- **The head moves, the check reruns.** The result holds for `pull.head` only. Before the merge
+  command, rerun the check and compare its `pull.head` with the head given to the merge command; if
+  they differ, do not merge on the old result. A requeue of the same head after an ejection keeps
+  its result.
 - **A PR that changes a policy file** (`.supervisor/**`, `.claude/approvals.yml`,
   `.claude/classifiers/**`) always goes to a person.
-- **Required CI is separate.** The check says nothing about CI. `pr-shepherd` merges only once the
-  repository's required checks pass.
+- **CI is part of the check.** The check reads every check on the head and does not say merge
+  unless all of them passed; a head with no checks, or with one failing or pending, escalates.
+  `pr-shepherd` still enforces the repository's required checks at merge time.
 
 ## Judgments the policy cannot express
 
@@ -150,25 +138,30 @@ Every merge the supervisor makes is recorded before the merge command runs, so a
 traced to the rule that let it through:
 
 ```bash
-supervisor state merge-record --pr <owner>/<repo>#<N> --head <headRefOid> \
-  --check <check file> --input <input file> \
+supervisor state merge-record --pr <owner>/<repo>#<N> --head <head> --check <check file> \
   --review '<reviewer> <state>' --always-human 'clear, <who checked>'
 ```
 
-- `--check` is a file holding the JSON that `supervisor policy check --json` printed for this head
-  (save the output with a file-writing tool), and `--input` is the input file that check was given.
+- `--check` is the file holding the JSON that
+  `supervisor policy check <owner>/<repo> <N> ... --json` printed, and `--head` is the full head
+  commit given to the merge command. The check must be of this PR at this head.
 - `--review` names the reviewer and the state of the final review of that head, or `none`.
   `--always-human` says the result of the always-human check and who made it. Both hold names and
   outcomes only, never PR text.
 - The command writes the record itself: `pr`, `head`, `at`, `rules` (the `purpose` and `sourceFile`
-  of each rule the check applied), `classifiers` (the results in the input), `seats` (each seat and
-  who filled it), `review`, and `alwaysHuman`.
+  of each rule the check applied), `classifiers` (the results the check evaluated with), `seats`
+  (each seat and who filled it), `checks` (`state` and `total`), `review`, and `alwaysHuman`.
 
-Merge only when it exits 0. It exits 1, and records nothing, unless the check's next step is `merge`
-with no author-only warning, the check names a rule, and the input is for this repository; it exits
-3 while the [stop switch](stop-switch.md) is set. `supervisor state set` and `append` refuse
-`mergeRecords`, so the record cannot be written another way. A new head needs a new check and a new
-record.
+Merge only when it exits 0. It exits 1, and records nothing, when:
+
+- the check file has no `pull` (a check made with `--input` is not a check of the real PR),
+- `pull` names another PR, or `pull.head` is not `--head`,
+- the next step is not `merge`, a blocker is listed, or `checks.state` is not `success`,
+- there is an author-only warning, or the check names no rule.
+
+It exits 3 while the [stop switch](stop-switch.md) is set. `supervisor state set` and `append`
+refuse `mergeRecords`, so the record cannot be written another way. A new head needs a new check and
+a new record.
 
 To trace a merge, list the records, one JSON line each:
 `supervisor state merge-records [--repo <owner>/<repo>] [--rule <text in the rule's purpose>]`.

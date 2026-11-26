@@ -57,12 +57,12 @@ A harness with no recurring-job tool can still run single sweeps on request.
 
 ## Merge authority
 
-Starting the supervisor is not a grant to merge. What may merge is decided by
-`supervisor policy check` against the supervisor policy the configuration names; the supervisor
+Starting the supervisor grants no merge. `supervisor policy check <owner>/<repo> <N>` reads the PR
+from GitHub and evaluates it against the supervisor policy the configuration names; the supervisor
 merges a PR only when the check says so for the PR's current head, and escalates everything else.
 [references/merge-authority.md](references/merge-authority.md) is the procedure: read it before the
-first merge decision of a session. It covers how to assemble the check's input, the judgments a
-policy cannot express, the always-human check, and the merge record.
+first merge decision of a session. It covers the check, the judgments a policy cannot express, the
+always-human check, and the merge record.
 
 Merges happen only from the supervisor session itself, never from a subagent or worker (subagents
 never merge, close, or escalate), and only through

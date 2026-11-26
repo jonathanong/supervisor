@@ -182,5 +182,7 @@ All read the configuration file and need `gh`.
 - `supervisor stop [--reason <text>]`, `supervisor stop --status`, and `supervisor resume` set,
   report, and clear the [stop switch](stop-switch.md). While it is set, `supervisor wait`,
   `supervisor state sweep-start`, and `supervisor state merge-record` exit 3.
-- `supervisor policy check` evaluates a PR against the supervisor policy. See
+- `supervisor policy check <owner>/<repo> <N> --dir <policy dir> --supervisor-policy --json` reads
+  a PR from GitHub (head, files, authors, approvals, checks) and evaluates it against the supervisor
+  policy, and with `--repo-dir` the repository's own `.supervisor/approvals.yml` too. See
   [merge authority](merge-authority.md).
