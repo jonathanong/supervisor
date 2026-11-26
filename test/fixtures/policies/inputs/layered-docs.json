@@ -1,0 +1,9 @@
+{
+  "changedFiles": ["docs/guide.md"],
+  "facts": {
+    "repository": "example-org/example-repo",
+    "openedBy": "example-dev",
+    "authors": ["example-dev"],
+    "approvedBy": ["bot:example-reviewer"]
+  }
+}

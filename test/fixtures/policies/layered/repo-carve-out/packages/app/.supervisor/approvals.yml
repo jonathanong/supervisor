@@ -1,0 +1,5 @@
+version: 1
+rules:
+  - purpose: The app package merges source changes once the reviewer approves.
+    paths: ['src/**']
+    verdict: { claude: approves, seats: '@reviewed' }

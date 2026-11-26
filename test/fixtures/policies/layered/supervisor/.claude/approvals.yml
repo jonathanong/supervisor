@@ -1,0 +1,24 @@
+# The supervisor policy: the root above every repository's own policy file.
+version: 1
+locals:
+  reviewed:
+    - count: 1
+      from: ['bot:example-reviewer', '!pr/authors']
+  person:
+    - count: 1
+      from: [humans, '!pr/authors']
+rules:
+  - purpose: Nothing merges on its own unless a carve-out applies.
+    paths: ['**']
+    verdict: { claude: comments, seats: '@person' }
+    override:
+      - if: "pr/repository = ['example-org/*'] AND ALL pr/authors = bot:dependabot"
+        verdict: { claude: approves, seats: '@reviewed' }
+  - purpose: CI workflows always go to a person.
+    paths: ['.github/workflows/**']
+    nested: inherit
+    verdict: { claude: comments, seats: '@person' }
+  - purpose: A change to merge rules always goes to a person.
+    paths: ['**/.supervisor/**', '**/.claude/approvals.yml', '**/.claude/classifiers/**']
+    nested: inherit
+    verdict: { claude: comments, seats: '@person' }

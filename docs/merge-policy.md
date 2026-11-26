@@ -17,9 +17,18 @@ They combine the way the format combines a root file and a directory's file. Whe
 
 A PR that changes a policy file is judged by the default branch's copy, and an inherited rule sends every change to a policy file to a person.
 
+### How the two are loaded
+
+- **The supervisor policy** is `.claude/approvals.yml` in a directory outside every repository. A directory-level policy file beside it is refused when a repository is loaded with it, because its paths would belong to no repository.
+- **A repository policy** is `.supervisor/approvals.yml` at the root of the checkout. A directory below can hold its own `.supervisor/approvals.yml`, which decides for that directory the way a directory's `.claude/approvals.yml` does in the format. `approvals.yaml` is read too, and a folder with both names is refused.
+- **Nearest file first.** Going up from a changed file, the first enforcing file with a matching rule that has a `verdict` decides. Where no repository rule matches a file, the supervisor policy decides for it. A repository file in `mode: observe` decides nothing.
+- **Locals are inherited.** A repository file can use the supervisor policy's locals, such as a `"@reviewed"` seat, and its own locals of the same name replace them in that file only. A file that depends on an inherited local needs that local copied in before it moves to `.claude/`.
+- **The loader reads what is on disk.** `loadLayeredPolicies(supervisorDir, repoDir)` and `--repo-dir` take a checkout, so the caller must pass a checkout of the default branch, never of the PR's head. Otherwise a PR could loosen the rules that judge it.
+- **A changed policy file needs a rule that approves it.** `.supervisor/approvals.yml`, `.claude/approvals.yml` and `.claude/classifiers/**`, at any depth, merge only where a rule with `claude: approves` covers them. With no rule on such a file, the next step is to escalate.
+
 ## Staying compatible with Claude Approvals
 
-- **Repository policies use only the product's vocabulary.** The product refuses a whole file for one unknown key, so the supervisor's loader checks each repository policy against that vocabulary.
+- **Repository policies use only the product's vocabulary.** The product refuses a whole file for one unknown key, so the supervisor's loader checks each repository policy against that vocabulary. A repository policy that reads `pr/repository` or `pr/labels` does not load, and the error names the file and the rule.
 - **Judgment carve-outs are `repo/<name>` classifiers,** defined in `.claude/classifiers/<name>/` in the product's layout (`def.yml` and `prompt.md`). The supervisor runs them with its own model; the product would run the same definitions, billed. A classifier several repositories share, such as the flake-fix one, lives beside the supervisor policy and is copied into a repository that adopts the product.
 - **The folder is the switch.** `.supervisor/approvals.yml` is inert for the product. Moving it to `.claude/approvals.yml` hands that repository to Claude Approvals, and its billed reviews start.
 - **The config says which evaluation to trust.** `mergeAuthority.policyEngine` is `supervisor` for the supervisor's own evaluation, or `claude-approvals` for the product's green check. Under `claude-approvals` the supervisor still does the merge, since the product only approves.
@@ -108,7 +117,9 @@ A GitHub App is written `bot:<app slug>`, so `dependabot[bot]` is `bot:dependabo
 
 `--print-input` prints the collected input, with the head, the checks and the blockers, and evaluates nothing. `supervisor policy check --dir <policy dir> --input <json>` evaluates a written input file instead, for dry runs and the eval. A written input has no checks and no blockers. An input that `--print-input` printed carries both, and they hold the merge on replay as they did live.
 
-`supervisor policy explain <dir> [path]` describes the policy without a PR. The MCP tool `policy_check` runs the same check, so a worker can ask what its PR needs. Under `policyEngine: "compare"` the check also reads the Claude Approvals check and reports any disagreement.
+`--repo-dir <checkout>` adds the repository's own policy files below the supervisor policy, on either form of the command; without it, `--dir` alone is evaluated.
+
+`supervisor policy explain <dir> [path] [--repo-dir <checkout>]` describes the policy without a PR. The MCP tool `policy_check` runs the same check, so a worker can ask what its PR needs. Under `policyEngine: "compare"` the check also reads the Claude Approvals check and reports any disagreement.
 
 ## A sketch
 
@@ -133,7 +144,7 @@ rules:
     nested: inherit
     verdict: { claude: comments, seats: 1 }
   - purpose: 'A change to merge rules always goes to a person.'
-    paths: ['.supervisor/**', '.claude/approvals.yml', '.claude/classifiers/**']
+    paths: ['**/.supervisor/**', '**/.claude/approvals.yml', '**/.claude/classifiers/**']
     nested: inherit
     verdict: { claude: comments, seats: 1 }
 ```

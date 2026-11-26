@@ -1,0 +1,10 @@
+version: 1
+rules:
+  - purpose: A repository policy cannot read the repository name.
+    paths: ['src/**']
+    if: "pr/repository = 'example-org/example-repo'"
+    verdict: { claude: approves, seats: 0 }
+  - purpose: A repository policy cannot read labels.
+    paths: ['docs/**']
+    if: 'ANY pr/labels = docs'
+    verdict: { claude: approves, seats: 0 }
