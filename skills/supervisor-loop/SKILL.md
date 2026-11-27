@@ -101,15 +101,16 @@ implementation-tier worker, never the supervisor session.
    (all of them for `"*"`), drop forks when `excludeForks` is true, and drop `excludedRepos`. The
    checkout of `<name>` is `<checkoutRoot>/<name>` of its scope; work in a temporary worktree, never
    on its current branch.
-3. Open `stateDir`. `state.json` holds these fields (`supervisor state` creates the file on its
-   first write):
+3. Open `stateDir`. `state.json` holds these fields and no others (`supervisor state` creates the
+   file on its first write, and checks the whole file against `schemas/state.json` on every write):
    - `lastSweepAt`
    - `reviewedComments` per `<owner>/<repo>` (late-review comment ids already harvested)
    - `lateReview.<owner>/<repo>` with `scannedThrough`, `activityThrough`, and `fullScanAt` (see
      supervisor-sweep [Phase F](../supervisor-sweep/SKILL.md#phase-f---missed-code-reviews))
    - `commandsThrough` (the `since` for supervisor-sweep Phase G2's command-comment scan)
-   - `schedule` (`{id, registeredAt, cron, expiresAt}` for the fallback sweep job; its presence
-     marks a standing loop, and only a standing loop's sweep maintains the job)
+   - `schedule` (`{id, registeredAt, cron, expiresAt}`, all four required and no other key, for the
+     fallback sweep job; its presence marks a standing loop, and only a standing loop's sweep
+     maintains the job)
    - `retroCursor`
    - `escalations` (key to first-notified time, used for dedupe)
    - `hookHarness.<owner>` (`cursor` and recently `seen` event ids; nothing records per-event progress)
@@ -135,8 +136,11 @@ through that mode with this skill as its prompt (in Claude Code, for example, `/
    Claude Code, for example, `/supervisor:supervisor-sweep`), not the bare skill name. List existing jobs first and do not register a
    duplicate. Prefer a durable scheduler when the harness has one. Harnesses may expire recurring
    jobs, so every sweep re-checks the job and re-registers it before expiry (see supervisor-sweep
-   Phase H); record `{id, registeredAt, cron, expiresAt}` in `schedule`. The state file accepts any
-   object there, so this skill owns that shape.
+   Phase H); record `{id, registeredAt, cron, expiresAt}` in `schedule` with one
+   `supervisor state set schedule --json '{...}'`. `schemas/state.json` enforces that shape: `id`
+   and `cron` are non-empty strings, `registeredAt` and `expiresAt` are UTC times like
+   `2026-01-01T00:00:00Z`, and no other key is allowed. A write that breaks it exits 1 and changes
+   nothing.
 3. When `eventWait` is configured, keep exactly one background command per owner running:
    `supervisor wait --owner <owner>`, launched from the launch directory, one for each distinct
    `owner` in `scopes`. Each runs `hook-harness wait` over that owner's configured repositories from

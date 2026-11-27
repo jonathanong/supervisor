@@ -3,33 +3,12 @@ import { mkdir, readFile, rename, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { dumpsIndented, put, type Json, type JsonObject } from './json.js'
 import { withLock } from './lock.js'
+import { stateProblem, type Kind } from './schema.js'
+
+export { FIELDS, type Kind } from './schema.js'
 
 /** A state file, argument value, or input file that does not have the shape a command needs. */
 export class StateError extends Error {}
-
-export type Kind = 'string' | 'object' | 'array'
-
-/** The top-level fields and their shapes; `set`, `append`, and `remove` touch only these. */
-export const FIELDS: Record<string, Kind> = {
-  lastSweepAt: 'string',
-  commandsThrough: 'string',
-  reviewedComments: 'object',
-  lateReview: 'object',
-  schedule: 'object',
-  retroCursor: 'string',
-  escalations: 'object',
-  hookHarness: 'object',
-  handledFailures: 'object',
-  intake: 'array',
-  scheduledPrompts: 'object',
-  delegations: 'array',
-  routed: 'array',
-  watches: 'array',
-  quietMerges: 'array',
-  mergeRecords: 'array',
-  sweep: 'object',
-  pendingUpdateChecks: 'array',
-}
 
 function kindOf(value: unknown): string {
   if (value === null || value === undefined) {
@@ -97,8 +76,15 @@ export async function loadState(dir: string): Promise<JsonObject> {
   return expectObject(parseJson(text, 'state.json'), 'state.json')
 }
 
-/** Replace `state.json` atomically: write a private temporary file beside it, then rename. */
+/**
+ * Replace `state.json` atomically: write a private temporary file beside it, then rename. A state
+ * that breaks `schemas/state.json` is refused before anything is written; reads never check it.
+ */
 export async function saveState(dir: string, state: JsonObject): Promise<void> {
+  const problem = stateProblem(state)
+  if (problem !== undefined) {
+    throw new StateError(`state.json: ${problem}`)
+  }
   await mkdir(dir, { recursive: true })
   const temporary = join(dir, `.state.${randomUUID()}.json`)
   await writeFile(temporary, `${dumpsIndented(state)}\n`, { mode: 0o600 })

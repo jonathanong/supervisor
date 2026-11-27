@@ -256,7 +256,9 @@ session-only jobs that expire after some days:
    a margin, register the replacement first, then delete the old job, so a failed create never
    leaves the supervisor with no job. A brief duplicate is harmless: the sweep claim lets
    only one of two concurrent sweeps run.
-3. Record the new job id and registration time in the state file's `schedule` field (see
+3. Replace the state file's `schedule` field with the new job in one
+   `supervisor state set schedule --json '{"id":...,"registeredAt":...,"cron":...,"expiresAt":...}'`
+   (all four keys, no others; the write is refused otherwise; see
    supervisor-loop [Step 2](../supervisor-loop/SKILL.md#step-2---schedule-and-event-waits)). The
    job's prompt is this skill's invocation in the harness's own form, not the bare skill name.
 
