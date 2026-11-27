@@ -17,8 +17,7 @@ const setSchedule = (loop: Loop, value: unknown) =>
 
 /** The whole message a refused `schedule` write prints. */
 const refused = (loop: Loop, problem: string) =>
-  `${join(loop.stateDir, 'state.json')}: ${problem}; set the whole field with ` +
-  '"supervisor state set schedule --json ..." or remove it with "supervisor state remove schedule"\n'
+  `${join(loop.stateDir, 'state.json')}: ${problem}; nothing was written\n`
 
 describe('state.json schema', () => {
   afterEach(cleanupLoops)
@@ -63,8 +62,7 @@ describe('state.json schema', () => {
     const state = await loadState(loop.stateDir)
     state.surprise = 1
     await expect(saveState(loop.stateDir, state)).rejects.toThrow(
-      `${join(loop.stateDir, 'state.json')}: surprise is not a state field; ` +
-        'remove it with "supervisor state remove surprise"',
+      `${join(loop.stateDir, 'state.json')}: surprise is not a state field; nothing was written`,
     )
     delete state.surprise
     await saveState(loop.stateDir, state)

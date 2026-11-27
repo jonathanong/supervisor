@@ -3,7 +3,7 @@ import { mkdir, readFile, rename, writeFile } from 'node:fs/promises'
 import { join, resolve } from 'node:path'
 import { dumps, dumpsIndented, put, type Json, type JsonObject } from './json.js'
 import { withLock } from './lock.js'
-import { FIELDS, fieldProblem, type Kind } from './schema.js'
+import { fieldProblem, type Kind } from './schema.js'
 
 /** A state file, argument value, or input file that does not have the shape a command needs. */
 export class StateError extends Error {}
@@ -88,13 +88,7 @@ function writeProblem(dir: string, state: JsonObject): string | undefined {
   for (const [name, value] of Object.entries(state)) {
     const problem = before.get(name) === dumps(value) ? undefined : fieldProblem(name, value)
     if (problem !== undefined) {
-      const fix = Object.hasOwn(FIELDS, name)
-        ? `set the whole field with "supervisor state set ${name} --json ..." or `
-        : ''
-      return (
-        `${resolve(dir, 'state.json')}: ${problem}; ${fix}` +
-        `remove it with "supervisor state remove ${name}"`
-      )
+      return `${resolve(dir, 'state.json')}: ${problem}; nothing was written`
     }
   }
   return undefined
