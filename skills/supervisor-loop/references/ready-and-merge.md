@@ -30,10 +30,16 @@ In a scope in `report` mode, run step 1 only and report what the later steps wou
    `supervisor policy check <owner>/<repo> <N> --dir <policy dir> --supervisor-policy --json`; keep
    its output in a file, and merge only the head in its `pull.head`.
    - When the policy check's next step is `request_review`, request a final review of the current
-     head at the depth it names, as `finalReview.request` says (the policy approves and only a bot reviewer's seat may be unmet, so no person is needed): `session` messages the final
-     reviewer's session with the PR and head, and `label` adds `finalReview.label` to the PR. Leave
-     the PR ready and report `awaiting-final-review`. A later sweep reruns the check. Nothing waits
-     on the reviewer.
+     head at the depth it names, as `finalReview.request` says, at most once per head. `session`
+     messages the final reviewer's session with the PR and head, and `label` adds
+     `finalReview.label` to the PR. The record is the label already on the PR in `label` mode (do
+     not re-add it); in `session` mode it is the `escalations` key
+     `final-review:<owner>/<repo>#<N>@<head>`, read with `supervisor state show escalations` and
+     written, after the message, with
+     `supervisor state set escalations 'final-review:<owner>/<repo>#<N>@<head>' --json '"<ISO time>"'`.
+     A new head is a new key, so a pushed fix gets a new request. A head already requested sends
+     nothing. Either way leave the PR ready and report `awaiting-final-review`. A later sweep reruns
+     the check. Nothing waits on the reviewer.
    - When `finalReview.status` is configured, run it too: exit 0 means the newest final review
      approved the current head. Any other exit code means do not merge.
    - When the policy check's next step is `shepherd`, the policy allows the merge but
