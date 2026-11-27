@@ -36,8 +36,8 @@ The sweep backstop finds commands the events missed:
 
 - **Window:** start at the later of `commandsThrough` and 7 days ago, so the window is never longer
   than 7 days. While `commandsThrough` is unset (the first run), look back the full 7 days and say
-  so in the summary; never fall back to `lastSweepAt`. A command older than 7 days with no
-  acknowledgement is reported as stale, not run.
+  so in the summary; never fall back to `lastSweepAt`. A command older than 7 days is not looked
+  for: the commenter posts it again.
 - **Cost:** do not page every comment of a repository. Search for the issues and PRs the trusted
   logins commented on in the window (the search takes dates, not times: one query per owner, for
   example `gh api -X GET search/issues -f q='org:<owner> commenter:<login> updated:>=<date>'`, or

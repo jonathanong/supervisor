@@ -40,7 +40,7 @@ none, and `--owner <owner>`, `--repo <owner>/<repo>`, or `--phase <letter>` narr
   `would <action>`, and an escalation there is a summary line only. A cursor that only prevents
   re-reporting may advance. A cursor that gates action does not: `handledFailures` records nothing
   for a `report` repository, and `commandsThrough` stays put while any selected repository is in
-  `report` mode, so a later switch to `enforce` still acts.
+  `report` mode, so a later switch to `enforce` still acts, for commands posted in the last 7 days.
 - **Repository:** pass `--repo <owner>/<repo>` on every `gh` command. Lists use `--limit 1000` with
   a below-limit check, or `gh api --paginate`.
 - **Rate limits:** the search API allows 30 requests a minute. Never fan out one search per

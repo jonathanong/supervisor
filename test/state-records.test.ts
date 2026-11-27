@@ -184,6 +184,10 @@ describe('supervisor state record subcommands', () => {
       code: 1,
       stderr: "reviewed: --prune-before 'soon' is not a time\n",
     })
+    for (const impossible of ['2026-02-30T00:00:00Z', '2026-13-01T00:00:00Z', 'Feb 1 2026']) {
+      expect((await loop.cli(['state', 'reviewed', '--prune-before', impossible])).code).toBe(1)
+    }
+    expect((await loop.cli(['state', 'reviewed', '--prune-before', '2024-02-29'])).code).toBe(0)
     expect((await loop.cli(['state', 'reviewed'])).code).toBe(2)
   })
 })

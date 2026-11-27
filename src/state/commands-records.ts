@@ -104,10 +104,20 @@ function commentId(value: Json): number {
   return id
 }
 
+/** `Date` rolls 2026-02-30 over to March; a time must name a day that exists. */
+function realCalendarDate(text: string): boolean {
+  const [, year, month, day] = /^(\d{4})-(\d{2})-(\d{2})/.exec(text) ?? []
+  if (year === undefined) {
+    return false
+  }
+  const date = new Date(Date.UTC(Number(year), Number(month) - 1, Number(day)))
+  return date.toISOString().slice(0, 10) === `${year}-${month}-${day}`
+}
+
 /** Drop entries harvested before `cutoff`; an entry with no readable `harvestedAt` is kept. */
 function pruneBefore(comments: JsonObject, text: string): void {
   const cutoff = Date.parse(text)
-  if (Number.isNaN(cutoff)) {
+  if (Number.isNaN(cutoff) || !realCalendarDate(text)) {
     throw new StateError(`reviewed: --prune-before '${text}' is not a time`)
   }
   for (const [repository, ids] of Object.entries(comments)) {
