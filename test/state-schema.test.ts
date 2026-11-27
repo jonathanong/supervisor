@@ -33,8 +33,16 @@ describe('state.json schema', () => {
     const loop = await makeLoop()
     const set = await setSchedule(loop, { ...SCHEDULE, jobId: 'job-1' })
     expect(set.code).toBe(1)
-    expect(set.stderr).toBe(refused(loop, 'schedule must NOT have additional properties (jobId)'))
+    expect(set.stderr).toBe(refused(loop, 'schedule must NOT have additional properties ("jobId")'))
     await expect(readFile(join(loop.stateDir, 'state.json'), 'utf8')).rejects.toThrow()
+  })
+
+  it('keeps the message on one line when an extra key holds a newline', async () => {
+    const loop = await makeLoop()
+    const set = await setSchedule(loop, { ...SCHEDULE, 'bad\nkey': 1 })
+    expect(set.stderr).toBe(
+      refused(loop, 'schedule must NOT have additional properties ("bad\\nkey")'),
+    )
   })
 
   it('refuses a schedule missing a key, also when set key by key', async () => {

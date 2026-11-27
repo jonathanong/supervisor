@@ -24,11 +24,12 @@ function validatorOf(name: string): ValidateFunction {
   return validate
 }
 
+/** Names are JSON-quoted so a control character in a key cannot break the one-line message. */
 function describe(name: string, error: ErrorObject): string {
   const path = [name, ...error.instancePath.split('/').slice(1)].join('.')
   const extra =
     error.keyword === 'additionalProperties'
-      ? ` (${(error.params as { additionalProperty: string }).additionalProperty})`
+      ? ` (${JSON.stringify((error.params as { additionalProperty: string }).additionalProperty)})`
       : ''
   return `${path} ${error.message!}${extra}`
 }
