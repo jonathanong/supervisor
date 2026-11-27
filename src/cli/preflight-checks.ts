@@ -17,7 +17,7 @@ function message(error: unknown): string {
 }
 
 /** The first non-empty line of some output, trimmed and capped, so a detail is always one line. */
-function firstLine(text: string): string {
+export function firstLine(text: string): string {
   const line = text.split('\n').find((entry) => entry.trim() !== '') ?? ''
   return line.trim().slice(0, 200)
 }
@@ -75,8 +75,12 @@ export async function checkHarness(
   if (loaded === undefined) {
     return { name: 'hook-harness', ok: false, detail: 'skipped: the config did not load' }
   }
-  if (!(await eventWaitSet(loaded.path))) {
-    return { name: 'hook-harness', ok: true, detail: 'not configured' }
+  try {
+    if (!(await eventWaitSet(loaded.path))) {
+      return { name: 'hook-harness', ok: true, detail: 'not configured' }
+    }
+  } catch (error) {
+    return { name: 'hook-harness', ok: false, detail: firstLine(message(error)) }
   }
   const version = loaded.config.eventWait.hookHarness
   const args = ['-y', `hook-harness@${version}`, '--version']
@@ -94,7 +98,8 @@ export async function checkStop(loaded: LoadedConfig | undefined): Promise<Check
       return { name, ok: true, detail: 'not stopped' }
     }
     const since = stop.at === null ? '' : ` since ${stop.at}`
-    return { name, ok: false, detail: `stopped${since}${stop.reason ? `: ${stop.reason}` : ''}` }
+    const why = stop.reason ? `: ${stop.reason}` : ''
+    return { name, ok: false, detail: firstLine(`stopped${since}${why}`) }
   } catch (error) {
     return { name, ok: false, detail: firstLine(message(error)) }
   }

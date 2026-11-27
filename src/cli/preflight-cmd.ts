@@ -2,7 +2,14 @@ import { parseArgs } from 'node:util'
 import { loadConfig, type LoadedConfig } from '../config/load.js'
 import { FLAG } from '../state/context.js'
 import { dumps } from '../state/json.js'
-import { checkGh, checkHarness, checkShepherd, checkStop, type Check } from './preflight-checks.js'
+import {
+  checkGh,
+  checkHarness,
+  checkShepherd,
+  checkStop,
+  firstLine,
+  type Check,
+} from './preflight-checks.js'
 import type { CliIo } from './run.js'
 
 const PREFLIGHT_HELP = `Usage: supervisor preflight [--json]
@@ -36,7 +43,7 @@ async function checkConfig(io: CliIo): Promise<{ check: Check; loaded?: LoadedCo
     const loaded = await loadConfig(io.env, process.cwd())
     return { check: { name: 'config', ok: true, detail: loaded.path }, loaded }
   } catch (error) {
-    return { check: { name: 'config', ok: false, detail: (error as Error).message } }
+    return { check: { name: 'config', ok: false, detail: firstLine((error as Error).message) } }
   }
 }
 

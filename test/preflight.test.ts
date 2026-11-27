@@ -1,34 +1,8 @@
 import { writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
-import type { ProcessResult, RunProcess } from '../src/state/process.js'
 import { cleanupLoops, done, makeLoop, NOW } from './helpers/loop.js'
-
-const GH_OUT = "Logged in\n  - Token scopes: 'repo', 'read:org'\n"
-
-interface Calls {
-  run: RunProcess
-  seen: string[]
-}
-
-function fake(replies: Record<string, ProcessResult | Error>): Calls {
-  const seen: string[] = []
-  const run: RunProcess = async (command, args) => {
-    seen.push([command, ...args].join(' '))
-    const reply = replies[command] ?? done('', 1, 'no reply')
-    if (reply instanceof Error) {
-      throw reply
-    }
-    return reply
-  }
-  return { run, seen }
-}
-
-const GOOD = {
-  gh: done(GH_OUT),
-  'pr-shepherd': done('pr-shepherd 1.2.3\n'),
-  npx: done('0.4.1\n'),
-}
+import { fake, GOOD } from './helpers/preflight.js'
 
 describe('supervisor preflight', () => {
   afterEach(cleanupLoops)
@@ -124,29 +98,6 @@ describe('supervisor preflight', () => {
     const stderrOnly = { ...GOOD, npx: done('', 0, '0.4.1') }
     const old = await loop.cli(['preflight'], fake(stderrOnly).run)
     expect(old.stdout).toContain('ok   hook-harness: 0.4.1\n')
-  })
-
-  it('keeps every detail to one line, the first non-empty one of the output', async () => {
-    const loop = await makeLoop()
-    const usage = '\n  error: unknown command "--version"\nUsage: hook-harness <command>\n  wait\n'
-    const replies = {
-      gh: done('', 1, `\n\nbad credentials\nrun gh auth login\n`),
-      'pr-shepherd': done('', 1),
-      npx: done(usage, 2),
-    }
-    const result = await loop.cli(['preflight'], fake(replies).run)
-    expect(result.stdout).toContain('FAIL gh: exited 1: bad credentials\n')
-    expect(result.stdout).toContain('FAIL pr-shepherd: exited 1: \n')
-    expect(result.stdout).toContain(
-      'FAIL hook-harness: exited 2: error: unknown command "--version"\n',
-    )
-    const thrown = { ...GOOD, npx: new Error('first\nsecond') }
-    expect((await loop.cli(['preflight'], fake(thrown).run)).stdout).toContain(
-      'FAIL hook-harness: first\n',
-    )
-    const long = { ...GOOD, npx: done('x'.repeat(500), 1) }
-    const capped = await loop.cli(['preflight'], fake(long).run)
-    expect(capped.stdout).toContain(`exited 1: ${'x'.repeat(200)}\n`)
   })
 
   it('fails when the stop switch is set, saying since when and why', async () => {
