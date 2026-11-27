@@ -60,7 +60,8 @@ export interface FileEvaluation {
 
 export type NextStep =
   | { action: 'merge' }
-  | { action: 'request_review'; depth: ReviewDepth }
+  /** Request a final review of the head. `reason` is set when only bot seats are unmet. */
+  | { action: 'request_review'; depth: ReviewDepth; reason?: string }
   | { action: 'escalate'; reason: string }
   /** The policy allows the merge but pr-shepherd says the PR is not ready: run pr-shepherd. */
   | { action: 'shepherd'; reason: string }

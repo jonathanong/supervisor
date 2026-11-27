@@ -34,7 +34,8 @@ export function formatPoliciesOverview(policies: PolicyFile[]): string {
 function formatNextStep(result: EvaluationResult): string {
   if (result.nextStep.action === 'merge') return 'Next step: merge allowed'
   if (result.nextStep.action === 'request_review') {
-    return `Next step: request review at depth ${result.nextStep.depth}`
+    const why = result.nextStep.reason ? ` (${result.nextStep.reason})` : ''
+    return `Next step: request review at depth ${result.nextStep.depth}${why}`
   }
   if (result.nextStep.action === 'shepherd') {
     return `Next step: run pr-shepherd on the pull request (${result.nextStep.reason})`

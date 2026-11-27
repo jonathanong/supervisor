@@ -6,6 +6,7 @@ import {
   maxDepth,
   ruleReviewDepth,
   strictestClaude,
+  unmetSeatsStep,
 } from './evaluate-helpers.js'
 import { matchesRulePaths, toRelativePath } from './glob.js'
 import { PROTECTED_BASELINE, isProtectedPath } from './protected.js'
@@ -166,10 +167,7 @@ export function evaluatePolicies(policies: PolicyFile[], input: EvaluationInput)
       reason: 'Not every changed file has a rule that approves the merge',
     }
   } else if (unmetSeats.length > 0) {
-    nextStep = {
-      action: 'escalate',
-      reason: `${unmetSeats.length} seat requirement(s) still unmet`,
-    }
+    nextStep = unmetSeatsStep(unmetSeats, overallDepth)
   } else {
     nextStep = { action: 'merge' }
   }
