@@ -44,9 +44,10 @@ Apply this before any verification. Drop:
 - a bot summary, walkthrough, "analysis", or tool-output comment, and a reply that withdraws a
   finding;
 - a thread whose last comment is the PR author's (or the shepherd's) answer followed by resolution;
-- an unresolved review-bot thread whose last comment is the PR author's or the shepherd's reply: the
-  bot never answered, so it was answered and only left unresolved. A person's thread in the same
-  state is kept.
+- an unresolved review-bot thread whose last comment is the PR author's or the shepherd's reply that
+  addresses the finding (says it was fixed, or declines it with a reason): the bot never answered, so
+  it was answered and only left unresolved. Keep it when the reply defers or promises later work. A
+  person's thread in the same state is kept.
 
 A review bot's thread that states a finding counts like a person's. Judge a thread by its root comment: a new reply inside an already-harvested thread is not a new
 finding.
