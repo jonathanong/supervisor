@@ -10,7 +10,7 @@ One file, `<stateDir>/stop`, stops the supervisor. Creating it is faster than fi
 | `supervisor resume`                 | Removes the file and prints what it held.                     | 0                        |
 
 None of them takes the state lock. Exit 3 is stopped. Any other non-zero exit code is an error (for example a
-configuration that cannot be read): take no action and report it as an error, not as stopped.
+configuration that cannot be read; `supervisor wait` also exits 4 when the previous result was not advanced, see [events](events.md)): take no action and report it as an error, not as stopped.
 
 ## When to check
 

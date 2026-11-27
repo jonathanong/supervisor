@@ -112,7 +112,7 @@ implementation-tier worker, never the supervisor session.
      marks a standing loop, and only a standing loop's sweep maintains the job)
    - `retroCursor`
    - `escalations` (key to first-notified time, used for dedupe)
-   - `hookHarness.<owner>` (`cursor`, recently `seen` event ids, and per-event progress)
+   - `hookHarness.<owner>` (`cursor` and recently `seen` event ids; nothing records per-event progress)
    - `handledFailures` (default-branch run ids already diagnosed, and the fix PR or issue each got)
    - `intake` (queued agent reports)
    - `scheduledPrompts` (`next` rotation position, and a bounded `runs` history)
@@ -167,8 +167,9 @@ Only one sweep runs at a time. Each sweep first claims it with
 ## Step 3 - Handle a wait result
 
 When an owner's wait exits, follow [references/events.md](references/events.md): dedupe and record
-its events in `hookHarness.<owner>`, act on each, persist that owner's cursor with
-`supervisor state advance-hh --owner <owner>`, and relaunch that owner's wait. The same reference
+its events, act on each, then run `supervisor state advance-hh --owner <owner>` (it marks the
+events seen and stores the cursor), and only then relaunch that owner's wait. A wait started before
+`advance-hh` refuses with one line and exit 4; run `advance-hh` and relaunch. The same reference
 covers merge watches. Related procedures, each read when its event arrives:
 
 - [references/failures.md](references/failures.md): merge-queue ejections, default-branch failures,

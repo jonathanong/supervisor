@@ -6,6 +6,7 @@ import { FLAG, NAME, TEXT } from '../state/context.js'
 import { StoppedError, STOPPED_EXIT } from '../state/stop.js'
 import { HarnessExit } from '../wait/context.js'
 import { runWait } from '../wait/loop.js'
+import { UNADVANCED_EXIT, UnadvancedError } from '../wait/unadvanced.js'
 import type { CliIo } from './run.js'
 
 const WAIT_HELP = `Usage: supervisor wait --owner <owner> [--advance]
@@ -32,7 +33,12 @@ trigger. The full result, with only the events that need action, is written to
 
 The cursor (hookHarness.<owner>.cursor in state) moves only past quiet merges. Run
 "supervisor state advance-hh --owner <owner>" after handling the returned events, or pass
---advance (or set eventWait.advance) to move it at return.
+--advance (or set eventWait.advance) to move it, and mark the returned ids seen, at return. A
+returned event whose id is already seen is dropped.
+
+The wait does not start while hh-last.<owner>.json holds an event whose id is not seen, that is,
+events returned and not yet advanced: it prints one line naming the "advance-hh" command and exits
+${UNADVANCED_EXIT}. Handle the events, run advance-hh, then relaunch.
 
 While the stop switch is set (see: supervisor stop --help) the wait does not start: it prints one
 line and exits ${STOPPED_EXIT}. A wait in progress ends the same way when the switch appears between two
@@ -84,6 +90,9 @@ export async function runWaitCommand(args: string[], io: CliIo): Promise<number>
       return error.code
     }
     io.stderr(`${(error as Error).message}\n`)
+    if (error instanceof UnadvancedError) {
+      return UNADVANCED_EXIT
+    }
     return error instanceof StoppedError ? STOPPED_EXIT : 1
   }
 }
