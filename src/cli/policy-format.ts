@@ -36,6 +36,9 @@ function formatNextStep(result: EvaluationResult): string {
   if (result.nextStep.action === 'request_review') {
     return `Next step: request review at depth ${result.nextStep.depth}`
   }
+  if (result.nextStep.action === 'review') {
+    return `Next step: request a final review of the head (${result.nextStep.reason})`
+  }
   if (result.nextStep.action === 'shepherd') {
     return `Next step: run pr-shepherd on the pull request (${result.nextStep.reason})`
   }

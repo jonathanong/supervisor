@@ -6,6 +6,7 @@ import type {
   ClaudeAction,
   EvaluatedSeat,
   EvaluationFacts,
+  NextStep,
   PolicyRule,
   ReviewDepth,
   SeatSet,
@@ -111,4 +112,27 @@ export function evaluateRuleVerdict(
     return { verdict: merged, overrideIndex: i, waitingOnCodeReview: false }
   }
   return { verdict: base, overrideIndex: null, waitingOnCodeReview: false }
+}
+
+/** True when only a bot can fill the seat: every set it draws from names a bot, never a person. */
+function isBotOnlySeat(seat: EvaluatedSeat): boolean {
+  const included = seat.from.filter((item) => !item.startsWith('!'))
+  return included.length > 0 && included.every((item) => item === 'bots' || item.startsWith('bot:'))
+}
+
+/**
+ * The next step when the verdict approves and seats are unmet. The evaluator lists a seat once per
+ * file and rule that asks for it, so identical seats count once, as the report prints them. A seat
+ * only a bot can fill needs a final review of the head, not a person.
+ */
+export function unmetSeatsStep(unmetSeats: EvaluatedSeat[]): NextStep {
+  const distinct = new Map<string, EvaluatedSeat>()
+  for (const seat of unmetSeats) {
+    distinct.set(JSON.stringify([seat.count, seat.from, seat.filledBy]), seat)
+  }
+  const reason = `${distinct.size} seat requirement(s) still unmet`
+  if ([...distinct.values()].every(isBotOnlySeat)) {
+    return { action: 'review', reason: `${reason}, each fillable by a bot reviewer` }
+  }
+  return { action: 'escalate', reason }
 }

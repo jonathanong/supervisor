@@ -132,7 +132,7 @@ The format takes no new keys, so full versus light review is expressed with what
 - which seats are filled on the current head
 - the review depth asked for
 - whether pr-shepherd would merge that head
-- the next step: merge, request a review at a given depth on that head, escalate to a person, or run pr-shepherd when the policy allows the merge but the head is not ready
+- the next step: merge, request a review at a given depth on that head (`request_review`), request a final review of that head when the only unmet seats are a bot's to fill (`review`), escalate to a person, or run pr-shepherd when the policy allows the merge but the head is not ready
 
 It exits 0 only when the next step is merge. `--json` prints the same as one object, with the policy's own answer in `policyNextStep` and the final one in `nextStep`.
 
@@ -157,6 +157,7 @@ A GitHub App is written `bot:<app slug>`, so `dependabot[bot]` is `bot:dependabo
 **What holds a merge the policy allows.** `--json` lists these:
 
 - **A blocker** makes the next step `escalate`: a commit whose author has no GitHub login, a PR that is not open, or a draft. With an author unknown, `facts.authors` is left out, so a condition on `pr/authors` stays undecided.
+- **An unmet bot seat** makes the next step `review` when the verdict approves and every unmet seat names only bots (`bot:<app>` or `bots`). Only the final reviewer can fill it, so no person is needed: request a final review of the head. If any unmet seat can be filled by `humans`, a named person or a team, the next step is `escalate`. The reason counts each distinct seat once, as the seat lines print it. `review` wins over `shepherd`: a missing review and pending pr-shepherd work are independent, and the review request does not wait on CI.
 - **pr-shepherd not ready** makes the next step `shepherd`: the policy allows the merge, but pr-shepherd's read-only `status` does not answer `merge` for this head. That covers a pending or failing check, a missing review, a branch rule and any other reason pr-shepherd would not merge. The next step is to run pr-shepherd on the PR. A person is not needed, so it is not `escalate`. The result's `readiness` is `{ ready, action, summary? }`: pr-shepherd's action, whether it is `merge`, and its one-line reason when it gave one. An answer with no head, or a failed call, is never ready; a failed call exits 2. A head that moved while pr-shepherd read it exits 2.
 
 pr-shepherd reads its `.pr-shepherdrc.yml` from a checkout of the target repository. The command uses `--repo-dir` for that, and the current directory when `--repo-dir` is absent. Run it from a checkout of the target repository, or pass `--repo-dir`, so pr-shepherd applies that repository's config.
