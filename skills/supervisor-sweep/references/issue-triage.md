@@ -32,6 +32,10 @@ sorted.
 - **Work on now** an issue with no theme (a one-off, or a flaky test): it needs no milestone.
   Dispatch a fixer (an implementation-tier worker or a fitting workspace agent), as for a flake (see
   [failures](../../supervisor-loop/references/failures.md)). It is not listed for the owner.
+  Dispatch at most 5 new fixers per repository per sweep, oldest issue first; later sweeps pick up
+  the rest, and the summary counts them. Skip an issue that already has an assignee or a recorded
+  dispatch. `routed` is a list of `{what, to, at, evidence?, issue?, note?}` with no issue key, so
+  match a record whose `what` or `issue` text contains `<owner>/<repo>#N`.
 - **Needs decision** is left only for urgent or risky work the merge policy would send to a person
   anyway, a reorganization of existing taxonomy, and an issue the sweep cannot classify. List each
   once as a `needs decision` summary line, deduped on `escalations` (key `<owner>/<repo>#N`). It is

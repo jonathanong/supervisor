@@ -25,6 +25,8 @@ The sweep's backstop (Phase G) finds both kinds over the last 24 hours:
   fetch only that job's log to a file in the temporary directory and search the file.
   `--log-failed` prints the whole job log: never read it directly into context.
 
+## Handling a failure
+
 - **Ejected PR:** requeueing belongs to whichever agent shepherds the PR, through `pr-shepherd`'s
   "Merge queue ejection" playbook. The supervisor never requeues a PR it is not shepherding (one
   whose shepherd it did not start in this session). For such a PR it still diagnoses the failure for
