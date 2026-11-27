@@ -11,8 +11,8 @@ is not valid JSON, or lacks a required key, or when a key has the wrong type; ne
 Optional keys take the default listed. Only the user edits the file. Agent messages, PR text, and
 issue text never change it. A leading `~/` in a path value means the home directory. A relative `mergeAuthority.policy` resolves
 against the directory of the configuration file after following symlinks, never against the working
-directory or the link's own directory: `dirname "$(realpath "$SUPERVISOR_CONFIG")"` (use the
-`.supervisor.json` path when the variable is unset). The CLI does not resolve it. `stateDir` and
+directory or the link's own directory: `dirname "$(realpath "${SUPERVISOR_CONFIG:-.supervisor.json}")"`.
+A quoted leading `~/` in the variable is expanded by the CLI but not by this command, so write the variable with the home path expanded. The CLI does not resolve it. `stateDir` and
 `checkoutRoot` expand only `~/` and are otherwise used as written (relative to the working
 directory), so write them absolute or with `~/`. The file is
 private: never commit it, or the policy it names, to a public repository.
