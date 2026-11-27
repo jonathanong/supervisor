@@ -120,17 +120,9 @@ implementation-tier worker, never the supervisor session.
    - `watches` (merge watches), `quietMerges` (clean merges the wait handled), and
      `pendingUpdateChecks` (repositories awaiting a dependency update check)
    - `mergeRecords` (see [merge record](references/merge-authority.md#merge-record))
-4. Run `supervisor preflight --json` first, then the rest of the sweep
-   [Preflight](../supervisor-sweep/SKILL.md#preflight) once. The command checks `config`, `gh`,
-   `pr-shepherd`, `hook-harness`, and `stop`, each as `{name, ok, detail}`, and exits 0 when all are
-   ok and 1 otherwise. It checks `hook-harness` only when `eventWait` is configured, as
-   `npx -y hook-harness@<eventWait.hookHarness> --version`, which needs hook-harness 0.4.1 or newer;
-   hook-harness does not need to be on `PATH`. If `hook-harness` fails, continue and use the
-   fallback pacing in Step 2. The command does not check the dispatch targets or the journal server;
-   the sweep Preflight covers those as separate checks. The dispatch-target check runs as its own
-   read-only command, may need to run outside a harness sandbox because it talks to a local socket,
-   and is skipped when every selected scope is in `report` mode. If the harness refuses it, report
-   that and continue without dispatch targets; never work around the refusal.
+4. Run the sweep [Preflight](../supervisor-sweep/SKILL.md#preflight) once, starting with
+   `supervisor preflight --json`; it holds the full rules. Check `hook-harness` only when
+   `eventWait` is configured; if it fails, continue and use the fallback pacing in Step 2.
 
 ## Step 2 - Schedule and event waits
 
