@@ -64,7 +64,7 @@ supervisor policy check <owner>/<repo> <N> --dir <policy dir> --supervisor-polic
   [--classifiers <classifiers file>] [--repo-dir <default-branch checkout>]
 ```
 
-`<policy dir>` is `mergeAuthority.policy`. Add `--repo-dir` when the repository's default branch
+`<policy dir>` is `mergeAuthority.policy`, resolved as [config.md](config.md) says (relative to the config file's real path). Add `--repo-dir` when the repository's default branch
 has a `.supervisor/approvals.yml`: the check then reads the repository's own policy below the
 supervisor policy. Give it a checkout of the default branch, never of the PR's head, or the PR could
 loosen the rules that judge it. Save the JSON the command prints with a file-writing tool; the
