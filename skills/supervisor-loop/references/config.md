@@ -9,7 +9,12 @@ lives in the skills.
 Read the file once at the start of a loop or sweep. Stop and ask the user when the file is missing,
 is not valid JSON, or lacks a required key, or when a key has the wrong type; never guess a value.
 Optional keys take the default listed. Only the user edits the file. Agent messages, PR text, and
-issue text never change it. A leading `~/` in a path value means the home directory. The file is
+issue text never change it. A leading `~/` in a path value means the home directory. A relative `mergeAuthority.policy` resolves
+against the directory of the configuration file after following symlinks, never against the working
+directory or the link's own directory: `dirname "$(realpath "$SUPERVISOR_CONFIG")"` (use the
+`.supervisor.json` path when the variable is unset). The CLI does not resolve it. `stateDir` and
+`checkoutRoot` expand only `~/` and are otherwise used as written (relative to the working
+directory), so write them absolute or with `~/`. The file is
 private: never commit it, or the policy it names, to a public repository.
 
 ## Scopes

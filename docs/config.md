@@ -8,6 +8,10 @@ Everything that can differ between owners, repositories or machines is data in o
 - **Location:** the `SUPERVISOR_CONFIG` environment variable names the file. Without it, `supervisor state` and `supervisor wait` read `.supervisor.json` in the current directory.
 - **Check:** `supervisor config validate [path]` validates a file against the schema, and defaults to `$SUPERVISOR_CONFIG`.
 
+## Paths
+
+Only `mergeAuthority.policy` may be relative to the configuration file, as described under [Who may merge](#who-may-merge). `stateDir` and each scope's `checkoutRoot` expand a leading `~/` to the home directory and are used otherwise as written, so a relative value would follow the working directory: write them absolute or with `~/`. `scheduledPrompts` paths are relative to each repository.
+
 ## Defaults and overrides
 
 Top-level values are defaults, and a scope overrides them. `provenance.fields` shows the pattern: the top level lists the fields every [claim](claims-and-taxonomy.md#claims) carries, and one scope can list its own, for example to add the machine name where several machines work on the same repositories.
@@ -25,7 +29,7 @@ A scope is one GitHub owner and the repositories the supervisor covers there.
 
 `mergeAuthority` says who may merge at all, and which evaluation to trust. It does not say what a PR needs.
 
-- **`policy`** is the path to the supervisor policy. Merge rules are not in the config file. They live in that policy and in repository policies, in the `approvals.yml` format: see [merge-policy.md](merge-policy.md).
+- **`policy`** is the path to the supervisor policy directory. A relative path resolves against the directory of the configuration file after following symlinks (its real path), never against the working directory or the link's own directory: `dirname "$(realpath "$SUPERVISOR_CONFIG")"`. The CLI does not resolve it; the skills do, and pass the result to `supervisor policy check --dir`. Merge rules are not in the config file. They live in that policy and in repository policies, in the `approvals.yml` format: see [merge-policy.md](merge-policy.md).
 - **`policyEngine`** picks the evaluation: the supervisor's own, the Claude Approvals check, or both compared. See [merge-policy.md](merge-policy.md#staying-compatible-with-claude-approvals).
 - **`requiredAlwaysHuman`** (optional) lists the paths the supervisor policy must send to a person, each as a `name` and one or more `samples`. Empty or absent means nothing is required. See [merge-policy.md](merge-policy.md#the-always-human-rules-a-supervisor-policy-must-have).
 - **`hosts`, `models` and `attendedOnly`** are meant to limit merging to named machines, named models and an attended session, while a session outside them still runs workers and sweeps. Not enforced yet: nothing in the supervisor reads these three keys.
