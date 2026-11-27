@@ -11,12 +11,18 @@ The sweep's backstop (Phase G) finds both kinds over the last 24 hours:
 
 - **Ejections:** per repository, query GraphQL
   `timelineItems(itemTypes: [REMOVED_FROM_MERGE_QUEUE_EVENT])` over recently updated PRs, paginated
-  until a PR's update time leaves the window. `reason` is a free string, not an enum, so print the
-  distinct reasons seen and judge by meaning. An ejection is a removal for any reason other than the
-  PR merging. A removal followed by a later merge of the same PR is resolved: no action, except that
+  until a PR's update time leaves the window. Judge by the returned `nodes`, never by `totalCount`:
+  with `itemTypes`, `totalCount` counts every timeline item, unfiltered, and `nodes` is empty when
+  there are no removals. `reason` is a free string, not an enum, so print the distinct reasons seen
+  and judge by meaning. An ejection is a removal for any reason other than the PR merging; a
+  `RemovedFromMergeQueueEvent` whose reason is the PR merging (for example `merged`) is not an
+  ejection. A removal followed by a later merge of the same PR is resolved: no action, except that
   a removal for failed checks that passed on requeue is a flake candidate. A removal a person made
   is the owner's: leave it alone. Drop PRs currently queued.
-- **Default-branch runs:** take the default branch from the repository listing. Count runs whose
+- **Default-branch runs:** take the default branch from the repository listing. List runs with a
+  time bound, `gh run list --branch <default branch> --created '>=<window start>'`, because a plain
+  `--limit 100` listing covers only about an hour on a busy repository; a listing that reaches its
+  limit is truncated, so narrow the window or paginate. Count runs whose
   conclusion is `failure`, `timed_out`, or `startup_failure`, including `workflow_dispatch` and
   `repository_dispatch` runs. Ignore runs whose event is the dependency bot's own update job.
 - **Group before diagnosing:** by repository, workflow, failing job or step, and the same first

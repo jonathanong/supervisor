@@ -6,7 +6,7 @@ open milestones and projects.
 
 ## List
 
-A mechanical-tier subagent builds the list from the repositories selected in supervisor-loop
+A mechanical-tier subagent per owner builds the list from the repositories selected in supervisor-loop
 [Step 1](../../supervisor-loop/SKILL.md#step-1---preflight), never from an owner-wide search (that
 returns archived and unselected repositories). Per repository, list open issues with no milestone
 and no project (`gh issue list --repo <owner>/<repo> --state open --search 'no:milestone no:project' --limit 1000 --json number,title,body,labels --jq '...'`,

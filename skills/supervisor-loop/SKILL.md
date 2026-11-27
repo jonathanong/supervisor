@@ -25,7 +25,8 @@ procedure.
   root, and its mode. Every step below runs per scope. A scope in `report` mode is triaged and
   reported on, with no worker PRs and no merges (see
   [report mode](../supervisor-sweep/SKILL.md#rules-for-every-phase)).
-- **Model tiers:** the mechanical tier lists, classifies, and harvests comments; the implementation
+- **Model tiers:** the mechanical tier lists, classifies, and harvests comments, one subagent per
+  owner rather than per repository; the implementation
   tier fixes, judges changelogs and migrations, and verifies; the review tier reviews work it did
   not write. Use them wherever possible. The supervisor session itself only orchestrates and
   decides.
@@ -107,8 +108,8 @@ implementation-tier worker, never the supervisor session.
    - `lateReview.<owner>/<repo>` with `scannedThrough`, `activityThrough`, and `fullScanAt` (see
      supervisor-sweep [Phase F](../supervisor-sweep/SKILL.md#phase-f---missed-code-reviews))
    - `commandsThrough` (the `since` for supervisor-sweep Phase G2's command-comment scan)
-   - `schedule` (the fallback sweep job's id and registration time; its presence marks a standing
-     loop, and only a standing loop's sweep maintains the job)
+   - `schedule` (`{id, registeredAt, cron, expiresAt}` for the fallback sweep job; its presence
+     marks a standing loop, and only a standing loop's sweep maintains the job)
    - `retroCursor`
    - `escalations` (key to first-notified time, used for dedupe)
    - `hookHarness.<owner>` (`cursor`, recently `seen` event ids, and per-event progress)
@@ -119,9 +120,9 @@ implementation-tier worker, never the supervisor session.
    - `watches` (merge watches), `quietMerges` (clean merges the wait handled), and
      `pendingUpdateChecks` (repositories awaiting a dependency update check)
    - `mergeRecords` (see [merge record](references/merge-authority.md#merge-record))
-4. Run the sweep [Preflight](../supervisor-sweep/SKILL.md#preflight) once (`pr-shepherd`, `gh`, the
-   dispatch targets, and the journal server). Check `hook-harness` only when `eventWait` is
-   configured; if it is absent or fails, continue and use the fallback pacing in Step 2.
+4. Run the sweep [Preflight](../supervisor-sweep/SKILL.md#preflight) once, starting with
+   `supervisor preflight --json`; it holds the full rules. Check `hook-harness` only when
+   `eventWait` is configured; if it fails, continue and use the fallback pacing in Step 2.
 
 ## Step 2 - Schedule and event waits
 
@@ -130,10 +131,12 @@ through that mode with this skill as its prompt (in Claude Code, for example, `/
 
 1. Run one sweep now.
 2. Register the fallback sweep as a recurring job with schedule `fallbackCron` (default
-   `0 */6 * * *`) and prompt `supervisor-sweep`. List existing jobs first and do not register a
+   `0 */6 * * *`) and, as its prompt, the sweep skill's invocation in that harness's own form (in
+   Claude Code, for example, `/supervisor:supervisor-sweep`), not the bare skill name. List existing jobs first and do not register a
    duplicate. Prefer a durable scheduler when the harness has one. Harnesses may expire recurring
    jobs, so every sweep re-checks the job and re-registers it before expiry (see supervisor-sweep
-   Phase H); record its id and registration time in `schedule`.
+   Phase H); record `{id, registeredAt, cron, expiresAt}` in `schedule`. The state file accepts any
+   object there, so this skill owns that shape.
 3. When `eventWait` is configured, keep exactly one background command per owner running:
    `supervisor wait --owner <owner>`, launched from the launch directory, one for each distinct
    `owner` in `scopes`. Each runs `hook-harness wait` over that owner's configured repositories from

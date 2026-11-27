@@ -43,6 +43,12 @@ none, and `--owner <owner>`, `--repo <owner>/<repo>`, or `--phase <letter>` narr
   `report` mode, so a later switch to `enforce` still acts, for commands posted in the last 7 days.
 - **Repository:** pass `--repo <owner>/<repo>` on every `gh` command. Lists use `--limit 1000` with
   a below-limit check, or `gh api --paginate`.
+- **Limits:** any `--limit` is fine when the result count is below it. A result that reaches its
+  limit is truncated: paginate it or narrow the query (by repository or date range) and rerun.
+- **Harness sandbox:** some harnesses run `gh`, `git`, `supervisor`, and `pr-shepherd` with
+  credentials only when the command is the whole command line. In a pipe, an `&&` chain, or a
+  `$(...)` they can fail as "not logged in". Use the tool's own `--jq` or `--json` flags instead of
+  piping.
 - **Rate limits:** the search API allows 30 requests a minute. Never fan out one search per
   repository in parallel: batch by owner or space the calls. On a 403 rate-limit response, wait for
   the reset and retry once instead of failing the phase.
@@ -51,8 +57,10 @@ none, and `--owner <owner>`, `--repo <owner>/<repo>`, or `--phase <letter>` narr
   never aggregate (count, group) inside it.
 - **Reviewed head:** act only on the reviewed head, re-read as in
   [ready and merge](../supervisor-loop/references/ready-and-merge.md) step 2.
-- **Model tiers:** fan per-repository work out to subagents. The mechanical tier lists, classifies,
-  and harvests. The implementation tier fixes, judges, and verifies. Subagents return structured
+- **Model tiers:** fan work out to subagents. The mechanical tier lists, classifies, and harvests,
+  with one subagent per owner that loops over that owner's repositories, never one per repository.
+  Per-repository subagents are for diagnosis, verification, and fixing only. The implementation tier
+  fixes, judges, and verifies. Subagents return structured
   findings and never merge, close, or escalate, and never run a `pr-shepherd` poll (see ready and
   merge step 6 for the fixer's `apply` commands). The supervisor session makes those calls.
 - **Orchestrator role:** the supervisor never authors PRs; every PR is opened by a worker or
@@ -65,13 +73,21 @@ none, and `--owner <owner>`, `--repo <owner>/<repo>`, or `--phase <letter>` narr
 
 ## Preflight
 
-At the start of every sweep, not only at loop startup, verify each dependency the phases need:
+At the start of every sweep, not only at loop startup, verify each dependency the phases need.
+Run `supervisor preflight --json` first. It reports the checks `config`, `gh`, `pr-shepherd`,
+`hook-harness`, and `stop`, each as `{name, ok, detail}`, and exits 0 when all are ok and 1
+otherwise. It checks `hook-harness` only when `eventWait` is configured, as
+`npx -y hook-harness@<eventWait.hookHarness> --version`, which needs hook-harness 0.4.1 or newer;
+hook-harness does not need to be on `PATH`. It does not check dispatch targets or the journal
+server. A failed check there covers `gh`, `pr-shepherd`, and the event-wait tool. Then verify the
+rest:
 
-- `gh` auth, and for Phase D's project step a token with the project scopes (`gh auth status` shows
-  scopes; when missing, skip only the project step and say so in the summary);
-- `pr-shepherd`;
-- the event-wait tool, only when configured;
-- the configured dispatch targets;
+- for Phase D's project step, a `gh` token with the project scopes (`gh auth status` shows scopes;
+  when missing, skip only the project step and say so in the summary);
+- the configured dispatch targets, as its own read-only command, never combined with other
+  commands. It may need to run outside a harness sandbox because it talks to a local socket. Skip it
+  when every selected scope is in `report` mode, since nothing is dispatched there. If the harness
+  refuses it, report that and continue without dispatch targets; never work around the refusal;
 - the journal (agent-blackboard) MCP server, with one read-only call.
 
 A phase whose dependency fails is skipped, with the reason in the summary. The first failure of a
@@ -80,7 +96,8 @@ given dependency sends one notification through the escalation channel, deduped 
 
 ## Phase A - Dependency-bot PRs
 
-A mechanical-tier subagent per repository lists open PRs from the dependency bot, plus open PRs on
+A mechanical-tier subagent per owner lists, for each of that owner's repositories, open PRs from the
+dependency bot, plus open PRs on
 the configured `lockfileDedupe.branch` (whatever their label; a branch name alone does not make a PR
 a dedupe PR, see the
 [lockfile-dedupe judgment](../supervisor-loop/references/merge-authority.md#judgments-the-policy-cannot-express)),
@@ -167,18 +184,24 @@ and tools; this skill adds no wrapper and names none of them. Once per scope:
    archiving. Either way, remove the local snapshot the distill made.
 4. Advance `retroCursor` only after that clean-up succeeds for every scope.
 
+In a `report` scope, distill and list the follow-ups that would be filed in the summary. File
+nothing, archive nothing, and do not advance `retroCursor`; still remove the local snapshot the
+distill made.
+
 ## Phase F - Missed code reviews
 
 Follow [references/late-reviews.md](references/late-reviews.md). For each repository it scans PRs
 merged in the last `lateReviewDays` for review comments created after merge or threads unresolved now,
 verifies each against the default branch, and files one `follow-up` issue per root cause. It is
-incremental, and its cursors (`lateReview.<owner>/<repo>`) advance only after a scan succeeds.
+incremental, and its cursors (`lateReview.<owner>/<repo>`) advance only after a scan succeeds. In a
+`report` scope it runs the harvest and the noise filter and reports candidate counts per repository,
+then verifies only a labeled sample (see late-reviews).
 
 ## Phase G - Queue ejections and default-branch failures
 
 The backstop for `ejection` and `main-failure` events, run on `gap: true`, on a failed wait, and
-each full sweep. A mechanical-tier subagent per repository lists merge-queue ejections and failed
-default-branch runs from the last 24 hours, paginating fully, by the mechanisms in the loop's
+each full sweep. A mechanical-tier subagent per owner lists merge-queue ejections and failed
+default-branch runs for each of that owner's repositories from the last 24 hours, paginating fully, by the mechanisms in the loop's
 [failures](../supervisor-loop/references/failures.md#finding-failures). Handle each as failures
 describes: group, dedupe against fixes in flight, diagnose, and file or delegate flakes. Skip run
 ids already in `handledFailures`, and record every handled run (in a `report` repository, none).
@@ -233,7 +256,9 @@ session-only jobs that expire after some days:
    a margin, register the replacement first, then delete the old job, so a failed create never
    leaves the supervisor with no job. A brief duplicate is harmless: the sweep claim lets
    only one of two concurrent sweeps run.
-3. Record the new job id and registration time in the state file's `schedule` field.
+3. Record the new job id and registration time in the state file's `schedule` field (see
+   supervisor-loop [Step 2](../supervisor-loop/SKILL.md#step-2---schedule-and-event-waits)). The
+   job's prompt is this skill's invocation in the harness's own form, not the bare skill name.
 
 For each new escalation (dedupe on `escalations` in the state file). The supervisor session does
 this itself; a subagent never escalates:
