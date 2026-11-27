@@ -208,9 +208,9 @@ Set `commandsThrough` to the sweep start
 (`supervisor state set commandsThrough --json '"<ISO time>"'`) only after G2 succeeded for every
 selected repository and none of them is in `report` mode (it is one global value, so while any is,
 it stays put); never on a skip, a failure, or `--dry-run`. The `eyes` reaction, not the cursor, tells
-handled from missed, so the cursor only bounds the window. Never list from
-`lastSweepAt` once `commandsThrough` is set: it advances even when preflight skipped G2, so commands
-posted in that gap would be missed. `lastSweepAt` stays the pacing timestamp only.
+handled from missed, so the cursor only bounds the window. Never list from `lastSweepAt`: it
+advances even when preflight skipped G2, so commands posted in that gap would be missed.
+`lastSweepAt` stays the pacing timestamp only.
 
 ## Phase G3 - Scheduled prompts
 

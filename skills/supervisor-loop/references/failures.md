@@ -19,8 +19,10 @@ The sweep's backstop (Phase G) finds both kinds over the last 24 hours:
 - **Default-branch runs:** take the default branch from the repository listing. Count runs whose
   conclusion is `failure`, `timed_out`, or `startup_failure`, including `workflow_dispatch` and
   `repository_dispatch` runs. Ignore runs whose event is the dependency bot's own update job.
-- **Group before diagnosing:** by repository, workflow, and failing job or step. Diagnose only the
-  newest run of each group, and record every member's run id in `handledFailures`. "A fix is in
+- **Group before diagnosing:** by repository, workflow, failing job or step, and the same first
+  error (the failing test or error line). Diagnose only the newest run of each group, and record in
+  `handledFailures` only the members whose failure was checked to match that signature; a member
+  with a different error is its own group. "A fix is in
   flight" means an open PR or open issue that names that workflow failure.
 - **Reading a log:** find the failing job and step first with `gh run view <id> --json jobs`, then
   fetch only that job's log to a file in the temporary directory and search the file.

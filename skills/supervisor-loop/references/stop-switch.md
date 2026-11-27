@@ -9,7 +9,7 @@ One file, `<stateDir>/stop`, stops the supervisor. Creating it is faster than fi
 | `supervisor stop [--reason <text>]` | Creates the file with the time and the reason.                | 0                        |
 | `supervisor resume`                 | Removes the file and prints what it held.                     | 0                        |
 
-None of them takes the state lock. Exit 3 is stopped. Any other exit code is an error (for example a
+None of them takes the state lock. Exit 3 is stopped. Any other non-zero exit code is an error (for example a
 configuration that cannot be read): take no action and report it as an error, not as stopped.
 
 ## When to check

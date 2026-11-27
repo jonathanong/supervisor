@@ -54,7 +54,8 @@ the label and link. When labeling or linking is unavailable or unauthorized, rep
 instead of filing it unlabeled. Add a harvested comment id to `reviewedComments`
 (`supervisor state reviewed --file <ids file>`, a `{"<owner>/<repo>": [ids]}` file) only once it is
 dropped or its issue's label and link are verified; leave a blocked comment out so a later sweep
-retries it. A comment posted days after merge is still found.
+retries it. While any comment of a repository is left blocked, advance neither `activityThrough` nor
+`scannedThrough` for it in that sweep. A comment posted days after merge is still found.
 
 Prune `reviewedComments` after a successful scan. The state keeps `{id, harvestedAt}` per
 repository, not the creation time, and a comment is harvested only after its PR merged, so an entry

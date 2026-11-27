@@ -10,11 +10,13 @@ A mechanical-tier subagent builds the list from the repositories selected in sup
 [Step 1](../../supervisor-loop/SKILL.md#step-1---preflight), never from an owner-wide search (that
 returns archived and unselected repositories). Per repository, list open issues with no milestone
 and no project (`gh issue list --repo <owner>/<repo> --state open --search 'no:milestone no:project' --limit 1000 --json number,title,body,labels --jq '...'`,
-with `<owner>/<repo>` in every output row).
+with `<owner>/<repo>` in every output row). A result of exactly 1000 means there are more: page, or
+narrow by creation date, until all are read.
 
 Exclude an issue only when an OPEN PR is linked to it. A search's `-linked:pr` also matches closed
 and merged PRs, so check state: one GraphQL query per repository for all listed issues, aliasing
 `issue(number: N) { closedByPullRequestsReferences(first: 10, includeClosedPrs: true) { nodes { number state } } }`.
+Paginate on `hasNextPage` before deciding no open PR exists.
 
 Leave an umbrella or tracking issue (a parent that lists children) alone when its children are
 sorted.
@@ -32,10 +34,13 @@ sorted.
 - **Work on now** an issue with no theme (a one-off, or a flaky test): it needs no milestone.
   Dispatch a fixer (an implementation-tier worker or a fitting workspace agent), as for a flake (see
   [failures](../../supervisor-loop/references/failures.md)). It is not listed for the owner.
-  Dispatch at most 5 new fixers per repository per sweep, oldest issue first; later sweeps pick up
-  the rest, and the summary counts them. Skip an issue that already has an assignee or a recorded
-  dispatch. `routed` is a list of `{what, to, at, evidence?, issue?, note?}` with no issue key, so
-  match a record whose `what` or `issue` text contains `<owner>/<repo>#N`.
+  Dispatch at most 5 new one-off fixers per repository per sweep, oldest issue first; later sweeps
+  pick up the rest, and the summary counts them. Flaky-test issues are exempt from the cap and
+  follow [failures](../../supervisor-loop/references/failures.md): each gets a fixer or a confirmed
+  owner (an open fix PR or an agent claim), and an assignee alone does not suppress dispatch. Skip a
+  one-off that already has an assignee or a recorded dispatch. `routed` is a list of
+  `{what, to, at, evidence?, issue?, note?}` with no issue key, so match a record whose `what` or
+  `issue` text contains `<owner>/<repo>#N` not followed by another digit.
 - **Needs decision** is left only for urgent or risky work the merge policy would send to a person
   anyway, a reorganization of existing taxonomy, and an issue the sweep cannot classify. List each
   once as a `needs decision` summary line, deduped on `escalations` (key `<owner>/<repo>#N`). It is
