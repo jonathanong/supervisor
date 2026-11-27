@@ -20,8 +20,10 @@ none, and `--owner <owner>`, `--repo <owner>/<repo>`, or `--phase <letter>` narr
 
 - **Stop switch:** before starting, before every mutation, and before every merge, run
   `supervisor stop --status` (see the
-  [stop switch](../supervisor-loop/references/stop-switch.md)). On any exit but 0, do nothing more:
-  report `sweep stopped` and leave the rest of the pass undone.
+  [stop switch](../supervisor-loop/references/stop-switch.md)). Exit 3 means stopped: do nothing
+  more, report `sweep stopped`, and leave the rest of the pass undone. Any other non-zero exit is an
+  error (for example a missing configuration): do nothing more and report the error, not
+  `sweep stopped`.
 - **One sweep at a time:** after the stop-switch check, claim the sweep with
   `supervisor state sweep-start --id <id>`, where `<id>` names this run (for example the session
   name and the start time). Exit 1 means another sweep holds a claim newer than two hours: do
@@ -35,10 +37,18 @@ none, and `--owner <owner>`, `--repo <owner>/<repo>`, or `--phase <letter>` narr
 - **Report mode:** in a scope whose `mode` is `report`, list, classify, diagnose, and report, and
   change nothing on the forge: no worker PRs and no merges, and no push, label, comment, reaction,
   issue, or close either. The summary lists what an `enforce` scope would have done as
-  `would <action>`, and an escalation there is a summary line only. State cursors still advance, so
-  each finding is reported once.
+  `would <action>`, and an escalation there is a summary line only. A cursor that only prevents
+  re-reporting may advance. A cursor that gates action does not: `commandsThrough` and
+  `handledFailures` do not advance or record for a `report` repository, so a later switch to
+  `enforce` still acts.
 - **Repository:** pass `--repo <owner>/<repo>` on every `gh` command. Lists use `--limit 1000` with
   a below-limit check, or `gh api --paginate`.
+- **Rate limits:** the search API allows 30 requests a minute. Never fan out one search per
+  repository in parallel: batch by owner or space the calls. On a 403 rate-limit response, wait for
+  the reset and retry once instead of failing the phase.
+- **Subagent briefing:** every `gh` result carries `<owner>/<repo>` in its output (use `--jq`),
+  because parallel results are easy to misattribute. `--paginate --jq` runs the filter per page, so
+  never aggregate (count, group) inside it.
 - **Reviewed head:** act only on the reviewed head, re-read as in
   [ready and merge](../supervisor-loop/references/ready-and-merge.md) step 2.
 - **Model tiers:** fan per-repository work out to subagents. The mechanical tier lists, classifies,
@@ -57,7 +67,8 @@ none, and `--owner <owner>`, `--repo <owner>/<repo>`, or `--phase <letter>` narr
 
 At the start of every sweep, not only at loop startup, verify each dependency the phases need:
 
-- `gh` auth;
+- `gh` auth, and for Phase D's project step a token with the project scopes (`gh auth status` shows
+  scopes; when missing, skip only the project step and say so in the summary);
 - `pr-shepherd`;
 - the event-wait tool, only when configured;
 - the configured dispatch targets;
@@ -136,22 +147,10 @@ exists and its dispatch is recorded.
 
 ## Phase D - Issue triage
 
-Every open issue must be in a milestone or a project, or be worked on now. Flaky-test issues are
-always worked on now: see the loop's [failures](../supervisor-loop/references/failures.md). A
-mechanical-tier subagent lists open issues with no milestone and no project, excluding issues with
-an open linked PR. For each one, under the scope's `taxonomy`, through the `github-issue` skill:
-
-- **Assign** the best-fitting existing milestone or project. Never create taxonomy.
-- **Close** duplicates (`Duplicate of #N`) and issues already fixed on the default branch. An
-  implementation-tier subagent verifies each against the current default branch first. Close with a
-  comment and the right `state_reason`.
-- **Ask the human** about everything else except flakes: no fitting milestone, urgent work that
-  should start now, or a reorganization. List it in the summary as `dispatch or reorganize`. Do not
-  dispatch it. Follow the project and milestone rules of the `github-issue` skill. Every issue in a
-  repository listed in `taxonomy.projectByRepo` joins that project. Sensitive issues go in
-  `taxonomy.sensitiveIssueRepo`. Never reopen a closed milestone, and a one-off issue may stay
-  without one. This path never applies to a flake: dispatch a fixer or confirm its owner, with no
-  milestone or dispatch decision asked first.
+Follow [references/issue-triage.md](references/issue-triage.md). Every open issue in the selected
+repositories ends in a milestone or project, closed, worked on now (a one-off, or a flake: see the
+loop's [failures](../supervisor-loop/references/failures.md)), or listed once as `needs decision`.
+It creates a milestone for a shared theme, never a project.
 
 ## Phase E - Journal distill
 
@@ -171,18 +170,18 @@ and tools; this skill adds no wrapper and names none of them. Once per scope:
 ## Phase F - Missed code reviews
 
 Follow [references/late-reviews.md](references/late-reviews.md). For each repository it scans PRs
-merged in the last `lateReviewDays` for review comments created after merge or unresolved at merge,
+merged in the last `lateReviewDays` for review comments created after merge or threads unresolved now,
 verifies each against the default branch, and files one `follow-up` issue per root cause. It is
 incremental, and its cursors (`lateReview.<owner>/<repo>`) advance only after a scan succeeds.
 
 ## Phase G - Queue ejections and default-branch failures
 
 The backstop for `ejection` and `main-failure` events, run on `gap: true`, on a failed wait, and
-each full sweep. A mechanical-tier subagent per repository lists PRs removed from the merge queue in
-the last 24 hours (dropping PRs currently queued) and failed default-branch workflow runs,
-paginating fully. Handle each as the loop's [failures](../supervisor-loop/references/failures.md)
-describes: dedupe against fixes in flight, diagnose, and file or delegate flakes. Skip run ids
-already in `handledFailures`, and record each one handled.
+each full sweep. A mechanical-tier subagent per repository lists merge-queue ejections and failed
+default-branch runs from the last 24 hours, paginating fully, by the mechanisms in the loop's
+[failures](../supervisor-loop/references/failures.md#finding-failures). Handle each as failures
+describes: group, dedupe against fixes in flight, diagnose, and file or delegate flakes. Skip run
+ids already in `handledFailures`, and record every handled run (in a `report` repository, none).
 
 Flakes, flake dedupe, and ejections the merge authority does not cover follow failures; every sweep
 re-checks each open flake issue's owner there.
@@ -199,17 +198,18 @@ re-checks each open flake issue's owner there.
 ## Phase G2 - Command comments
 
 The backstop for `/shepherd`, `/plan`, and `/fix` events, run on `gap: true`, on a failed wait, and
-each full sweep. A mechanical-tier subagent per repository lists those comments on issues and PRs
-posted since `commandsThrough` (falling back to `lastSweepAt` while it is unset) by the configured
-`trustedLogins` (never trust `authorAssociation`), paginating fully, and keeps those with no `eyes`
-reaction from the supervisor. This covers commands missed while
-the supervisor was down. Set `commandsThrough` to the sweep start
+each full sweep. It lists the commands posted since `commandsThrough` by the configured
+`trustedLogins` and handles those with no acknowledgement, as
+[comment commands](../supervisor-loop/references/commands.md#missed-commands-phase-g2) describes
+(the first run, the syntax, the cost, and the acknowledgement check). This covers commands missed
+while the supervisor was down.
+
+Set `commandsThrough` to the sweep start
 (`supervisor state set commandsThrough --json '"<ISO time>"'`) only after G2 succeeds for every
-repository of every scope; never on a skip, a failure, or `--dry-run`. Never list from `lastSweepAt`
-once `commandsThrough` is set: it advances even when preflight skipped G2, so commands posted in
-that gap would be missed. `lastSweepAt` stays the pacing timestamp only. The supervisor handles each
-as [comment commands](../supervisor-loop/references/commands.md) describes, including the
-acknowledgement.
+`enforce` repository of every scope; never on a skip, a failure, or `--dry-run`, and never for a
+`report` repository (a later `enforce` run must still see its commands). Never list from
+`lastSweepAt` once `commandsThrough` is set: it advances even when preflight skipped G2, so commands
+posted in that gap would be missed. `lastSweepAt` stays the pacing timestamp only.
 
 ## Phase G3 - Scheduled prompts
 
@@ -253,6 +253,7 @@ these actions, each prefixed with `would` in a `report` scope:
 - closed
 - update check requested
 - scheduled run
+- milestone created
 - needs decision
 
 Run `supervisor state sweep-done`, which sets `lastSweepAt` and releases the sweep claim, except on

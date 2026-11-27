@@ -5,6 +5,26 @@ PR) while a fix is in flight, and against `handledFailures` so a completed incid
 again. A diagnosis subagent reads the logs with the `review-ci-logs` skill and classifies it: flake,
 infra, or real failure.
 
+## Finding failures
+
+The sweep's backstop (Phase G) finds both kinds over the last 24 hours:
+
+- **Ejections:** per repository, query GraphQL
+  `timelineItems(itemTypes: [REMOVED_FROM_MERGE_QUEUE_EVENT])` over recently updated PRs, paginated
+  until a PR's update time leaves the window. An ejection is a removal whose reason is not `merged`.
+  A removal followed by a later merge of the same PR is resolved: no action, except that a
+  failed-checks removal that passed on requeue is a flake candidate. A `manual` removal is the
+  owner's: leave it alone. Drop PRs currently queued.
+- **Default-branch runs:** take the default branch from the repository listing. Count runs whose
+  conclusion is `failure`, `timed_out`, or `startup_failure`, including `workflow_dispatch` and
+  `repository_dispatch` runs. Ignore runs whose event is the dependency bot's own update job.
+- **Group before diagnosing:** by repository, workflow, and failing job or step. Diagnose only the
+  newest run of each group, and record every member's run id in `handledFailures`. "A fix is in
+  flight" means an open PR or open issue that names that workflow failure.
+- **Reading a log:** find the failing job and step first with `gh run view <id> --json jobs`, then
+  fetch only that job's log to a file in the temporary directory and search the file.
+  `--log-failed` prints the whole job log: never read it directly into context.
+
 - **Ejected PR:** requeueing belongs to whichever agent shepherds the PR, through `pr-shepherd`'s
   "Merge queue ejection" playbook. The supervisor never requeues a PR it is not shepherding (one
   whose shepherd it did not start in this session). For such a PR it still diagnoses the failure for
@@ -40,5 +60,5 @@ infra, or real failure.
   allows it.
 
 In a scope in `report` mode, diagnose and report the issue and the fix that would have been filed
-and dispatched; file nothing and dispatch no fixer (see
+and dispatched; file nothing, dispatch no fixer, and record nothing in `handledFailures` (see
 [report mode](../../supervisor-sweep/SKILL.md#rules-for-every-phase)).
