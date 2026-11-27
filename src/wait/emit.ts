@@ -37,7 +37,11 @@ export async function emit(ctx: WaitContext, result: WaitResult): Promise<void> 
     const log = expectArray(get(state, 'quietMerges') ?? [], 'quietMerges')
     state.quietMerges = log.filter((entry) => !ownedBy(ctx.owner, entry))
     if (result.advance) {
-      recordEvents(state, ctx.owner, [], get(data, 'cursor') ?? null)
+      const ids = expectArray(get(data, 'events'), 'events')
+        .filter(isObject)
+        .map((event) => event.id)
+        .filter((id) => id !== undefined)
+      recordEvents(state, ctx.owner, ids, get(data, 'cursor') ?? null)
     }
     await saveState(ctx.dir, state)
     const repos = pendingChecks(state, ctx.owner).map((entry) => entry.repo)

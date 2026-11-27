@@ -103,7 +103,7 @@ describe('supervisor wait', () => {
     const world = makeWorld({ results: [{ events: [failure], cursor: 'c1' }] })
     const result = await loop.cli([...WAIT, '--advance'], world.run)
     expect(lines(result.stdout)[0]).toEqual({ events: 1, advanced: true })
-    expect((await loop.state()).hookHarness['example-org']).toEqual({ seen: [], cursor: 'c1' })
+    expect((await loop.state()).hookHarness['example-org']).toEqual({ seen: ['e1'], cursor: 'c1' })
 
     const configured = await makeLoop({ eventWait: { advance: true } })
     const again = makeWorld({ results: [{ events: [], cursor: 'c2', timedOut: true }] })

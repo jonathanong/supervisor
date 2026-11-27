@@ -6,6 +6,7 @@ import { WaitError, type WaitContext } from './context.js'
 import { emit, pendingChecks } from './emit.js'
 import { hookHarnessWait, listRepositories } from './harness.js'
 import { sweep } from './merges.js'
+import { refuseUnadvanced } from './unadvanced.js'
 import { watchTriggers } from './watches.js'
 
 const UNITS: Record<string, number> = { '': 1, s: 1, m: 60, h: 3600, d: 86400 }
@@ -41,7 +42,8 @@ async function pendingDeadline(ctx: WaitContext, delay: number): Promise<number 
  * unresolved or late review findings; a clean one is logged, the cursor moves past it, and the
  * wait continues. The wait returns on any other event, a merge with findings, a completed watch,
  * a due dependency update check, a gap, or the timeout. It throws `StoppedError` when the stop
- * switch is set at the start or appears between two hook-harness rounds.
+ * switch is set at the start or appears between two hook-harness rounds, and `UnadvancedError`
+ * when the previous result's events were not advanced.
  */
 export async function runWait(ctx: WaitContext, settings: WaitSettings): Promise<void> {
   const total = seconds(settings.timeout)
@@ -51,6 +53,10 @@ export async function runWait(ctx: WaitContext, settings: WaitSettings): Promise
   const idle = { events: [], gap: false }
   let repos: string[] | undefined
   let first = true
+  await refuseWhenStopped(ctx.dir, 'supervisor wait')
+  if (!advance) {
+    await refuseUnadvanced(ctx)
+  }
   for (;;) {
     // Before the first round and between rounds: a stop ends the wait without acting.
     await refuseWhenStopped(ctx.dir, 'supervisor wait')
