@@ -126,6 +126,29 @@ describe('supervisor preflight', () => {
     expect(old.stdout).toContain('ok   hook-harness: 0.4.1\n')
   })
 
+  it('keeps every detail to one line, the first non-empty one of the output', async () => {
+    const loop = await makeLoop()
+    const usage = '\n  error: unknown command "--version"\nUsage: hook-harness <command>\n  wait\n'
+    const replies = {
+      gh: done('', 1, `\n\nbad credentials\nrun gh auth login\n`),
+      'pr-shepherd': done('', 1),
+      npx: done(usage, 2),
+    }
+    const result = await loop.cli(['preflight'], fake(replies).run)
+    expect(result.stdout).toContain('FAIL gh: exited 1: bad credentials\n')
+    expect(result.stdout).toContain('FAIL pr-shepherd: exited 1: \n')
+    expect(result.stdout).toContain(
+      'FAIL hook-harness: exited 2: error: unknown command "--version"\n',
+    )
+    const thrown = { ...GOOD, npx: new Error('first\nsecond') }
+    expect((await loop.cli(['preflight'], fake(thrown).run)).stdout).toContain(
+      'FAIL hook-harness: first\n',
+    )
+    const long = { ...GOOD, npx: done('x'.repeat(500), 1) }
+    const capped = await loop.cli(['preflight'], fake(long).run)
+    expect(capped.stdout).toContain(`exited 1: ${'x'.repeat(200)}\n`)
+  })
+
   it('fails when the stop switch is set, saying since when and why', async () => {
     const loop = await makeLoop()
     await loop.cli(['stop', '--reason', 'CI is broken'])

@@ -16,6 +16,12 @@ function message(error: unknown): string {
   return (error as Error).message
 }
 
+/** The first non-empty line of some output, trimmed and capped, so a detail is always one line. */
+function firstLine(text: string): string {
+  const line = text.split('\n').find((entry) => entry.trim() !== '') ?? ''
+  return line.trim().slice(0, 200)
+}
+
 /** Run one command and report its first output line, or why it failed. */
 async function probe(
   run: RunProcess,
@@ -28,11 +34,11 @@ async function probe(
     const result = await run(command, args, { ...(cwd ? { cwd } : {}), timeoutMs: TIMEOUT_MS })
     const output = (result.stdout || result.stderr).trim()
     if (result.code !== 0) {
-      return { name, ok: false, detail: `exited ${result.code}: ${output.slice(0, 200)}` }
+      return { name, ok: false, detail: `exited ${result.code}: ${firstLine(output)}` }
     }
-    return { name, ok: true, detail: output.split('\n')[0]! }
+    return { name, ok: true, detail: firstLine(output) }
   } catch (error) {
-    return { name, ok: false, detail: message(error) }
+    return { name, ok: false, detail: firstLine(message(error)) }
   }
 }
 
@@ -42,13 +48,13 @@ export async function checkGh(run: RunProcess): Promise<Check> {
     const result = await run('gh', ['auth', 'status'], { timeoutMs: TIMEOUT_MS })
     const output = `${result.stdout}\n${result.stderr}`.trim()
     if (result.code !== 0) {
-      return { name: 'gh', ok: false, detail: `exited ${result.code}: ${output.slice(0, 200)}` }
+      return { name: 'gh', ok: false, detail: `exited ${result.code}: ${firstLine(output)}` }
     }
     const match = /Token scopes:\s*(.+)/.exec(output)
     const scopes = match ? match[1]!.replaceAll("'", '').trim() : ''
     return { name: 'gh', ok: true, detail: scopes ? `scopes: ${scopes}` : 'authenticated' }
   } catch (error) {
-    return { name: 'gh', ok: false, detail: message(error) }
+    return { name: 'gh', ok: false, detail: firstLine(message(error)) }
   }
 }
 
@@ -90,6 +96,6 @@ export async function checkStop(loaded: LoadedConfig | undefined): Promise<Check
     const since = stop.at === null ? '' : ` since ${stop.at}`
     return { name, ok: false, detail: `stopped${since}${stop.reason ? `: ${stop.reason}` : ''}` }
   } catch (error) {
-    return { name, ok: false, detail: message(error) }
+    return { name, ok: false, detail: firstLine(message(error)) }
   }
 }
