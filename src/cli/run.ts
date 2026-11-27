@@ -3,6 +3,7 @@ import type { ShepherdStatus } from '../policy/facts-readiness.js'
 import { runProcess, type RunProcess } from '../state/process.js'
 import { validateConfigFile } from './config-validate.js'
 import { runPolicyCommand } from './policy-cmd.js'
+import { runPreflightCommand } from './preflight-cmd.js'
 import { runPrepushCommand } from './prepush-cmd.js'
 import { shepherdStatus } from './shepherd-status.js'
 import { runStateCommand } from './state-cmd.js'
@@ -54,6 +55,7 @@ Commands:
   stop [--reason <text>]               Set the stop switch: the supervisor takes no action
   stop --status                        Report the stop switch (exit 3 when it is set)
   resume                               Clear the stop switch
+  preflight [--json]                   Check config, gh, pr-shepherd, hook-harness, and the stop switch
   mcp                                  Start the stdio MCP server
 
 Options:
@@ -118,6 +120,9 @@ export async function runCli(argv: string[], io: CliIo = defaultCliIo): Promise<
   }
   if (command === 'stop' || command === 'resume') {
     return await runStopCommand(command, rest, io)
+  }
+  if (command === 'preflight') {
+    return await runPreflightCommand(rest, io)
   }
   if (command === 'mcp') {
     if (rest.length > 0) {

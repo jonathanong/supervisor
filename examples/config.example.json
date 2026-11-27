@@ -83,7 +83,7 @@
     "cancelAfter": "24h"
   },
   "eventWait": {
-    "hookHarness": "0.3.5",
+    "hookHarness": "0.4.1",
     "timeout": "2h",
     "advance": false,
     "updateCheckDelay": "10m"

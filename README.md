@@ -37,6 +37,8 @@ The supervisor loop keeps its state, waits for events, and is stopped through th
 - `supervisor wait --owner <owner> [--advance]` waits for one owner's repository events and returns only the ones that need action: a JSON summary line, then one compact JSON line per event. The full result goes to `<stateDir>/hh-last.<owner>.json`. Run one wait per scope owner. `supervisor wait --help` describes what returns.
 - `supervisor stop [--reason <text>]` sets the stop switch, one file at `<stateDir>/stop` that records the time and the reason. `supervisor stop --status` prints whether it is set and exits 3 when it is; `supervisor resume` removes it. While it is set, `supervisor wait`, `supervisor state sweep-start`, and `supervisor state merge-record` refuse with one line and exit 3, and the skills check the status before every tick, mutation, and merge. The `supervisor state` subcommands that only record facts keep working. None of the three takes the state lock.
 
+`supervisor preflight [--json]` runs the checks a loop needs before it starts, in one command. Each is reported as `{name, ok, detail}`: `config` (the file loads), `gh` (`gh auth status`, with the token scopes), `pr-shepherd` (`pr-shepherd --version`), `hook-harness` (`npx -y hook-harness@<eventWait.hookHarness> --version`), and `stop` (not ok while the stop switch is set). `hook-harness` is reported ok with the detail `not configured` when the config file does not set `eventWait`. When the config does not load, `gh` and `pr-shepherd` still run. It prints one line per check, or one `{ok, checks}` object with `--json`, and exits 0 only when every check is ok.
+
 ## Policy commands
 
 What may merge without a person is written in a [merge policy](docs/merge-policy.md). Two commands read it:
