@@ -258,7 +258,8 @@ session-only jobs that expire after some days:
    only one of two concurrent sweeps run.
 3. Replace the state file's `schedule` field with the new job in one
    `supervisor state set schedule --json '{"id":...,"registeredAt":...,"cron":...,"expiresAt":...}'`
-   (all four keys, no others; the write is refused otherwise; see
+   (all four keys, no others; the write is refused otherwise, and an old bad `schedule` is replaced
+   the same way; see
    supervisor-loop [Step 2](../supervisor-loop/SKILL.md#step-2---schedule-and-event-waits)). The
    job's prompt is this skill's invocation in the harness's own form, not the bare skill name.
 

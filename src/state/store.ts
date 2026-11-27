@@ -1,11 +1,9 @@
 import { randomUUID } from 'node:crypto'
 import { mkdir, readFile, rename, writeFile } from 'node:fs/promises'
-import { join } from 'node:path'
-import { dumpsIndented, put, type Json, type JsonObject } from './json.js'
+import { join, resolve } from 'node:path'
+import { dumps, dumpsIndented, put, type Json, type JsonObject } from './json.js'
 import { withLock } from './lock.js'
-import { stateProblem, type Kind } from './schema.js'
-
-export { FIELDS, type Kind } from './schema.js'
+import { FIELDS, fieldProblem, type Kind } from './schema.js'
 
 /** A state file, argument value, or input file that does not have the shape a command needs. */
 export class StateError extends Error {}
@@ -69,21 +67,48 @@ export async function loadState(dir: string): Promise<JsonObject> {
     text = await readFile(join(dir, 'state.json'), 'utf8')
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
-      return {}
+      return remember({})
     }
     throw error
   }
-  return expectObject(parseJson(text, 'state.json'), 'state.json')
+  return remember(expectObject(parseJson(text, 'state.json'), 'state.json'))
+}
+
+/** Each top-level field of a loaded state as it was read, to tell later which a write changed. */
+const loaded = new WeakMap<JsonObject, Map<string, string>>()
+
+function remember(state: JsonObject): JsonObject {
+  loaded.set(state, new Map(Object.entries(state).map(([key, value]) => [key, dumps(value)])))
+  return state
+}
+
+/** The first field this write added or changed that breaks `schemas/state.json`, as one line. */
+function writeProblem(dir: string, state: JsonObject): string | undefined {
+  const before = loaded.get(state) ?? new Map<string, string>()
+  for (const [name, value] of Object.entries(state)) {
+    const problem = before.get(name) === dumps(value) ? undefined : fieldProblem(name, value)
+    if (problem !== undefined) {
+      const fix = Object.hasOwn(FIELDS, name)
+        ? `set the whole field with "supervisor state set ${name} --json ..." or `
+        : ''
+      return (
+        `${resolve(dir, 'state.json')}: ${problem}; ${fix}` +
+        `remove it with "supervisor state remove ${name}"`
+      )
+    }
+  }
+  return undefined
 }
 
 /**
- * Replace `state.json` atomically: write a private temporary file beside it, then rename. A state
- * that breaks `schemas/state.json` is refused before anything is written; reads never check it.
+ * Replace `state.json` atomically: write a private temporary file beside it, then rename. A field
+ * the caller added or changed since `loadState` must fit `schemas/state.json`, or nothing is
+ * written; a field left as it was, valid or not, never blocks the write, and reads never check.
  */
 export async function saveState(dir: string, state: JsonObject): Promise<void> {
-  const problem = stateProblem(state)
+  const problem = writeProblem(dir, state)
   if (problem !== undefined) {
-    throw new StateError(`state.json: ${problem}`)
+    throw new StateError(problem)
   }
   await mkdir(dir, { recursive: true })
   const temporary = join(dir, `.state.${randomUUID()}.json`)

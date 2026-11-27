@@ -1,8 +1,9 @@
 import { readFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
-import { FIELDS } from '../src/state/store.js'
-import { cleanupLoops, makeLoop } from './helpers/loop.js'
+import { FIELDS } from '../src/state/schema.js'
+import { loadState, saveState } from '../src/state/store.js'
+import { cleanupLoops, makeLoop, type Loop } from './helpers/loop.js'
 
 const SCHEDULE = {
   id: 'job-1',
@@ -11,87 +12,94 @@ const SCHEDULE = {
   expiresAt: '2026-01-08T00:00:00Z',
 }
 
+const setSchedule = (loop: Loop, value: unknown) =>
+  loop.cli(['state', 'set', 'schedule', '--json', JSON.stringify(value)])
+
+/** The whole message a refused `schedule` write prints. */
+const refused = (loop: Loop, problem: string) =>
+  `${join(loop.stateDir, 'state.json')}: ${problem}; set the whole field with ` +
+  '"supervisor state set schedule --json ..." or remove it with "supervisor state remove schedule"\n'
+
 describe('state.json schema', () => {
   afterEach(cleanupLoops)
 
-  it('accepts a complete schedule', async () => {
+  it('accepts a complete schedule on the first write to an absent file', async () => {
     const loop = await makeLoop()
-    const set = await loop.cli(['state', 'set', 'schedule', '--json', JSON.stringify(SCHEDULE)])
+    const set = await setSchedule(loop, SCHEDULE)
     expect(set.code).toBe(0)
     expect((await loop.state()).schedule).toEqual(SCHEDULE)
   })
 
   it('refuses a schedule that uses jobId, and writes nothing', async () => {
     const loop = await makeLoop()
-    const bad = { ...SCHEDULE, jobId: 'job-1' }
-    const set = await loop.cli(['state', 'set', 'schedule', '--json', JSON.stringify(bad)])
+    const set = await setSchedule(loop, { ...SCHEDULE, jobId: 'job-1' })
     expect(set.code).toBe(1)
-    expect(set.stderr).toBe('state.json: schedule must NOT have additional properties (jobId)\n')
+    expect(set.stderr).toBe(refused(loop, 'schedule must NOT have additional properties (jobId)'))
     await expect(readFile(join(loop.stateDir, 'state.json'), 'utf8')).rejects.toThrow()
   })
 
-  it('refuses a schedule missing a key', async () => {
+  it('refuses a schedule missing a key, also when set key by key', async () => {
     const loop = await makeLoop()
     const { id: _id, ...rest } = SCHEDULE
-    const set = await loop.cli(['state', 'set', 'schedule', '--json', JSON.stringify(rest)])
-    expect(set.code).toBe(1)
-    expect(set.stderr).toBe("state.json: schedule must have required property 'id'\n")
+    expect((await setSchedule(loop, rest)).stderr).toBe(
+      refused(loop, "schedule must have required property 'id'"),
+    )
     const keyByKey = await loop.cli(['state', 'set', 'schedule', 'id', '--json', '"job-1"'])
     expect(keyByKey.stderr).toBe(
-      "state.json: schedule must have required property 'registeredAt'\n",
+      refused(loop, "schedule must have required property 'registeredAt'"),
     )
   })
 
   it('refuses a schedule with a bad timestamp or an empty string', async () => {
     const loop = await makeLoop()
-    const stamp = { ...SCHEDULE, expiresAt: 'tomorrow' }
-    const set = await loop.cli(['state', 'set', 'schedule', '--json', JSON.stringify(stamp)])
-    expect(set.stderr).toBe(
-      'state.json: schedule.expiresAt must match pattern ' +
-        '"^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d+)?Z$"\n',
+    const stamp = await setSchedule(loop, { ...SCHEDULE, expiresAt: 'tomorrow' })
+    expect(stamp.stderr).toContain(': schedule.expiresAt must match pattern "^')
+    const empty = await setSchedule(loop, { ...SCHEDULE, id: '' })
+    expect(empty.stderr).toBe(refused(loop, 'schedule.id must NOT have fewer than 1 characters'))
+  })
+
+  it('refuses a newly added unknown top-level field', async () => {
+    const loop = await makeLoop()
+    const state = await loadState(loop.stateDir)
+    state.surprise = 1
+    await expect(saveState(loop.stateDir, state)).rejects.toThrow(
+      `${join(loop.stateDir, 'state.json')}: surprise is not a state field; ` +
+        'remove it with "supervisor state remove surprise"',
     )
-    const empty = await loop.cli([
-      'state',
-      'set',
-      'schedule',
-      '--json',
-      JSON.stringify({ ...SCHEDULE, id: '' }),
-    ])
-    expect(empty.stderr).toBe('state.json: schedule.id must NOT have fewer than 1 characters\n')
+    delete state.surprise
+    await saveState(loop.stateDir, state)
+    // A state that was never loaded has no baseline, so every field in it is checked.
+    await expect(saveState(loop.stateDir, { schedule: {} })).rejects.toThrow(
+      "schedule must have required property 'id'",
+    )
   })
 
-  it('refuses an unknown top-level field in a seeded file when any write happens', async () => {
+  it('writes other fields while an old invalid schedule and unknown key are on disk', async () => {
     const loop = await makeLoop()
-    await loop.seed({ surprise: 1 })
-    const set = await loop.cli(['state', 'set', 'lastSweepAt', '--json', '"t"'])
-    expect(set.code).toBe(1)
-    expect(set.stderr).toBe('state.json: must NOT have additional properties (surprise)\n')
-  })
-
-  it('reads an invalid file, and repairs it with set or remove', async () => {
-    const loop = await makeLoop()
-    await loop.seed({ schedule: { jobId: 'job-1' } })
+    await loop.seed({ schedule: { jobId: 'job-1' }, surprise: 1 })
     const show = await loop.cli(['state', 'show', 'schedule'])
     expect(show.code).toBe(0)
     expect(show.stdout).toContain('jobId')
 
-    const blocked = await loop.cli(['state', 'set', 'lastSweepAt', '--json', '"t"'])
-    expect(blocked.stderr).toBe("state.json: schedule must have required property 'id'\n")
+    const write = await loop.cli(['state', 'set', 'lastSweepAt', '--json', '"t"'])
+    expect(write.code).toBe(0)
+    expect(await loop.state()).toEqual({
+      schedule: { jobId: 'job-1' },
+      surprise: 1,
+      lastSweepAt: 't',
+    })
+    expect((await setSchedule(loop, { jobId: 'job-2' })).code).toBe(1)
+  })
 
-    const repaired = await loop.cli([
-      'state',
-      'set',
-      'schedule',
-      '--json',
-      JSON.stringify(SCHEDULE),
-    ])
-    expect(repaired.code).toBe(0)
+  it('repairs an invalid schedule with set, and removes it with remove', async () => {
+    const loop = await makeLoop()
+    await loop.seed({ schedule: { jobId: 'job-1' }, surprise: 1 })
+    expect((await setSchedule(loop, SCHEDULE)).code).toBe(0)
     expect((await loop.state()).schedule).toEqual(SCHEDULE)
 
-    await loop.seed({ schedule: { jobId: 'job-1' } })
-    const removed = await loop.cli(['state', 'remove', 'schedule'])
-    expect(removed.code).toBe(0)
-    expect(await loop.state()).toEqual({})
+    await loop.seed({ schedule: { jobId: 'job-1' }, surprise: 1 })
+    expect((await loop.cli(['state', 'remove', 'schedule'])).code).toBe(0)
+    expect(await loop.state()).toEqual({ surprise: 1 })
   })
 
   it('derives the top-level kinds from the schema', () => {

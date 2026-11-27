@@ -102,7 +102,7 @@ implementation-tier worker, never the supervisor session.
    checkout of `<name>` is `<checkoutRoot>/<name>` of its scope; work in a temporary worktree, never
    on its current branch.
 3. Open `stateDir`. `state.json` holds these fields and no others (`supervisor state` creates the
-   file on its first write, and checks the whole file against `schemas/state.json` on every write):
+   file on its first write, and checks every field a write adds or changes against `schemas/state.json`):
    - `lastSweepAt`
    - `reviewedComments` per `<owner>/<repo>` (late-review comment ids already harvested)
    - `lateReview.<owner>/<repo>` with `scannedThrough`, `activityThrough`, and `fullScanAt` (see
@@ -139,8 +139,9 @@ through that mode with this skill as its prompt (in Claude Code, for example, `/
    Phase H); record `{id, registeredAt, cron, expiresAt}` in `schedule` with one
    `supervisor state set schedule --json '{...}'`. `schemas/state.json` enforces that shape: `id`
    and `cron` are non-empty strings, `registeredAt` and `expiresAt` are UTC times like
-   `2026-01-01T00:00:00Z`, and no other key is allowed. A write that breaks it exits 1 and changes
-   nothing.
+   `2026-01-01T00:00:00Z`, and no other key is allowed. A write that changes `schedule` and breaks
+   it exits 1 and changes nothing. A bad `schedule` already on disk does not block writes to other
+   fields; rewrite it with `set schedule`, or `remove schedule`.
 3. When `eventWait` is configured, keep exactly one background command per owner running:
    `supervisor wait --owner <owner>`, launched from the launch directory, one for each distinct
    `owner` in `scopes`. Each runs `hook-harness wait` over that owner's configured repositories from

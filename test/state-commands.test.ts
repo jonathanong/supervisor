@@ -4,7 +4,7 @@ import { afterEach, describe, expect, it } from 'vitest'
 import { defaultCliIo } from '../src/cli/run.js'
 import { dumps } from '../src/state/json.js'
 import { runProcess } from '../src/state/process.js'
-import { FIELDS } from '../src/state/store.js'
+import { FIELDS } from '../src/state/schema.js'
 import { cleanupLoops, makeLoop } from './helpers/loop.js'
 
 const AsyncFunction = Object.getPrototypeOf(async () => undefined).constructor as new (
