@@ -6,10 +6,13 @@ import { evaluatePolicies } from '../src/policy/evaluate.js'
 import { loadLayeredPolicies } from '../src/policy/layers.js'
 import { parsePolicySource } from '../src/policy/load.js'
 import { PolicyLoadError, type EvaluationFacts } from '../src/policy/types.js'
+import { repoFixture } from './helpers/repo-fixture.js'
 
 const fixture = (name: string) =>
   fileURLToPath(new URL(`./fixtures/policies/${name}`, import.meta.url))
 const supervisorDir = fixture('layered/supervisor')
+const carveOut = await repoFixture('layered/repo-carve-out')
+const supervisorFact = await repoFixture('layered/repo-supervisor-fact')
 const SUPERVISOR_FILE = 'supervisor:.claude/approvals.yml'
 
 const reviewed: EvaluationFacts = {
@@ -60,7 +63,7 @@ describe('supervisor policy above a repository policy', () => {
   })
 
   it('root plus repository files: the nearest file decides and inherits the root locals', async () => {
-    const policies = await loadLayeredPolicies(supervisorDir, fixture('layered/repo-carve-out'))
+    const policies = await loadLayeredPolicies(supervisorDir, carveOut)
 
     expect(policies.map((p) => p.path)).toEqual([
       SUPERVISOR_FILE,
@@ -86,7 +89,7 @@ describe('supervisor policy above a repository policy', () => {
   })
 
   it('a repository file cannot remove an inherited rule', async () => {
-    const policies = await loadLayeredPolicies(supervisorDir, fixture('layered/repo-carve-out'))
+    const policies = await loadLayeredPolicies(supervisorDir, carveOut)
 
     const selected = selectRulesForFile(policies, '.github/workflows/ci.yml')
     expect(selected.decidingPolicy?.path).toBe('.supervisor/approvals.yml')
@@ -103,7 +106,7 @@ describe('supervisor policy above a repository policy', () => {
   })
 
   it('a change to a policy file goes to a person unless a rule approves it', async () => {
-    const policies = await loadLayeredPolicies(supervisorDir, fixture('layered/repo-carve-out'))
+    const policies = await loadLayeredPolicies(supervisorDir, carveOut)
     for (const file of ['.supervisor/approvals.yml', 'packages/app/.supervisor/approvals.yml']) {
       const result = evaluatePolicies(policies, {
         changedFiles: ['package.json', file],
@@ -132,7 +135,7 @@ describe('supervisor policy above a repository policy', () => {
   })
 
   it('refuses a supervisor-only fact in a repository policy, naming the file', async () => {
-    const load = loadLayeredPolicies(supervisorDir, fixture('layered/repo-supervisor-fact'))
+    const load = loadLayeredPolicies(supervisorDir, supervisorFact)
     await expect(load).rejects.toThrow(PolicyLoadError)
     const { errors } = (await load.catch((err: unknown) => err)) as PolicyLoadError
 
@@ -155,7 +158,7 @@ describe('supervisor policy above a repository policy', () => {
   })
 
   it('policy check and explain take --repo-dir', async () => {
-    const repoDir = fixture('layered/repo-carve-out')
+    const repoDir = carveOut
     const input = fixture('inputs/layered-docs.json')
     const base = ['policy', 'check', '--dir', supervisorDir, '--input', input]
 
@@ -165,7 +168,7 @@ describe('supervisor policy above a repository policy', () => {
     const rootOnly = await cli([...base, '--supervisor-policy'])
     expect(rootOnly.code).toBe(1)
     expect((await cli([...base, '--repo-dir'])).code).toBe(2)
-    const refused = await cli([...base, '--repo-dir', fixture('layered/repo-supervisor-fact')])
+    const refused = await cli([...base, '--repo-dir', supervisorFact])
     expect(refused.code).toBe(2)
     expect(refused.stderr).toContain('.supervisor/approvals.yml:rules[0].if')
 

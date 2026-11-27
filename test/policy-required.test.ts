@@ -6,12 +6,13 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { validateConfigData } from '../src/cli/config-validate.js'
 import { requiredAlwaysHumanFromConfig } from '../src/cli/policy-required.js'
 import { runCli, type CliIo } from '../src/cli/run.js'
+import { repoFixture } from './helpers/repo-fixture.js'
 
 const fixture = (name: string) =>
   fileURLToPath(new URL(`./fixtures/policies/${name}`, import.meta.url))
 const exampleConfigPath = fileURLToPath(new URL('../examples/config.example.json', import.meta.url))
 const supervisorDir = fixture('layered/supervisor')
-const repoDir = fixture('layered/repo-carve-out')
+const repoDir = await repoFixture('layered/repo-carve-out')
 const input = fixture('inputs/layered-docs.json')
 const required = [{ name: 'payments paths', samples: ['payments/charge.ts'] }]
 const tempDirs: string[] = []
