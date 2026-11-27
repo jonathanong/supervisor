@@ -9,11 +9,15 @@ Phase F is incremental. The state file keeps, per repository, `lateReview.<owner
 
 ## Harvest
 
-The harvest is GraphQL-first. A mechanical-tier subagent per repository runs one query per page of
-50 merged PRs, ordered by update time, and stops when a PR's update time is older than the window.
-Each page fetches `mergedAt`, `reviewThreads` (`isResolved`, `comments` with `createdAt` and
-author), and `reviews`. Do not use REST per-PR calls for the scan. Nested connections (threads,
-comments, reviews) need their own pagination whenever `hasNextPage` is true.
+The harvest is GraphQL-first. A mechanical-tier subagent per owner loops over that owner's
+repositories and runs one query per page of 50 merged PRs, ordered by update time, and stops when a
+PR's update time is older than the window. Each page fetches `mergedAt`, `reviewThreads`
+(`isResolved`, `comments` with `createdAt` and author), and `reviews`. Do not use REST per-PR calls
+for the scan. The page sizes are starting values. When a PR's `reviewThreads` or `reviews`, or a
+thread's `comments`, has `hasNextPage`, follow it with a per-PR query until it is exhausted. The
+filter needs only a thread's root comment and its last comment, so fetch `comments` as `first: 1`
+plus `last: 1` instead of paging. An owner-wide search that returns 1000 results (the search cap) is
+truncated: split it per repository or into narrower date ranges and rerun.
 
 The scan has three parts:
 
@@ -37,10 +41,14 @@ non-empty review bodies created after `mergedAt`, that are not yet in the state 
 Apply this before any verification. Drop:
 
 - a review body that only states an approve verdict;
-- a bot "analysis" or tool-output comment, and a reply that withdraws a finding;
-- a thread whose last comment is the PR author's (or the shepherd's) answer followed by resolution.
+- a bot summary, walkthrough, "analysis", or tool-output comment, and a reply that withdraws a
+  finding;
+- a thread whose last comment is the PR author's (or the shepherd's) answer followed by resolution;
+- an unresolved review-bot thread whose last comment is the PR author's or the shepherd's reply: the
+  bot never answered, so it was answered and only left unresolved. A person's thread in the same
+  state is kept.
 
-Judge a thread by its root comment: a new reply inside an already-harvested thread is not a new
+A review bot's thread that states a finding counts like a person's. Judge a thread by its root comment: a new reply inside an already-harvested thread is not a new
 finding.
 
 ## Verify and file
@@ -78,4 +86,6 @@ advances no cursor, so everything above still applies, and `reviewedComments` de
 two.
 
 In a `report` repository nothing is filed, so record no `reviewedComments` and advance no cursor
-above: a later switch to `enforce` must still file what the scan found.
+above: a later switch to `enforce` must still file what the scan found. Run the harvest and the
+noise filter there and report candidate counts per repository, but verify only a sample: at most 5
+candidates per owner, newest first, labeled as a sample in the summary.
