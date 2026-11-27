@@ -82,6 +82,17 @@ describe('supervisor wait over a result that was not advanced', () => {
     expect(world.waits()[1]!.slice(5, 7)).toEqual(['--after', 'c1'])
   })
 
+  it('does not check an old result file when the wait advances itself', async () => {
+    const loop = await makeLoop({ eventWait: { advance: true } })
+    await leave(loop.stateDir, JSON.stringify({ events: [failure], cursor: 'c1' }))
+    const world = makeWorld({ results: [{ events: [], timedOut: true }] })
+    expect((await loop.cli(WAIT, world.run)).code).toBe(0)
+    const flag = await makeLoop()
+    await leave(flag.stateDir, JSON.stringify({ events: [failure], cursor: 'c1' }))
+    const again = makeWorld({ results: [{ events: [], timedOut: true }] })
+    expect((await flag.cli([...WAIT, '--advance'], again.run)).code).toBe(0)
+  })
+
   it('drops returned events whose id is already seen, and keeps waiting', async () => {
     const loop = await makeLoop()
     await loop.seed({ hookHarness: { 'example-org': { seen: ['e1', 'm1'], cursor: 'c0' } } })

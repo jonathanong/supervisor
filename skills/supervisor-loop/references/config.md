@@ -186,7 +186,9 @@ All read the configuration file and need `gh`.
   cursor; `supervisor state advance-hh --owner <owner>` does that after the events are handled (or
   `supervisor wait --owner <owner> --advance`, or `eventWait.advance: true`, does it at return and
   marks the returned ids seen). A wait does not start while `hh-last.<owner>.json` holds an event id
-  that is not seen: it prints one line naming `advance-hh` and exits 4.
+  that is not seen (unless the wait advances itself): it prints one line naming `advance-hh` and
+  exits 4. A hook-harness failure passes its own exit code through, told apart by its message
+  (`hook-harness exited N`).
   Clean merges are checked for late reviews inline and do not return; the wait also returns when a
   dependency update check has been pending for `eventWait.updateCheckDelay`.
 - `supervisor stop [--reason <text>]`, `supervisor stop --status`, and `supervisor resume` set,

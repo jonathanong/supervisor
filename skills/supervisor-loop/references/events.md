@@ -19,7 +19,9 @@ handle it in the order below once the status is 0 again, before relaunching the 
    return instead, giving up crash replay: handle each returned event before anything can fail.
 4. Relaunch that owner's wait, and never before step 3. A wait whose `hh-last.<owner>.json` holds
    an event id that is not seen refuses to start: one line naming the `advance-hh` command, exit 4,
-   no events. Run `advance-hh` and relaunch.
+   no events. Run `advance-hh` and relaunch. The check is skipped when the wait advances itself.
+   A hook-harness failure passes its own exit code through and is told apart by its message
+   (`hook-harness exited N`).
 
 A crash after step 2 and before step 3 replays the whole result, so handling must be idempotent.
 

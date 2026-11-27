@@ -4,7 +4,11 @@ import { get, isObject, type Json, type JsonObject } from '../state/json.js'
 import { loadState, parseJson } from '../state/store.js'
 import type { WaitContext } from './context.js'
 
-/** The exit code of a wait that refused to start over events that were not advanced. */
+/**
+ * The exit code of a wait that refused to start over events that were not advanced. A hook-harness
+ * failure passes its own exit code through; this assumes hook-harness 0.4.x exits only 0, 1, 2, or
+ * 130, so it never uses 4. Told apart by the message `hook-harness exited N`.
+ */
 export const UNADVANCED_EXIT = 4
 
 /** The previous result still holds events that `supervisor state advance-hh` has not recorded. */

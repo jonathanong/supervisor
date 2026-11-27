@@ -54,7 +54,9 @@ export async function runWait(ctx: WaitContext, settings: WaitSettings): Promise
   let repos: string[] | undefined
   let first = true
   await refuseWhenStopped(ctx.dir, 'supervisor wait')
-  await refuseUnadvanced(ctx)
+  if (!advance) {
+    await refuseUnadvanced(ctx)
+  }
   for (;;) {
     // Before the first round and between rounds: a stop ends the wait without acting.
     await refuseWhenStopped(ctx.dir, 'supervisor wait')

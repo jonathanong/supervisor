@@ -38,7 +38,9 @@ returned event whose id is already seen is dropped.
 
 The wait does not start while hh-last.<owner>.json holds an event whose id is not seen, that is,
 events returned and not yet advanced: it prints one line naming the "advance-hh" command and exits
-${UNADVANCED_EXIT}. Handle the events, run advance-hh, then relaunch.
+${UNADVANCED_EXIT}. Handle the events, run advance-hh, then relaunch. This check is skipped when the
+wait advances itself (--advance or eventWait.advance). A hook-harness failure passes its own exit
+code through and is told apart by its message ("hook-harness exited N").
 
 While the stop switch is set (see: supervisor stop --help) the wait does not start: it prints one
 line and exits ${STOPPED_EXIT}. A wait in progress ends the same way when the switch appears between two
