@@ -12,7 +12,7 @@
       "description": "Autonomous supervisor for coding agents across GitHub repositories.",
       "source": "./",
       "category": "productivity",
-      "homepage": "https://github.com/jonathanong/supervisor"
+      "homepage": "https://github.com/jongleberry/supervisor"
     }
   ]
 }

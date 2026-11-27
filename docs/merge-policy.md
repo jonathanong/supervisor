@@ -76,7 +76,7 @@ A carve-out names the repositories it applies to with `pr/repository`. A scope t
 
 **Outside the policy:**
 
-- **CI and merge readiness:** the supervisor reads no check and no merge state itself. It asks [pr-shepherd](https://github.com/jonathanong/pr-shepherd), through its read-only `status` call, whether it would merge the head, and holds the merge unless the answer is `merge`. pr-shepherd knows the checks the repository requires, the reviews and the branch rules.
+- **CI and merge readiness:** the supervisor reads no check and no merge state itself. It asks [pr-shepherd](https://github.com/jongleberry/pr-shepherd), through its read-only `status` call, whether it would merge the head, and holds the merge unless the answer is `merge`. pr-shepherd knows the checks the repository requires, the reviews and the branch rules.
 - **Host, model and attended session:** these decide who may merge at all, not what a PR needs, so they live in the [config](config.md).
 - **Decisions:** the policy covers the merge step. It grants nothing about architecture or trade-offs, which stay with a person.
 

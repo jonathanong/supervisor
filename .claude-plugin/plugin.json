@@ -5,8 +5,8 @@
     "name": "Jonathan Ong",
     "url": "https://github.com/jonathanong"
   },
-  "homepage": "https://github.com/jonathanong/supervisor",
-  "repository": "https://github.com/jonathanong/supervisor",
+  "homepage": "https://github.com/jongleberry/supervisor",
+  "repository": "https://github.com/jongleberry/supervisor",
   "license": "MIT",
   "keywords": ["agents", "github", "mcp", "supervisor", "automation"],
   "agents": ["./agents/supervisor-classifier.md"],

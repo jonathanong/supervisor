@@ -13,7 +13,7 @@ The question is whether an agent that hits friction writes a journal entry witho
 A direct question does not test that. Asked "what should you do when a check fails and then recovers?", an agent answers the question and never loads the skill. So each case is a task:
 
 - **A fixture repository and a task** whose natural path hits one kind of friction from [loop 1](journal.md): a check that fails and then recovers, a sandbox denial, a scope change, the same fix applied twice, a missing tool.
-- **A stub MCP server that records calls,** standing in for [agent-blackboard](https://github.com/jonathanong/agent-blackboard). The grader reads that record, not the transcript.
+- **A stub MCP server that records calls,** standing in for [agent-blackboard](https://github.com/jongleberry/agent-blackboard). The grader reads that record, not the transcript.
 - **Graded on:**
   - whether the agent appended an entry
   - whether the entry came before any issue was filed
