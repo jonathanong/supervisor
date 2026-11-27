@@ -19,11 +19,13 @@ handle it in the order below once the status is 0 again, before relaunching the 
    return instead, giving up crash replay: handle each returned event before anything can fail.
 4. Relaunch that owner's wait, and never before step 3. A wait whose `hh-last.<owner>.json` holds
    an event id that is not seen refuses to start: one line naming the `advance-hh` command, exit 4,
-   no events. Run `advance-hh` and relaunch. The check is skipped when the wait advances itself.
-   A hook-harness failure passes its own exit code through and is told apart by its message
-   (`hook-harness exited N`).
+   no events. It replays nothing: read `hh-last.<owner>.json`, handle any of its events not yet
+   handled (steps 1 and 2), then run `advance-hh` and relaunch. The check is skipped when the wait
+   advances itself. A hook-harness failure passes its own exit code through and is told apart by
+   its message (`hook-harness exited N`).
 
-A crash after step 2 and before step 3 replays the whole result, so handling must be idempotent.
+After a crash between steps 2 and 3, the result is still in `hh-last.<owner>.json` and the next wait
+exits 4. Handle that file's events again from step 1, so handling must be idempotent.
 
 Every external action must be idempotent across an interruption and replay: before a worker opens a
 PR, or the supervisor files an issue or posts a comment, look for an existing one from this event (a
