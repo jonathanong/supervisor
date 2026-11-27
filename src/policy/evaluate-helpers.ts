@@ -125,14 +125,18 @@ function isBotOnlySeat(seat: EvaluatedSeat): boolean {
  * file and rule that asks for it, so identical seats count once, as the report prints them. A seat
  * only a bot can fill needs a final review of the head, not a person.
  */
-export function unmetSeatsStep(unmetSeats: EvaluatedSeat[]): NextStep {
+export function unmetSeatsStep(unmetSeats: EvaluatedSeat[], depth: ReviewDepth | null): NextStep {
   const distinct = new Map<string, EvaluatedSeat>()
   for (const seat of unmetSeats) {
     distinct.set(JSON.stringify([seat.count, seat.from, seat.filledBy]), seat)
   }
   const reason = `${distinct.size} seat requirement(s) still unmet`
   if ([...distinct.values()].every(isBotOnlySeat)) {
-    return { action: 'review', reason: `${reason}, each fillable by a bot reviewer` }
+    return {
+      action: 'request_review',
+      depth: depth ?? 'standard',
+      reason: `${reason}, each fillable by a bot reviewer`,
+    }
   }
   return { action: 'escalate', reason }
 }

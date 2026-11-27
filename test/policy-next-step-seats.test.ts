@@ -16,18 +16,19 @@ rules:
 `)
 
 describe('the next step when the verdict approves and seats are unmet', () => {
-  it('asks for a review when only a bot can fill the unmet seat', () => {
+  it('requests a review at the standard depth when only a bot can fill the unmet seat', () => {
     const result = evaluatePolicies([policy("[{ count: 1, from: 'bot:example-reviewer' }]")], {
       changedFiles: ['src/a.ts'],
       facts,
     })
     expect(result.verdict).toBe('approves')
     expect(result.nextStep).toEqual({
-      action: 'review',
+      action: 'request_review',
+      depth: 'standard',
       reason: '1 seat requirement(s) still unmet, each fillable by a bot reviewer',
     })
     expect(formatHumanCheck(result)).toContain(
-      'Next step: request a final review of the head (1 seat requirement(s) still unmet, each fillable by a bot reviewer)',
+      'Next step: request review at depth standard (1 seat requirement(s) still unmet, each fillable by a bot reviewer)',
     )
   })
 
@@ -36,7 +37,7 @@ describe('the next step when the verdict approves and seats are unmet', () => {
       changedFiles: ['src/a.ts'],
       facts,
     })
-    expect(result.nextStep.action).toBe('review')
+    expect(result.nextStep.action).toBe('request_review')
   })
 
   it('escalates when a person or a team must fill an unmet seat', () => {
@@ -67,7 +68,7 @@ describe('the next step when the verdict approves and seats are unmet', () => {
       changedFiles: ['src/a.ts'],
       facts: { ...facts, approvedBy: ['dev-two'] },
     })
-    expect(result.nextStep.action).toBe('review')
+    expect(result.nextStep.action).toBe('request_review')
     expect(result.nextStep).toMatchObject({ reason: expect.stringContaining('1 seat') })
   })
 
@@ -85,12 +86,32 @@ rules:
     const result = evaluatePolicies([second], { changedFiles: ['src/a.ts', 'lib/b.ts'], facts })
     expect(result.seats.length).toBeGreaterThan(1)
     expect(result.nextStep).toMatchObject({
-      action: 'review',
+      action: 'request_review',
+      depth: 'standard',
       reason: expect.stringContaining('1 seat requirement(s)'),
     })
   })
 
-  it('keeps review over shepherd, and escalate for a blocker', () => {
+  it('uses the review depth the rule asks for', () => {
+    const deep = parsePolicySource(`
+version: 1
+rules:
+  - purpose: Deep review
+    paths: ['src/**']
+    verdict: { claude: comments, seats: 0 }
+    override:
+      - if: 'claude/code_review(level=deep) = pass'
+        verdict: { claude: approves, seats: [{ count: 1, from: 'bot:example-reviewer' }] }
+`)
+    const result = evaluatePolicies([deep], {
+      changedFiles: ['src/a.ts'],
+      facts,
+      classifiers: { 'claude/code_review': { status: 'complete', value: 'pass', level: 'deep' } },
+    })
+    expect(result.nextStep).toMatchObject({ action: 'request_review', depth: 'deep' })
+  })
+
+  it('keeps request_review over shepherd, and escalate for a blocker', () => {
     const policies = [policy("[{ count: 1, from: 'bot:example-reviewer' }]")]
     const base = {
       changedFiles: ['src/a.ts'],
@@ -99,7 +120,7 @@ rules:
       readiness: { ready: false, action: 'triage' },
       blockers: [],
     }
-    expect(checkPull(policies, base).nextStep.action).toBe('review')
+    expect(checkPull(policies, base).nextStep.action).toBe('request_review')
     expect(
       checkPull(policies, { ...base, blockers: ['The pull request is a draft'] }).nextStep,
     ).toEqual({

@@ -34,8 +34,8 @@ then asks pr-shepherd (read-only: it changes nothing on GitHub) whether it would
 head. The next step is merge only when the policy allows it and pr-shepherd says the head is
 ready. When the policy allows the merge but pr-shepherd does not, the next step is shepherd:
 run pr-shepherd on the pull request. A pending check needs no person. When the verdict approves
-and every unmet seat names only bots, the next step is review: request a final review of the
-head. An unmet seat a person or team can fill, a verdict that does not approve, and a blocker,
+and every unmet seat names only bots, the next step is request_review: request a final review of
+the head. An unmet seat a person or team can fill, a verdict that does not approve, and a blocker,
 such as a draft or a closed pull request, escalate.
 
 pr-shepherd reads its .pr-shepherdrc.yml from the target repository's checkout. Pass it with

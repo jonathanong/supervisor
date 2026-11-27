@@ -29,11 +29,8 @@ In a scope in `report` mode, run step 1 only and report what the later steps wou
    commits. A printed enqueue or requeue command counts as a merge. The policy check is
    `supervisor policy check <owner>/<repo> <N> --dir <policy dir> --supervisor-policy --json`; keep
    its output in a file, and merge only the head in its `pull.head`.
-   - When the policy check's next step is `review`, the policy approves and only a bot reviewer's
-     seat is unmet. Request a final review of the current head the same way, at the result's `reviewDepth`,
-     or `standard` when it is null. Do not escalate; no person is needed.
    - When the policy check's next step is `request_review`, request a final review of the current
-     head at the depth it names, as `finalReview.request` says: `session` messages the final
+     head at the depth it names, as `finalReview.request` says (the policy approves and only a bot reviewer's seat may be unmet, so no person is needed): `session` messages the final
      reviewer's session with the PR and head, and `label` adds `finalReview.label` to the PR. Leave
      the PR ready and report `awaiting-final-review`. A later sweep reruns the check. Nothing waits
      on the reviewer.

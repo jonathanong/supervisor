@@ -167,7 +167,7 @@ export function evaluatePolicies(policies: PolicyFile[], input: EvaluationInput)
       reason: 'Not every changed file has a rule that approves the merge',
     }
   } else if (unmetSeats.length > 0) {
-    nextStep = unmetSeatsStep(unmetSeats)
+    nextStep = unmetSeatsStep(unmetSeats, overallDepth)
   } else {
     nextStep = { action: 'merge' }
   }

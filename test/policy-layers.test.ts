@@ -78,7 +78,9 @@ describe('supervisor policy above a repository policy', () => {
     const check = (file: string, facts: EvaluationFacts) =>
       evaluatePolicies(policies, { changedFiles: [file], facts })
     expect(check('docs/guide.md', reviewed).nextStep).toEqual(merge)
-    expect(check('docs/guide.md', { ...reviewed, approvedBy: [] }).nextStep.action).toBe('review')
+    expect(check('docs/guide.md', { ...reviewed, approvedBy: [] }).nextStep.action).toBe(
+      'request_review',
+    )
     expect(check('packages/app/src/a.ts', reviewed).nextStep).toEqual(merge)
 
     // No repository rule matches these, so the supervisor policy still decides for them.
