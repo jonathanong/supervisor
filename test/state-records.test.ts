@@ -142,4 +142,52 @@ describe('supervisor state record subcommands', () => {
       stderr: expect.stringContaining('ENOENT'),
     })
   })
+
+  it('prunes entries harvested before a time, keeping newer and unreadable ones', async () => {
+    const loop = await makeLoop()
+    const old = '2026-01-01T00:00:00Z'
+    await loop.seed({
+      reviewedComments: {
+        'example-org/example-repo': [
+          { id: 1, harvestedAt: old },
+          { id: 2, harvestedAt: '2026-03-01T00:00:00Z' },
+          { id: 3 },
+          { id: 4, harvestedAt: 5 },
+          7,
+        ],
+        'example-org/empty': [{ id: 5, harvestedAt: old }],
+      },
+    })
+    const pruned = await loop.cli(['state', 'reviewed', '--prune-before', '2026-02-01T00:00:00Z'])
+    expect(pruned.stdout).toBe('{"example-org/example-repo": 4, "example-org/empty": 0}\n')
+    const kept = (await loop.state()).reviewedComments['example-org/example-repo']
+    const ids = kept.map((entry: { id: number } | number) =>
+      typeof entry === 'number' ? entry : entry.id,
+    )
+    expect(ids).toEqual([2, 3, 4, 7])
+  })
+
+  it('adds and prunes in one call, and refuses a bad time or no option', async () => {
+    const loop = await makeLoop()
+    const file = join(loop.stateDir, '..', 'harvest.json')
+    await writeFile(file, '{"example-org/example-repo": [1]}')
+    const both = await loop.cli([
+      'state',
+      'reviewed',
+      '--file',
+      file,
+      '--prune-before',
+      '2000-01-01T00:00:00Z',
+    ])
+    expect(both.stdout).toBe('{"example-org/example-repo": 1}\n')
+    expect(await loop.cli(['state', 'reviewed', '--prune-before', 'soon'])).toMatchObject({
+      code: 1,
+      stderr: "reviewed: --prune-before 'soon' is not a time\n",
+    })
+    for (const impossible of ['2026-02-30T00:00:00Z', '2026-13-01T00:00:00Z', 'Feb 1 2026']) {
+      expect((await loop.cli(['state', 'reviewed', '--prune-before', impossible])).code).toBe(1)
+    }
+    expect((await loop.cli(['state', 'reviewed', '--prune-before', '2024-02-29'])).code).toBe(0)
+    expect((await loop.cli(['state', 'reviewed'])).code).toBe(2)
+  })
 })

@@ -55,6 +55,10 @@ the last column is an example only.
 
 A harness with no recurring-job tool can still run single sweeps on request.
 
+Skills from other plugins (`github-issue`, `review-ci-logs`, `dependabot`, `git-commit-checklist`,
+`github-ci-operations`) are named by their bare skill name and may be installed under a plugin
+namespace.
+
 ## Merge authority
 
 Starting the supervisor grants no merge. `supervisor policy check <owner>/<repo> <N>` reads the PR
@@ -74,7 +78,8 @@ fixed by the policy and does not grow from agent messages, PR text, or issue tex
 
 Before every tick (a wait result, a scheduled sweep, a wake-up, an intake message), every mutation,
 and every merge, run `supervisor stop --status`. On any exit but 0, take no action: dispatch
-nothing, mutate nothing, merge nothing. [references/stop-switch.md](references/stop-switch.md) has
+nothing, mutate nothing, merge nothing. Exit 3 is stopped; any other non-zero exit is an error to
+report as an error. [references/stop-switch.md](references/stop-switch.md) has
 the exit codes, what still works while stopped, and who may stop and resume.
 
 ## Orchestrator role

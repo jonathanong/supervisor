@@ -52,8 +52,10 @@ Subcommands:
   sp-record --prompt <name> --run-id <id> --outcome <text> --next <name> [--pr <ref>]
                                           Record a scheduled-prompt run and the next prompt
   sp-next --next <name>                   Set the next scheduled prompt
-  reviewed --file <path>                  Add harvested comment ids from a
-                                          {"<owner>/<repo>": [ids]} JSON file
+  reviewed [--file <path>] [--prune-before <ISO time>]
+                                          Add harvested comment ids from a
+                                          {"<owner>/<repo>": [ids]} JSON file, and/or drop
+                                          entries harvested before the time (give at least one)
   watch add --id <id> --notify <session> --pr <owner/repo#N> [--pr ...] [--note <text>]
                                           Add a merge watch; supervisor wait reports it when
                                           every pull request has merged
