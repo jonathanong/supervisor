@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/jonathanong/supervisor/schemas/config.json",
+  "$id": "https://github.com/jongleberry/supervisor/schemas/config.json",
   "title": "supervisor configuration",
   "type": "object",
   "additionalProperties": false,

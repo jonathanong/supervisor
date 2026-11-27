@@ -20,7 +20,7 @@ flowchart LR
 
 ## Diagnosis
 
-Diagnosis follows the [review-ci-logs](https://github.com/jonathanong/harness-plugins) skill: find the first error the repository owns, in the failing step, rather than reading whole logs. Each failure is classed as:
+Diagnosis follows the [review-ci-logs](https://github.com/jongleberry/ratchet-stack) skill: find the first error the repository owns, in the failing step, rather than reading whole logs. Each failure is classed as:
 
 | Class                    | Action                                                                                             |
 | ------------------------ | -------------------------------------------------------------------------------------------------- |
@@ -46,7 +46,7 @@ Superseded runs on PR branches may be cancelled without asking. Runs on the defa
 
 ## Merging
 
-The supervisor merges only once the repository's required checks pass, through [pr-shepherd](https://github.com/jonathanong/pr-shepherd), and only what the [merge policy](merge-policy.md) allows on the current head. A re-queue of the same head after an ejection is covered by the approval that head already has. A new head needs a fresh final review.
+The supervisor merges only once the repository's required checks pass, through [pr-shepherd](https://github.com/jongleberry/pr-shepherd), and only what the [merge policy](merge-policy.md) allows on the current head. A re-queue of the same head after an ejection is covered by the approval that head already has. A new head needs a fresh final review.
 
 ## Stacks
 

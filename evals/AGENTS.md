@@ -27,7 +27,7 @@ for agent cases; a deterministic eval follows its own section and the last two.
 - Build each case on a decision the model gets wrong unaided. Add guard cases where a skill must
   stay out of the way, labeled `Guard:` in `EVALS.md`.
 - Keep every fixture and prompt synthetic and free of private repository names, org names other
-  than `jonathanong`, hostnames, emails, or logins.
+  than `jonathanong` and `jongleberry`, hostnames, emails, or logins.
 
 ## Graders
 

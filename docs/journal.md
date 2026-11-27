@@ -16,7 +16,7 @@ flowchart LR
 
 ## Writing entries
 
-- Agents write to [agent-blackboard](https://github.com/jonathanong/agent-blackboard) with its own MCP tools. There is no wrapper.
+- Agents write to [agent-blackboard](https://github.com/jongleberry/agent-blackboard) with its own MCP tools. There is no wrapper.
 - Every entry names a JSON Schema registered on the server, and the server validates the entry against it. A new schema can run in shadow mode first, so it can be tested without rejecting other agents' writes.
 - A retrospective is an entry under a retrospective schema, written from verified facts about the session: commits, PRs, checks and issues closed. The MCP tool `session_facts` supplies those facts.
 

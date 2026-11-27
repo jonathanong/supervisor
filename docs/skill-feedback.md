@@ -31,7 +31,7 @@ Every source files the same kind of issue in the repository that owns the rule:
 
 **Routing:**
 
-- general principles go to the shared skills repository, [harness-plugins](https://github.com/jonathanong/harness-plugins)
+- general principles go to the shared skills repository, [ratchet-stack](https://github.com/jongleberry/ratchet-stack)
 - anything a static checker can check is enforced by one (a lint rule, a CI guard, or [no-mistakes](https://github.com/jonathanong/no-mistakes)). The rule also gets a short line of prose, a SHOULD or MUST NOT, in the skill an agent loads for that work, so the agent writes it right the first time instead of looping on a failing check
 - an organization's or repository's own policy goes to that repository's `AGENTS.md`
 

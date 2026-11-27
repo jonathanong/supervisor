@@ -41,7 +41,7 @@ Labels are permanent, unlike milestones and projects, so they get a higher bar.
 - **Follow the standards.** A label every repository in an organization shares lives in that organization's declared label source, for example infrastructure-as-code, so a new shared label is a PR to that source. A label for one repository is created there, matching its naming and colours. Path labels also get a rule in that repository's labeler config.
 - **Proposals are batched.** When nothing fits, the agent records a proposal with the exact name and description, plus the issues it would hold. The supervisor batches proposals per repository into one decision.
 
-The generic procedure for both lives in the `github-issue` and `github-repository-settings` skills in [harness-plugins](https://github.com/jonathanong/harness-plugins).
+The generic procedure for both lives in the `github-issue` and `github-repository-settings` skills in [ratchet-stack](https://github.com/jongleberry/ratchet-stack).
 
 ## Audit
 
