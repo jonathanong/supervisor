@@ -34,8 +34,10 @@ An agent delegates a PR with `/shepherd` as the [agent handoff](#agent-handoff).
 
 The sweep backstop finds commands the events missed:
 
-- **Window:** comments posted since `commandsThrough`, falling back to `lastSweepAt` while it is
-  unset. When both are unset (the first run), look back 7 days and say so in the summary.
+- **Window:** start at the later of `commandsThrough` (falling back to `lastSweepAt` while it is
+  unset) and 7 days ago, so the window is never longer than 7 days. When both are unset (the first
+  run), look back 7 days and say so in the summary. A command older than 7 days with no
+  acknowledgement is reported as stale, not run.
 - **Cost:** do not page every comment of a repository. Search for the issues and PRs the trusted
   logins commented on in the window (the search takes dates, not times: one query per owner, for
   example `gh api -X GET search/issues -f q='org:<owner> commenter:<login> updated:>=<date>'`, or
@@ -49,7 +51,8 @@ The sweep backstop finds commands the events missed:
   only for candidates. A candidate with no `eyes` reaction by the supervisor's login is missed.
 
 In a scope in `report` mode, report what the command would have started; post no reaction and
-dispatch nothing, and do not advance `commandsThrough` (see [report mode](../../supervisor-sweep/SKILL.md#rules-for-every-phase)).
+dispatch nothing. `commandsThrough` advances only when no selected repository is in `report` mode
+(see [report mode](../../supervisor-sweep/SKILL.md#rules-for-every-phase)).
 
 ## Agent handoff
 

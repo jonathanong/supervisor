@@ -104,25 +104,55 @@ function commentId(value: Json): number {
   return id
 }
 
-/** Add harvested comment ids from a `{"<owner>/<repo>": [ids]}` file, skipping known ones. */
+/** Drop entries harvested before `cutoff`; an entry with no readable `harvestedAt` is kept. */
+function pruneBefore(comments: JsonObject, text: string): void {
+  const cutoff = Date.parse(text)
+  if (Number.isNaN(cutoff)) {
+    throw new StateError(`reviewed: --prune-before '${text}' is not a time`)
+  }
+  for (const [repository, ids] of Object.entries(comments)) {
+    const kept = expectArray(ids, `reviewedComments.${repository}`).filter(
+      (entry) =>
+        !isObject(entry) ||
+        typeof entry.harvestedAt !== 'string' ||
+        !(Date.parse(entry.harvestedAt) < cutoff),
+    )
+    put(comments, repository, kept)
+  }
+}
+
+/**
+ * Add harvested comment ids from a `{"<owner>/<repo>": [ids]}` file, skipping known ones, and/or
+ * drop entries harvested before `--prune-before`, in one locked read-modify-write.
+ */
 export async function reviewed(args: string[], ctx: StateContext): Promise<void> {
-  const { values } = parseArgs({ args, options: { file: TEXT } })
-  const file = need(values.file, 'file')
+  const { values } = parseArgs({ args, options: { file: TEXT, 'prune-before': TEXT } })
+  if (values.file === undefined && values['prune-before'] === undefined) {
+    throw new UsageError('reviewed: give --file, --prune-before, or both')
+  }
   const state = await loadState(ctx.dir)
   const comments = objectField(state, 'reviewedComments')
-  const added = expectObject(parseJson(await readFile(file, 'utf8'), file), 'reviewed --file')
-  for (const [repository, ids] of Object.entries(added)) {
-    if (!REPOSITORY.test(repository)) {
-      throw new StateError(`reviewed: '${repository}' must look like owner/repo`)
-    }
-    const current = arrayField(comments, repository, `reviewedComments.${repository}`)
-    const have = new Set(current.map(commentId))
-    for (const id of expectArray(ids, `reviewed --file ${repository}`).map(commentId)) {
-      if (!have.has(id)) {
-        current.push({ id, harvestedAt: ctx.now() })
-        have.add(id)
+  if (values.file !== undefined) {
+    const added = expectObject(
+      parseJson(await readFile(values.file, 'utf8'), values.file),
+      'reviewed --file',
+    )
+    for (const [repository, ids] of Object.entries(added)) {
+      if (!REPOSITORY.test(repository)) {
+        throw new StateError(`reviewed: '${repository}' must look like owner/repo`)
+      }
+      const current = arrayField(comments, repository, `reviewedComments.${repository}`)
+      const have = new Set(current.map(commentId))
+      for (const id of expectArray(ids, `reviewed --file ${repository}`).map(commentId)) {
+        if (!have.has(id)) {
+          current.push({ id, harvestedAt: ctx.now() })
+          have.add(id)
+        }
       }
     }
+  }
+  if (values['prune-before'] !== undefined) {
+    pruneBefore(comments, values['prune-before'])
   }
   await saveState(ctx.dir, state)
   const counts: JsonObject = {}

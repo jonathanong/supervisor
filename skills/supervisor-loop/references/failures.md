@@ -11,10 +11,11 @@ The sweep's backstop (Phase G) finds both kinds over the last 24 hours:
 
 - **Ejections:** per repository, query GraphQL
   `timelineItems(itemTypes: [REMOVED_FROM_MERGE_QUEUE_EVENT])` over recently updated PRs, paginated
-  until a PR's update time leaves the window. An ejection is a removal whose reason is not `merged`.
-  A removal followed by a later merge of the same PR is resolved: no action, except that a
-  failed-checks removal that passed on requeue is a flake candidate. A `manual` removal is the
-  owner's: leave it alone. Drop PRs currently queued.
+  until a PR's update time leaves the window. `reason` is a free string, not an enum, so print the
+  distinct reasons seen and judge by meaning. An ejection is a removal for any reason other than the
+  PR merging. A removal followed by a later merge of the same PR is resolved: no action, except that
+  a removal for failed checks that passed on requeue is a flake candidate. A removal a person made
+  is the owner's: leave it alone. Drop PRs currently queued.
 - **Default-branch runs:** take the default branch from the repository listing. Count runs whose
   conclusion is `failure`, `timed_out`, or `startup_failure`, including `workflow_dispatch` and
   `repository_dispatch` runs. Ignore runs whose event is the dependency bot's own update job.

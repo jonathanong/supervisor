@@ -38,9 +38,9 @@ none, and `--owner <owner>`, `--repo <owner>/<repo>`, or `--phase <letter>` narr
   change nothing on the forge: no worker PRs and no merges, and no push, label, comment, reaction,
   issue, or close either. The summary lists what an `enforce` scope would have done as
   `would <action>`, and an escalation there is a summary line only. A cursor that only prevents
-  re-reporting may advance. A cursor that gates action does not: `commandsThrough` and
-  `handledFailures` do not advance or record for a `report` repository, so a later switch to
-  `enforce` still acts.
+  re-reporting may advance. A cursor that gates action does not: `handledFailures` records nothing
+  for a `report` repository, and `commandsThrough` stays put while any selected repository is in
+  `report` mode, so a later switch to `enforce` still acts.
 - **Repository:** pass `--repo <owner>/<repo>` on every `gh` command. Lists use `--limit 1000` with
   a below-limit check, or `gh api --paginate`.
 - **Rate limits:** the search API allows 30 requests a minute. Never fan out one search per
@@ -205,9 +205,10 @@ each full sweep. It lists the commands posted since `commandsThrough` by the con
 while the supervisor was down.
 
 Set `commandsThrough` to the sweep start
-(`supervisor state set commandsThrough --json '"<ISO time>"'`) only after G2 succeeds for every
-`enforce` repository of every scope; never on a skip, a failure, or `--dry-run`, and never for a
-`report` repository (a later `enforce` run must still see its commands). Never list from
+(`supervisor state set commandsThrough --json '"<ISO time>"'`) only after G2 succeeded for every
+selected repository and none of them is in `report` mode (it is one global value, so while any is,
+it stays put); never on a skip, a failure, or `--dry-run`. The `eyes` reaction, not the cursor, tells
+handled from missed, so the cursor only bounds the window. Never list from
 `lastSweepAt` once `commandsThrough` is set: it advances even when preflight skipped G2, so commands
 posted in that gap would be missed. `lastSweepAt` stays the pacing timestamp only.
 

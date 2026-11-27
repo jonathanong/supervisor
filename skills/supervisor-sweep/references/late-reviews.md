@@ -58,9 +58,9 @@ retries it. A comment posted days after merge is still found.
 
 Prune `reviewedComments` after a successful scan. The state keeps `{id, harvestedAt}` per
 repository, not the creation time, and a comment is harvested only after its PR merged, so an entry
-whose `harvestedAt` is older than `lateReviewDays` belongs to a PR that has left the window. Read
-the list with `supervisor state show reviewedComments`, drop those entries, and write the rest back
-with `supervisor state set reviewedComments <owner>/<repo> --json '[...]'`.
+whose `harvestedAt` is older than `lateReviewDays` belongs to a PR that has left the window. Run
+`supervisor state reviewed --prune-before <ISO time>` with the window start: it drops those entries
+under the state lock, alone or together with `--file`.
 
 Advance `scannedThrough` to the newest `mergedAt` scanned (or the sweep start) only after the scan
 succeeds. If a `gh search prs` stands in for the GraphQL listing, it has no `mergedAt` field (for a
