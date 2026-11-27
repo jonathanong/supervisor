@@ -1,6 +1,6 @@
 {
   "name": "@jongleberry/supervisor",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Autonomous supervisor for coding agents across GitHub repositories.",
   "license": "MIT",
   "repository": {
