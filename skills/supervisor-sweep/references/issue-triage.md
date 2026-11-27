@@ -38,7 +38,8 @@ sorted.
   pick up the rest, and the summary counts them. Flaky-test issues are exempt from the cap and
   follow [failures](../../supervisor-loop/references/failures.md): each gets a fixer or a confirmed
   owner (an open fix PR or an agent claim), and an assignee alone does not suppress dispatch. Skip a
-  one-off that already has an assignee or a recorded dispatch. `routed` is a list of
+  one-off that already has an assignee, or a recorded dispatch younger than 24 hours (the record's
+  `at`), or a linked open PR; otherwise dispatch again and say `re-dispatched` in the summary. `routed` is a list of
   `{what, to, at, evidence?, issue?, note?}` with no issue key, so match a record whose `what` or
   `issue` text contains `<owner>/<repo>#N` not followed by another digit.
 - **Needs decision** is left only for urgent or risky work the merge policy would send to a person

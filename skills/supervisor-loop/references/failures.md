@@ -24,6 +24,9 @@ The sweep's backstop (Phase G) finds both kinds over the last 24 hours:
   `handledFailures` only the members whose failure was checked to match that signature; a member
   with a different error is its own group. "A fix is in
   flight" means an open PR or open issue that names that workflow failure.
+- **Run with no jobs:** a `startup_failure` run can have none. Group it by repository and workflow
+  alone and diagnose it from the run itself (its conclusion and the workflow file at that commit;
+  usually an invalid workflow file), with no job log to fetch.
 - **Reading a log:** find the failing job and step first with `gh run view <id> --json jobs`, then
   fetch only that job's log to a file in the temporary directory and search the file.
   `--log-failed` prints the whole job log: never read it directly into context.
