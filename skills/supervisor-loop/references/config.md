@@ -186,6 +186,7 @@ All read the configuration file and need `gh`.
   report, and clear the [stop switch](stop-switch.md). While it is set, `supervisor wait`,
   `supervisor state sweep-start`, and `supervisor state merge-record` exit 3.
 - `supervisor policy check <owner>/<repo> <N> --dir <policy dir> --supervisor-policy --json` reads
-  a PR from GitHub (head, files, authors, approvals, checks) and evaluates it against the supervisor
-  policy, and with `--repo-dir` the repository's own `.supervisor/approvals.yml` too. See
+  a PR from GitHub (head, files, authors, approvals) and evaluates it against the supervisor
+  policy, and with `--repo-dir` the repository's own `.supervisor/approvals.yml` too. It reads no
+  checks itself: it asks `pr-shepherd` whether the head is ready. See
   [merge authority](merge-authority.md).

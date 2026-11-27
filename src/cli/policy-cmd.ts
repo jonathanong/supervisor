@@ -2,6 +2,7 @@ import { discoverPolicies, selectRulesForFile } from '../policy/discover.js'
 import { loadLayeredPolicies } from '../policy/layers.js'
 import type { PolicyFile } from '../policy/types.js'
 import { runCheck } from './policy-check.js'
+import { runClassify } from './policy-classify.js'
 import { requiredAlwaysHumanFromConfig } from './policy-required.js'
 import { formatPoliciesOverview, formatRuleSummary } from './policy-format.js'
 import type { CliIo } from './run.js'
@@ -12,6 +13,20 @@ const POLICY_HELP = `Usage:
                           [--classifiers <json>] [--print-input] [--repo-dir <checkout>]
   supervisor policy check --dir <dir> --input <json> [--supervisor-policy] [--json]
                           [--repo-dir <checkout>]
+  supervisor policy classify-prepare <owner>/<repo> <pr> --dir <dir> --out <out dir>
+                          [--supervisor-policy] [--repo-dir <checkout>]
+  supervisor policy classify-collect --out <out dir>
+
+classify-prepare reads the pull request's head and diff with \`gh api\`, finds the repo/<name>
+classifiers the policies in <dir> name, and writes for each one input file <out dir>/<name>.md
+(its question and the diff, nothing else about the pull request) and the path its answer goes to.
+It prints <out dir>/manifest.json. A classifier whose definition cannot be loaded is listed with
+its error and gets no input file. A diff too large for GitHub to return whole fails the command.
+An agent answers each input file with one JSON object, {"<output>": <value>, ...}, written to
+the answer path. classify-collect checks each answer against the outputs the definition allows,
+writes the valid ones to <out dir>/classifiers.json for check --classifiers, and prints its path.
+An answer that is missing or not allowed is left out, with the reason on stderr. It exits 1,
+writing nothing, when the pull request has a new head since classify-prepare.
 
 check <owner>/<repo> <pr> reads the pull request from GitHub with \`gh api\`: its current head,
 changed files, authors, labels and approvals of that head. It evaluates the policies in <dir>,
@@ -77,6 +92,8 @@ export async function runPolicyCommand(args: string[], io: CliIo): Promise<numbe
   const [subcommand, ...rest] = args
   if (subcommand === 'explain') return await runExplain(rest, io)
   if (subcommand === 'check') return await runCheck(rest, io, POLICY_HELP)
+  if (subcommand === 'classify-prepare') return await runClassify('prepare', rest, io, POLICY_HELP)
+  if (subcommand === 'classify-collect') return await runClassify('collect', rest, io, POLICY_HELP)
   io.stderr(`Unknown policy subcommand: ${subcommand ?? '(none)'}\n${POLICY_HELP}`)
   return 2
 }

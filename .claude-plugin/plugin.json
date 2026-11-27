@@ -9,6 +9,7 @@
   "repository": "https://github.com/jonathanong/supervisor",
   "license": "MIT",
   "keywords": ["agents", "github", "mcp", "supervisor", "automation"],
+  "agents": ["./agents/supervisor-classifier.md"],
   "skills": "./skills/",
   "mcpServers": "./.mcp.json"
 }

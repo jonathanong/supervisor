@@ -1,15 +1,13 @@
 import { readFile } from 'node:fs/promises'
-import { discoverPolicies } from '../policy/discover.js'
 import { evaluatePolicies } from '../policy/evaluate.js'
 import { FactsError, PULL_NUMBER, REPOSITORY } from '../policy/facts-gh.js'
-import { loadLayeredPolicies } from '../policy/layers.js'
 import { teamsNamed } from '../policy/facts-teams.js'
 import { collectPullFacts, type PullFacts } from '../policy/facts.js'
 import { checkPull, type PullCheckResult } from '../policy/pull-check.js'
 import type { ClassifierResult, EvaluationInput, PolicyFile } from '../policy/types.js'
 import { isObject } from '../state/json.js'
 import { formatHumanCheck, formatPullCheck } from './policy-format.js'
-import { requiredAlwaysHumanFromConfig } from './policy-required.js'
+import { loadPolicies } from './policy-load.js'
 import type { CliIo } from './run.js'
 
 interface CheckArgs {
@@ -103,12 +101,33 @@ async function readInput(path: string): Promise<EvaluationInput | PullFacts> {
   return raw as unknown as EvaluationInput | PullFacts
 }
 
-async function readClassifiers(path: string): Promise<Record<string, ClassifierResult>> {
+interface ClassifiersFile {
+  results: Record<string, ClassifierResult>
+  /** The head the results were collected for, when `classify-collect` wrote the file. */
+  pull?: PullFacts['pull']
+}
+
+async function readClassifiers(path: string): Promise<ClassifiersFile> {
   const raw = await readJson(path, 'classifiers')
   if (!isObject(raw) || !Object.values(raw).every(isObject)) {
     throw new FactsError('Classifiers JSON must be an object of classifier results')
   }
-  return raw as unknown as Record<string, ClassifierResult>
+  const { pull, ...results } = raw
+  return {
+    results: results as unknown as Record<string, ClassifierResult>,
+    ...(pull ? { pull: pull as unknown as PullFacts['pull'] } : {}),
+  }
+}
+
+/** Results collected for one head say nothing about another pull request or a later head. */
+function sameHead(bound: PullFacts['pull'], read: PullFacts['pull']): void {
+  const same =
+    bound.repository === read.repository && bound.number === read.number && bound.head === read.head
+  if (same) return
+  throw new FactsError(
+    `The classifier results are for ${bound.repository}#${bound.number} at ${bound.head}, ` +
+      `not ${read.repository}#${read.number} at ${read.head}: run the classifiers again`,
+  )
 }
 
 async function checkPullRequest(
@@ -117,12 +136,14 @@ async function checkPullRequest(
   io: CliIo,
 ): Promise<number> {
   const [repository, number] = args.positionals as [string, string]
+  const given = args.classifiers ? await readClassifiers(args.classifiers) : undefined
   const facts = await collectPullFacts(io.runProcess, repository, Number(number), {
     teams: teamsNamed(policies),
     status: io.shepherdStatus,
     cwd: args.repoDir ?? process.cwd(),
-    ...(args.classifiers ? { classifiers: await readClassifiers(args.classifiers) } : {}),
+    ...(given ? { classifiers: given.results } : {}),
   })
+  if (given?.pull) sameHead(given.pull, facts.pull)
   if (args.printInput) {
     io.stdout(`${JSON.stringify(facts, null, 2)}\n`)
     return 0
@@ -130,15 +151,6 @@ async function checkPullRequest(
   const result = checkPull(policies, facts)
   io.stdout(args.json ? `${JSON.stringify(result, null, 2)}\n` : formatPullCheck(result))
   return result.nextStep.action === 'merge' ? 0 : 1
-}
-
-/** Loads the policies. A supervisor policy takes its required always-human paths from the config. */
-async function loadPolicies(args: CheckArgs, io: CliIo): Promise<PolicyFile[]> {
-  if (!args.repoDir && !args.supervisorPolicy) return await discoverPolicies(args.dir!)
-  const requiredAlwaysHuman = await requiredAlwaysHumanFromConfig(io.env, process.cwd())
-  return args.repoDir
-    ? await loadLayeredPolicies(args.dir!, args.repoDir, { requiredAlwaysHuman })
-    : await discoverPolicies(args.dir!, { supervisorPolicy: true, requiredAlwaysHuman })
 }
 
 export async function runCheck(argv: string[], io: CliIo, help: string): Promise<number> {
