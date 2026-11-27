@@ -56,7 +56,7 @@ describe('loop config loading', () => {
       layerCap: 10,
       scheduledPrompts: { glob: 'prompts/*.md', quota: 1, history: 5 },
       staleRuns: false,
-      eventWait: { hookHarness: '0.3.5', timeout: '90s', advance: false, updateCheckDelay: '10m' },
+      eventWait: { hookHarness: '0.4.1', timeout: '90s', advance: false, updateCheckDelay: '10m' },
     })
     expect(loaded.config.scopes[0]!.checkoutRoot).toBe(homedir())
     expect(loaded.config.stateDir).toBeUndefined()

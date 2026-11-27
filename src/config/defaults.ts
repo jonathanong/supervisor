@@ -35,7 +35,7 @@ export function applyDefaults(raw: SupervisorConfig): LoopConfig {
         }),
     staleRuns: staleRuns === false ? false : { olderThan: '6h', cancelAfter: '24h', ...staleRuns },
     eventWait: {
-      hookHarness: '0.3.5',
+      hookHarness: '0.4.1',
       timeout: '2h',
       advance: false,
       updateCheckDelay: '10m',

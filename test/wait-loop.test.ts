@@ -60,7 +60,7 @@ describe('supervisor wait', () => {
     expect(world.calls[1]).toEqual({
       command: 'npx',
       args: [
-        ['-y', 'hook-harness@0.3.5', 'wait', '--owner', 'example-org', '--since', '10m'],
+        ['-y', 'hook-harness@0.4.1', 'wait', '--owner', 'example-org', '--since', '10m'],
         ['--repo', 'example-org/alpha,example-org/zeta'],
         ['--on', 'ejection,dependabot-pr,/shepherd,/plan,/fix'],
         ['--event', 'workflow_run', '--action', 'completed', '--conclusion', 'failure'],
