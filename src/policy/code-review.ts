@@ -9,30 +9,30 @@ export interface PullReview {
   body: string
 }
 
+const CANDIDATE_RE = /<!-- final-review\s[^>]*-->/
 const MARKER_RE = /<!-- final-review sha=([0-9a-f]{40,64}) verdict=([A-Za-z-]+) effort=([a-z]+) -->/
 const SUMMARY_RE =
   /^Reviewed `([0-9a-f]{12})` at ([a-z]+) effort · (no findings|[1-9]\d* findings? \(([^)\n]+)\))$/m
 const COUNT_RE = /^[1-9]\d* ([a-z]+)$/
 
-const EFFORT_TO_LEVEL: Record<string, ReviewDepth> = {
-  low: 'quick',
-  medium: 'standard',
-  high: 'deep',
-}
+const EFFORT_TO_LEVEL = new Map<string, ReviewDepth>([
+  ['low', 'quick'],
+  ['medium', 'standard'],
+  ['high', 'deep'],
+])
 
-const VERDICT_TO_VALUE: Record<string, 'pass' | 'fail'> = {
-  Approve: 'pass',
-  Skipped: 'pass',
-  Comment: 'fail',
-  'Request-Changes': 'fail',
-}
+const VERDICT_TO_VALUE = new Map<string, 'pass' | 'fail'>([
+  ['Approve', 'pass'],
+  ['Comment', 'fail'],
+  ['Request-Changes', 'fail'],
+])
 
-const FINDING_SEVERITY: Record<string, SeverityLevel> = {
-  blocking: 'critical',
-  high: 'high',
-  medium: 'medium',
-  low: 'low',
-}
+const FINDING_SEVERITY = new Map<string, SeverityLevel>([
+  ['blocking', 'critical'],
+  ['high', 'high'],
+  ['medium', 'medium'],
+  ['low', 'low'],
+])
 
 function parseSeverity(body: string, head: string, effort: string): SeverityLevel | undefined {
   const summary = SUMMARY_RE.exec(body)
@@ -41,7 +41,7 @@ function parseSeverity(body: string, head: string, effort: string): SeverityLeve
   let highest: SeverityLevel | undefined
   for (const part of summary[4]!.split(',')) {
     const match = COUNT_RE.exec(part.trim())
-    const mapped = match ? FINDING_SEVERITY[match[1]!] : undefined
+    const mapped = match ? FINDING_SEVERITY.get(match[1]!) : undefined
     if (!mapped) return undefined
     if (!highest || SEVERITY_RANK[mapped] > SEVERITY_RANK[highest]) highest = mapped
   }
@@ -58,26 +58,32 @@ export function mapFinalReview(
   reviewer: string,
 ): ClassifierResult | string {
   const wanted = reviewer.toLowerCase()
-  const marked = reviews
-    .filter((review) => review.state !== 'PENDING' && review.author.toLowerCase() === wanted)
-    .map((review) => ({ review, marker: MARKER_RE.exec(review.body) }))
+  const latest = reviews
     .filter(
-      (entry): entry is { review: PullReview; marker: RegExpExecArray } => entry.marker !== null,
+      (review) =>
+        review.state !== 'PENDING' &&
+        review.author.toLowerCase() === wanted &&
+        CANDIDATE_RE.test(review.body),
     )
-  const latest = marked.at(-1)
+    .at(-1)
   if (!latest) return `no final review from ${reviewer}`
-  if (latest.review.state === 'DISMISSED') {
+  if (latest.state === 'DISMISSED') {
     return `the latest final review from ${reviewer} was dismissed`
   }
-  const [, sha, verdict, effort] = latest.marker
-  if (sha !== head || latest.review.commit !== head) {
+  const marker = MARKER_RE.exec(latest.body)
+  if (!marker) return `malformed final-review marker from ${reviewer}`
+  const [, sha, verdict, effort] = marker
+  if (sha !== head || latest.commit !== head) {
     return `the latest final review from ${reviewer} is for another head`
   }
-  const level = EFFORT_TO_LEVEL[effort!]
+  if (verdict === 'Skipped') {
+    return `the latest final review from ${reviewer} was skipped`
+  }
+  const level = EFFORT_TO_LEVEL.get(effort!)
   if (!level) return `unknown review effort '${effort}'`
-  const value = VERDICT_TO_VALUE[verdict!]
+  const value = VERDICT_TO_VALUE.get(verdict!)
   if (!value) return `unknown review verdict '${verdict}'`
-  const severity = verdict === 'Skipped' ? 'none' : parseSeverity(latest.review.body, head, effort!)
+  const severity = parseSeverity(latest.body, head, effort!)
   return {
     status: 'complete',
     value,

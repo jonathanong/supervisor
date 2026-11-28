@@ -7,6 +7,8 @@ import { check, file, fixture, HEAD, OLD_HEAD, policyDir, REVIEWER } from './hel
 
 const TRUSTED = 'bot:example-reviewer'
 const EXAMPLE_CONFIG = fileURLToPath(new URL('../examples/config.example.json', import.meta.url))
+const DOCS_DIR = policyDir('docs-light')
+const SENSITIVE_DIR = policyDir('sensitive-deep')
 
 function reviewBody(verdict: string, effort: string, findings = 'no findings'): string {
   return (
@@ -23,14 +25,21 @@ function ghReview(
   return { user: REVIEWER, state: 'APPROVED', commit: HEAD, body, ...overrides }
 }
 
+const prepareArgs = (dir: string, out: string, extra: string[] = []) => [
+  'classify-prepare',
+  ...PR,
+  '--dir',
+  dir,
+  '--out',
+  out,
+  ...extra,
+]
+
 describe('classify-prepare and classify-collect for claude/code_review', () => {
   it('prepares without reading the diff, collects claude/code_review, and merges docs-light', async () => {
     const out = await tempDir()
     const prepGh = classifyGh({ diffCode: 1 })
-    const prep = await policy(
-      ['classify-prepare', ...PR, '--dir', policyDir('docs-light'), '--out', out],
-      prepGh.run,
-    )
+    const prep = await policy(prepareArgs(DOCS_DIR, out), prepGh.run)
     expect(prep.code).toBe(0)
     expect(prep.stderr).toBe('')
     expect(JSON.parse(prep.stdout)).toEqual({
@@ -60,17 +69,12 @@ describe('classify-prepare and classify-collect for claude/code_review', () => {
     const classifiersPath = join(out, 'classifiers.json')
     expect(JSON.parse(await readFile(classifiersPath, 'utf8'))).toEqual({
       pull: { repository: PR[0], number: 7, head: HEAD },
-      'claude/code_review': {
-        status: 'complete',
-        value: 'pass',
-        level: 'quick',
-        severity: 'none',
-      },
+      'claude/code_review': { status: 'complete', value: 'pass', level: 'quick', severity: 'none' },
     })
 
     const checked = await check(fixture({ files: [file('docs/guide.md')], reviews: [] }), [
       '--dir',
-      policyDir('docs-light'),
+      DOCS_DIR,
       '--json',
       '--classifiers',
       classifiersPath,
@@ -82,10 +86,7 @@ describe('classify-prepare and classify-collect for claude/code_review', () => {
   it('feeds depth and severity from the final review into sensitive-deep policy checks', async () => {
     const runSensitive = async (body: string) => {
       const out = await tempDir()
-      await policy(
-        ['classify-prepare', ...PR, '--dir', policyDir('sensitive-deep'), '--out', out],
-        classifyGh().run,
-      )
+      await policy(prepareArgs(SENSITIVE_DIR, out), classifyGh().run)
       await policy(
         ['classify-collect', '--out', out, '--reviewer', TRUSTED],
         classifyGh({ reviews: [ghReview(body)] }).run,
@@ -97,7 +98,7 @@ describe('classify-prepare and classify-collect for claude/code_review', () => {
       })
       const checked = await check(gh, [
         '--dir',
-        policyDir('sensitive-deep'),
+        SENSITIVE_DIR,
         '--json',
         '--classifiers',
         join(out, 'classifiers.json'),
@@ -119,12 +120,9 @@ describe('classify-prepare and classify-collect for claude/code_review', () => {
     expect(deepMedium.verdict).toBe('blocks')
   })
 
-  it('falls back to finalReview.reviewer from config and fails closed when no reviewer is set', async () => {
+  it('uses finalReview.reviewer from config and fails closed on missing or skipped reviews', async () => {
     const out = await tempDir()
-    await policy(
-      ['classify-prepare', ...PR, '--dir', policyDir('docs-light'), '--out', out],
-      classifyGh().run,
-    )
+    await policy(prepareArgs(DOCS_DIR, out), classifyGh().run)
     const fromConfig = await policy(
       ['classify-collect', '--out', out],
       classifyGh({ reviews: [ghReview(reviewBody('Approve', 'low'))] }).run,
@@ -151,30 +149,41 @@ describe('classify-prepare and classify-collect for claude/code_review', () => {
     expect(noMatch.stderr).toContain(
       `claude/code_review: no result: no final review from ${TRUSTED}`,
     )
+
+    const skippedBody = `**Code review skipped:** lockfile only\n\n<!-- final-review sha=${HEAD} verdict=Skipped effort=low -->`
+    const skipped = await policy(
+      ['classify-collect', '--out', out, '--reviewer', TRUSTED],
+      classifyGh({ reviews: [ghReview(skippedBody, { state: 'COMMENTED' })] }).run,
+    )
+    expect(skipped.code).toBe(0)
+    expect(skipped.stderr).toContain('was skipped')
+    expect(JSON.parse(await readFile(join(out, 'classifiers.json'), 'utf8'))).toEqual({
+      pull: { repository: PR[0], number: 7, head: HEAD },
+    })
+    const checked = await check(fixture({ files: [file('docs/guide.md')], reviews: [] }), [
+      '--dir',
+      DOCS_DIR,
+      '--json',
+      '--classifiers',
+      join(out, 'classifiers.json'),
+    ])
+    expect(checked.code).toBe(1)
+    expect(JSON.parse(checked.stdout).nextStep).toEqual({
+      action: 'request_review',
+      depth: 'quick',
+    })
   })
 
   it('voids results if the head moves while reading reviews and rejects --reviewer on prepare', async () => {
     const out = await tempDir()
     const badPrepare = await policy(
-      [
-        'classify-prepare',
-        ...PR,
-        '--dir',
-        policyDir('docs-light'),
-        '--out',
-        out,
-        '--reviewer',
-        TRUSTED,
-      ],
+      prepareArgs(DOCS_DIR, out, ['--reviewer', TRUSTED]),
       classifyGh().run,
     )
     expect(badPrepare.code).toBe(2)
     expect(badPrepare.stderr).toContain('--reviewer is only valid with classify-collect.')
 
-    await policy(
-      ['classify-prepare', ...PR, '--dir', policyDir('docs-light'), '--out', out],
-      classifyGh().run,
-    )
+    await policy(prepareArgs(DOCS_DIR, out), classifyGh().run)
     const moved = await policy(
       ['classify-collect', '--out', out, '--reviewer', TRUSTED],
       classifyGh({ heads: [HEAD, OLD_HEAD], reviews: [ghReview(reviewBody('Approve', 'low'))] })

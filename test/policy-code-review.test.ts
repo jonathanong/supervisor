@@ -61,22 +61,18 @@ describe('mapFinalReview', () => {
         TRUSTED,
       ),
     ).toEqual({ status: 'complete', value: 'fail', level: 'deep', severity: 'critical' })
-    expect(
-      mapFinalReview(
-        [pullReview(reviewBody('Skipped', 'low'), { state: 'COMMENTED' })],
-        HEAD,
-        TRUSTED,
-      ),
-    ).toEqual({ status: 'complete', value: 'pass', level: 'quick', severity: 'none' })
   })
 
-  it('matches the reviewer without case, accepts COMMENTED approvals, and takes the newest review', () => {
+  it('matches the reviewer without case, ignores continuation parts, and takes the newest review', () => {
     const reviews = [
       pullReview(reviewBody('Request-Changes', 'high', '1 finding (1 blocking)'), {
         state: 'CHANGES_REQUESTED',
       }),
       pullReview(reviewBody('Approve', 'high'), {
         author: 'BOT:Example-Reviewer',
+        state: 'COMMENTED',
+      }),
+      pullReview(`<!-- final-review-part sha=${HEAD} part=2 -->\nMore details`, {
         state: 'COMMENTED',
       }),
     ]
@@ -98,12 +94,36 @@ describe('mapFinalReview', () => {
     expect(mapFinalReview(spoofed, HEAD, TRUSTED)).toBe(`no final review from ${TRUSTED}`)
   })
 
-  it('returns no result when the latest review is dismissed, stale, or has an unknown marker value', () => {
-    const dismissed = [
-      pullReview(reviewBody('Approve', 'high')),
-      pullReview(reviewBody('Approve', 'high'), { state: 'DISMISSED' }),
-    ]
-    expect(mapFinalReview(dismissed, HEAD, TRUSTED)).toContain('was dismissed')
+  it('returns no result for skipped, dismissed, stale, malformed, or prototype-named markers', () => {
+    expect(
+      mapFinalReview(
+        [pullReview(reviewBody('Skipped', 'low'), { state: 'COMMENTED' })],
+        HEAD,
+        TRUSTED,
+      ),
+    ).toContain('was skipped')
+    expect(
+      mapFinalReview(
+        [
+          pullReview(reviewBody('Approve', 'high')),
+          pullReview(reviewBody('Approve', 'high'), { state: 'DISMISSED' }),
+        ],
+        HEAD,
+        TRUSTED,
+      ),
+    ).toContain('was dismissed')
+    expect(
+      mapFinalReview(
+        [
+          pullReview(reviewBody('Approve', 'high')),
+          pullReview(`<!-- final-review sha=${HEAD} verdict=Request-Changes effort=HIGH -->`, {
+            state: 'CHANGES_REQUESTED',
+          }),
+        ],
+        HEAD,
+        TRUSTED,
+      ),
+    ).toContain('malformed final-review marker')
     expect(
       mapFinalReview(
         [pullReview(reviewBody('Approve', 'high', 'no findings', OLD_HEAD))],
@@ -121,11 +141,11 @@ describe('mapFinalReview', () => {
     expect(
       mapFinalReview([pullReview(reviewBody('Approve', 'high'), { commit: null })], HEAD, TRUSTED),
     ).toContain('another head')
-    expect(mapFinalReview([pullReview(reviewBody('Approve', 'extreme'))], HEAD, TRUSTED)).toContain(
-      "unknown review effort 'extreme'",
-    )
-    expect(mapFinalReview([pullReview(reviewBody('Ship-It', 'high'))], HEAD, TRUSTED)).toContain(
-      "unknown review verdict 'Ship-It'",
+    expect(
+      mapFinalReview([pullReview(reviewBody('Approve', 'constructor'))], HEAD, TRUSTED),
+    ).toContain("unknown review effort 'constructor'")
+    expect(mapFinalReview([pullReview(reviewBody('toString', 'high'))], HEAD, TRUSTED)).toContain(
+      "unknown review verdict 'toString'",
     )
   })
 
@@ -135,6 +155,7 @@ describe('mapFinalReview', () => {
       `<!-- final-review sha=${HEAD} verdict=Approve effort=high -->\nReviewed \`${OLD_HEAD.slice(0, 12)}\` at high effort · no findings\n`,
       `<!-- final-review sha=${HEAD} verdict=Approve effort=high -->\nReviewed \`${HEAD.slice(0, 12)}\` at low effort · no findings\n`,
       reviewBody('Approve', 'high', '1 finding (1 nit)'),
+      reviewBody('Approve', 'high', '1 finding (1 constructor)'),
       reviewBody('Approve', 'high', '1 finding (0 low)'),
     ]
     for (const body of cases) {
