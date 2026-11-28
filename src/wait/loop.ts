@@ -5,7 +5,7 @@ import { WaitError, type WaitContext } from './context.js'
 import { emit, pendingChecks } from './emit.js'
 import { hookHarnessWait, listRepositories } from './harness.js'
 import { sweep } from './merges.js'
-import { refuseUnadvanced } from './unadvanced.js'
+import { priorRelayErrors, readLastWait, refuseUnadvanced } from './unadvanced.js'
 import { watchTriggers } from './watches.js'
 
 const UNITS: Record<string, number> = { '': 1, s: 1, m: 60, h: 3600, d: 86400 }
@@ -36,6 +36,15 @@ async function pendingDeadline(ctx: WaitContext, delay: number): Promise<number 
   return oldest + delay - ctx.now().getTime() / 1000
 }
 
+function pruneRelayErrors(failures: Map<string, number>, repos: string[]): void {
+  const active = new Set(repos.map((repo) => repo.slice(0, repo.indexOf('/')).toLowerCase()))
+  for (const owner of failures.keys()) {
+    if (!active.has(owner)) {
+      failures.delete(owner)
+    }
+  }
+}
+
 /**
  * Wait for events of every configured owner until one needs action. A merged pull request is checked for
  * unresolved or late review findings; a clean one is logged, the cursor moves past it, and the
@@ -51,11 +60,12 @@ export async function runWait(ctx: WaitContext, settings: WaitSettings): Promise
   const started = ctx.now().getTime()
   const idle = { events: [], gap: false }
   let repos: string[] | undefined
-  const failures = new Map<string, number>()
   await refuseWhenStopped(ctx.dir, 'supervisor wait')
+  const last = await readLastWait(ctx.dir)
   if (!advance) {
-    await refuseUnadvanced(ctx)
+    await refuseUnadvanced(ctx, last)
   }
+  const failures = priorRelayErrors(last, ctx.loaded)
   for (;;) {
     // Before the first round and between rounds: a stop ends the wait without acting.
     await refuseWhenStopped(ctx.dir, 'supervisor wait')
@@ -63,17 +73,41 @@ export async function runWait(ctx: WaitContext, settings: WaitSettings): Promise
     const waiting = await watchTriggers(ctx.dir)
     if (remaining <= 0) {
       const data = { ...idle, timedOut: true }
-      return await emit(ctx, { data, lines: [], triggers: waiting, advance, due: false })
+      return await emit(ctx, {
+        data,
+        lines: [],
+        triggers: waiting,
+        advance,
+        due: false,
+        relayErrors: failures,
+      })
     }
     if (waiting.length > 0) {
-      return await emit(ctx, { data: idle, lines: [], triggers: waiting, advance, due: false })
+      return await emit(ctx, {
+        data: idle,
+        lines: [],
+        triggers: waiting,
+        advance,
+        due: false,
+        relayErrors: failures,
+      })
     }
     const until = await pendingDeadline(ctx, delay)
     const due = until !== undefined && until < remaining
     if (due && until <= 0) {
-      return await emit(ctx, { data: idle, lines: [], triggers: [], advance, due: true })
+      return await emit(ctx, {
+        data: idle,
+        lines: [],
+        triggers: [],
+        advance,
+        due: true,
+        relayErrors: failures,
+      })
     }
-    repos ??= await listRepositories(ctx)
+    if (repos === undefined) {
+      repos = await listRepositories(ctx)
+      pruneRelayErrors(failures, repos)
+    }
     const limitMs = Math.max(Math.trunc(due ? until : remaining), 1) * 1000
     const data = await hookHarnessWait(ctx, repos, limitMs, failures)
     const received = data.events
@@ -82,7 +116,14 @@ export async function runWait(ctx: WaitContext, settings: WaitSettings): Promise
     const actionable = lines.length > 0 || triggers.length > 0
     if (received.length === 0 || actionable || data.gap || data.timedOut) {
       const overdue = due && Boolean(data.timedOut)
-      return await emit(ctx, { data, lines, triggers, advance, due: overdue })
+      return await emit(ctx, {
+        data,
+        lines,
+        triggers,
+        advance,
+        due: overdue,
+        relayErrors: failures,
+      })
     }
     await withStateLock(ctx.dir, async () => {
       const state = await loadState(ctx.dir)

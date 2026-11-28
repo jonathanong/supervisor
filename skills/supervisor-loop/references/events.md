@@ -34,7 +34,9 @@ reuse it instead of creating another.
 
 The first output line is a JSON summary: `gap`, `timedOut?`, `events` (the count that follow),
 `quiet?` (`{count, merges}`: clean merges handled since the last return, as `<owner>/<repo>#N`),
-`pendingUpdateChecks?` (repositories, as `<owner>/<repo>`), `updateCheckDue?`, and `advanced?`. Each
+`pendingUpdateChecks?` (repositories, as `<owner>/<repo>`), `updateCheckDue?`, `relayErrors?`
+(`{<owner>: count}`: consecutive relay poll errors per owner that have not cleared, carried across
+relaunched waits in `hh-last.json`), and `advanced?`. Each
 following line is one event with only its non-empty fields, in the order `id`, `repo` (as
 `<owner>/<repo>`), `event`,
 `action`, `prs`, `issue`, `reason`, `conclusion`, `workflow`, `runId`, `command`, `commentId`,
@@ -45,8 +47,14 @@ job), `merged`, and for a merge `unresolved`, `late`, `truncated`, or
 - `gap: true`: events may have been missed. Run the backstop for every scope:
   supervisor-sweep [Phase G](../../supervisor-sweep/SKILL.md#phase-g---queue-ejections-and-default-branch-failures)
   and [Phase G2](../../supervisor-sweep/SKILL.md#phase-g2---command-comments).
-- Exit 1 (auth, cursor, or relay error): report it and fall back to sweeps until it is
-  fixed.
+- `relayErrors`: one or more owners failed to poll the relay before another owner's events, a watch,
+  or a timeout ended the wait. The wait carries each owner's count forward in `hh-last.json`, clears
+  it as soon as a page for that owner succeeds, and exits 1 at 5 consecutive errors. An owner whose
+  failure arrives after another owner's event, such as a connect that hangs until the fetch timeout,
+  is aborted uncounted each round, so its outage can still go unreported. Handle the returned events
+  as usual, and follow [Relay outage](failures.md#relay-outage) when a count climbs across waits.
+- Exit 1 (auth, cursor, or sustained relay error): report it and fall back to sweeps until it is
+  fixed (see [Relay outage](failures.md#relay-outage) for a sustained per-owner relay error).
 - Skip events for repositories outside the configured scopes.
 
 Event fields are `id`, `repo`, `event`, `action`, `prs`, `issue`, `headSha`, `headRef`, `reason`,

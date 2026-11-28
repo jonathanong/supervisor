@@ -111,8 +111,9 @@ function mapHarnessError(error: unknown, configuration: boolean): WaitError {
  * Poll the hook-harness relay in-process over every owner from the stored cursor until a batch
  * returns events or a gap, or the timeout signal aborts. Main-branch failures come from
  * `workflow_run` only; pull-request checks are left to pr-shepherd. `failures` counts consecutive
- * `{error}` batches per owner; the caller passes one map across rounds so a sustained outage still
- * ends the wait, and an owner's count resets only when a page for that owner succeeds.
+ * `{error}` batches per owner; the caller seeds it from the previous `hh-last.json` and passes it
+ * across rounds so a sustained outage still ends the wait across relaunches, and an owner's count
+ * resets only when a page for that owner succeeds.
  */
 export async function hookHarnessWait(
   ctx: WaitContext,
@@ -145,18 +146,19 @@ export async function hookHarnessWait(
     })
     for await (const batch of stream) {
       started = true
+      const owner = batch.owner.toLowerCase()
       if ('error' in batch) {
-        const count = (failures.get(batch.owner) ?? 0) + 1
-        failures.set(batch.owner, count)
+        const count = (failures.get(owner) ?? 0) + 1
+        failures.set(owner, count)
         if (count >= MAX_CONSECUTIVE_ERRORS) {
           throw new WaitError(
-            `hook-harness relay unreachable (${count} consecutive errors for ${batch.owner}): ${batch.error.message}`,
+            `hook-harness relay unreachable (${count} consecutive errors for ${owner}): ${batch.error.message}`,
             { cause: batch.error },
           )
         }
         continue
       }
-      failures.delete(batch.owner)
+      failures.delete(owner)
       cursor = batch.cursor
       if (batch.gap || batch.events.length > 0) {
         return {
