@@ -60,10 +60,11 @@ Requires `@jongleberry/supervisor` 0.4.0 or newer (`pnpm add -g @jongleberry/sup
   cap held work back, the next sweep's scan window starts at the held-back cursor (or the earliest
   held-back item's timestamp when no cursor is set) even when that is older than the phase's usual
   rolling window (such as `lateReviewDays`, Phase G's 24-hour window, or Phase G2's 7-day window).
-  On later sweeps, previously held-back dispatches (such as held `/fix` commands from Phase G2 or
-  held failures from Phase G) take dispatch priority ahead of new Phase D one-off work so earlier
-  phases cannot starve them indefinitely. Report how many new issues and how many dispatches were
-  held back in the Phase H summary (and on `--dry-run`, report what would be held back).
+  On later sweeps, previously held-back dispatches (including held `/fix` commands from Phase G2,
+  held failures from Phase G, and held scheduled prompts from Phase G3) take dispatch priority ahead
+  of new dispatches from Phases C and D so earlier phases cannot starve them indefinitely. Report
+  how many new issues and how many dispatches were held back in the Phase H summary (and on
+  `--dry-run`, report what would be held back).
 - **Repository:** pass `--repo <owner>/<repo>` on every `gh` command. Lists use `--limit 1000` with
   a below-limit check, or `gh api --paginate`.
 - **Limits:** any `--limit` is fine when the result count is below it. A result that reaches its

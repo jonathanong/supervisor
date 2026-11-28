@@ -77,11 +77,12 @@ later sweep retries it. While any comment of a repository is left blocked, advan
 still found.
 
 Prune `reviewedComments` after a successful scan. The state keeps `{id, harvestedAt}` per
-repository, not the creation time, and a comment is harvested only after its PR merged, so an entry
-whose `harvestedAt` is older than the active scan window start (`lateReviewDays`, or the earlier
-held-back cursor when held-back work extended the window) belongs to a PR that has left the window.
-Run `supervisor state reviewed --prune-before <ISO time>` with that window start: it drops those
-entries under the state lock, alone or together with `--file`.
+repository, not the creation time, and a comment is harvested only after its PR merged. Because
+`supervisor state reviewed --prune-before <ISO time>` applies one cutoff across all repositories,
+pass the earliest active scan-window start across every repository (the earliest of `lateReviewDays`
+and any repository's extended held-back cursor), never a single repository's narrower window start,
+so no other repository's held-back window loses its recorded comment ids. It drops entries older
+than that cutoff under the state lock, alone or together with `--file`.
 
 Advance `scannedThrough` to the newest `mergedAt` scanned (or the sweep start) only after the scan
 succeeds and every candidate for that repository was handled. When `sweepCap.issues` held back

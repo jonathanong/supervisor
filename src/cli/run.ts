@@ -48,9 +48,9 @@ const HELP_TEXT = `Usage: supervisor <command> [options]
 Commands:
   config validate [path]               Validate a config JSON file (defaults to $SUPERVISOR_CONFIG)
   policy explain <dir> [path]          Explain policy rules for a repo or path
-  policy check <owner>/<repo> <pr> --dir <d>
+  policy check <owner>/<repo> <pr> [--dir <d>]
                                        Read a PR from GitHub and evaluate it against policies
-  policy check --dir <d> --input <f>   Evaluate a written input file against policies
+  policy check [--dir <d>] --input <f> Evaluate a written input file against policies
   policy classify-prepare <owner>/<repo> <pr> --dir <d> --out <o>
                                        Write the input file for each repo/<name> classifier
   policy classify-collect --out <o> [--reviewer <a>]
