@@ -15,7 +15,8 @@ summary, and do not call `sp-record` or advance `scheduledPrompts.next`. Reposit
    `sweepCap.dispatches` budget entries wrapping round-robin without changing `next` (when the
    remaining budget is `0`, select none). Skip an empty list. Select each entry at most once per
    sweep. Also skip, without counting it toward `quota`, any entry from `next` to the end of the
-   list that already completed in the current rotation, read from `scheduledPrompts.runs`: with `T`
+   list that already completed in the current rotation, read from `scheduledPrompts.runs` and
+   counting only runs with outcome `draft PR` or `verified no-op` (an `incomplete` run is retried): with `T`
    the latest run of the `next` entry, an entry is done when it has two runs newer than `T` (its
    previous rotation's run and this one's); when `next` has no run, use the latest run of the entry
    just before `next` as `T` and one newer run is enough; when neither has a run, any run counts.
