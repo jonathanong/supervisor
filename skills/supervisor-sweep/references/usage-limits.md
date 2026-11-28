@@ -7,12 +7,15 @@ pass as waiting for the reset rather than failed.
 ## When subagents stop on a usage limit
 
 1. Stop spawning or retrying subagents while the account is exhausted.
-2. Print a partial summary naming the phases that completed, the subagents and phases that stopped
+2. Release the sweep claim and clean up temporary local files (see
+   [What to release and what to keep](#what-to-release-and-what-to-keep) below) before waiting, so
+   another eligible sweep is not blocked by a stale claim and no private snapshot remains on disk.
+3. Print a partial summary naming the phases that completed, the subagents and phases that stopped
    on the usage limit, and the reset time if the harness reported one.
-3. In a standing loop, wait until after the reset: schedule a self-paced wake-up after the reported
-   reset time when known, or let the recurring fallback sweep fire. If the fallback job is near
-   expiry and the loop session still has quota, refresh the schedule before waiting (see
-   [Phase H](../SKILL.md#phase-h---report-and-escalate)).
+4. In a standing loop, wait until after the reset: if the fallback job is near expiry and the loop
+   session still has quota, refresh the schedule before waiting (see
+   [Phase H](../SKILL.md#phase-h---report-and-escalate)), then schedule a self-paced wake-up after
+   the reported reset time when known or let the recurring fallback sweep fire.
 
 ## What to release and what to keep
 
@@ -51,6 +54,9 @@ Before continuing after the reset:
      their phases, continue through the remaining phases, and finish Phase H with
      `supervisor state sweep-done`. Before acting on or merging any PR listed before the wait, still
      re-read its current head per the [reviewed-head](../SKILL.md#rules-for-every-phase) rule.
+     Exception: if [Phase E](journal-distill.md) was interrupted, its local snapshot and partitions
+     were removed before waiting, so do not resume stopped Phase E inspectors against deleted
+     files; rerun Phase E from the start (export, verify, and partition a fresh snapshot) instead.
    - **Rerun the sweep from the start** when subagents cannot be resumed, the session restarted, or
      the wait made earlier listings stale. Because `lastSweepAt` and incomplete phase cursors were
      left unadvanced, nothing is skipped, and already-recorded per-item facts prevent duplicate

@@ -41,8 +41,9 @@ Partitioning can refuse a session that exceeds its size bound, or snapshot expor
 an un-flushed worktree outbox can block the run. How an oversized session is partitioned belongs to
 agent-blackboard, not the supervisor, so the supervisor never splits a session group or weakens the
 partition bound. Instead it removes any local snapshot, records the reason as one summary line,
-escalates once keyed in `escalations`, leaves `retroCursor` unadvanced, and keeps the remaining
-sweep phases running.
+leaves `retroCursor` unadvanced, and keeps the remaining sweep phases running. In an `enforce` scope
+(never on `--dry-run`), it also escalates once keyed in `escalations`; in a `report` scope, it
+records only the summary line and writes nothing to `escalations`.
 
 ### Report mode
 

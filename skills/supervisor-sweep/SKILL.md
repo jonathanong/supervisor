@@ -187,7 +187,8 @@ and `distill.sessionDays`, files verified follow-ups through the `github-issue` 
 when `distill.archive` is true, removes the local snapshot, and advances `retroCursor` only after
 clean-up succeeds for every scope. When the distill cannot run (for example a session exceeds the
 partition bound), remove any local snapshot, record one summary line, escalate once keyed in
-`escalations`, leave `retroCursor` unadvanced, and keep the other phases running. In a `report`
+`escalations` (`enforce` scope only, never on `--dry-run`), leave `retroCursor` unadvanced, and keep
+the other phases running. In a `report`
 scope it runs structural classification (`distill classify`) and reports the structural counts, then
 inspects and verifies only a labeled sample (see journal-distill).
 
