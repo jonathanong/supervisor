@@ -82,7 +82,9 @@ function reply(endpoint: string, jq: string, gh: GhFixture): string {
   if (endpoint.includes('/files?')) return lines(gh.files)
   if (endpoint.includes('/commits?')) return lines(gh.commits)
   if (endpoint.includes('/reviews?')) return lines(gh.reviews)
-  if (endpoint !== `repos/${REPO}/pulls/7`) throw new Error(`unexpected endpoint: ${endpoint}`)
+  if (endpoint.toLowerCase() !== `repos/${REPO}/pulls/7`) {
+    throw new Error(`unexpected endpoint: ${endpoint}`)
+  }
   return lines([jq === '{head: .head.sha}' ? { head: gh.headAfter } : gh.pull])
 }
 

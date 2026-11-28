@@ -3,7 +3,7 @@ import { loadLayeredPolicies } from '../policy/layers.js'
 import type { PolicyFile } from '../policy/types.js'
 import { runCheck } from './policy-check.js'
 import { runClassify } from './policy-classify.js'
-import { requiredAlwaysHumanFromConfig } from './policy-required.js'
+import { requiredAlwaysHumanFromConfig } from '../config/policy.js'
 import { formatPoliciesOverview, formatRuleSummary } from './policy-format.js'
 import type { CliIo } from './run.js'
 

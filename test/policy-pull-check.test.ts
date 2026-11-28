@@ -8,16 +8,25 @@ import type { ShepherdAnswer } from '../src/policy/facts-readiness.js'
 const DIR = ['--dir', policyDir('pull-facts')]
 
 let temp: string
-let classifiers: string
-let notClassifiers: string
+const fixturePath = (name: string) => join(temp, name)
 
 beforeAll(async () => {
   temp = await mkdtemp(join(tmpdir(), 'supervisor-pull-check-'))
-  classifiers = join(temp, 'classifiers.json')
-  notClassifiers = join(temp, 'not-classifiers.json')
   const review = { status: 'complete', value: 'pass', level: 'quick' }
-  await writeFile(classifiers, JSON.stringify({ 'claude/code_review': review }))
-  await writeFile(notClassifiers, JSON.stringify({ 'claude/code_review': 'pass' }))
+  const files: Record<string, unknown> = {
+    'classifiers.json': { 'claude/code_review': review },
+    'not-classifiers.json': { 'claude/code_review': 'pass' },
+    'bad-value.json': { 'repo/risk': { value: ['low'] } },
+    'bad-outputs.json': { 'repo/risk': { status: 'complete', outputs: { risk: ['low'] } } },
+    'bad-outputs-type.json': { 'repo/risk': { status: 'complete', outputs: 'low' } },
+    'valid-outputs.json': {
+      'claude/code_review': review,
+      'repo/risk': { status: 'complete', value: 2, outputs: { level: 'low', score: 1 } },
+    },
+  }
+  await Promise.all(
+    Object.entries(files).map(([name, data]) => writeFile(fixturePath(name), JSON.stringify(data))),
+  )
 })
 
 afterAll(async () => {
@@ -117,15 +126,21 @@ describe('supervisor policy check <owner>/<repo> <pr>', () => {
     expect(without.result.nextStep).toEqual({ action: 'request_review', depth: 'quick' })
     expect(without.result.classifiers).toEqual({})
 
-    const given = await checkJson(gh, ['--classifiers', classifiers])
+    const given = await checkJson(gh, ['--classifiers', fixturePath('classifiers.json')])
     expect(given.code).toBe(0)
     expect(given.result.nextStep).toEqual({ action: 'merge' })
     expect(given.result.classifiers).toEqual({
       'claude/code_review': { status: 'complete', value: 'pass', level: 'quick' },
     })
 
-    const printed = await check(gh, [...DIR, '--print-input', '--classifiers', classifiers])
+    const printed = await check(gh, [
+      ...DIR,
+      '--print-input',
+      '--classifiers',
+      fixturePath('valid-outputs.json'),
+    ])
     expect(JSON.parse(printed.stdout).classifiers['claude/code_review'].value).toBe('pass')
+    expect(JSON.parse(printed.stdout).classifiers['repo/risk'].value).toBe(2)
   })
 
   it('lets the dependency bot carve-out apply only when the bot wrote every commit', async () => {
@@ -152,7 +167,22 @@ describe('supervisor policy check <owner>/<repo> <pr>', () => {
       [[...DIR, '--input', input], '--input cannot be combined with <owner>/<repo> <pr>.'],
       [[...DIR, '--classifiers'], 'Unknown or incomplete option: --classifiers'],
       [[...DIR, '--classifiers', join(temp, 'missing.json')], 'Cannot read classifiers JSON'],
-      [[...DIR, '--classifiers', notClassifiers], 'must be an object of classifier results'],
+      [
+        [...DIR, '--classifiers', fixturePath('not-classifiers.json')],
+        'must be an object of classifier results',
+      ],
+      [
+        [...DIR, '--classifiers', fixturePath('bad-value.json')],
+        "Classifier 'repo/risk' value must be a string or number",
+      ],
+      [
+        [...DIR, '--classifiers', fixturePath('bad-outputs.json')],
+        "Classifier 'repo/risk' outputs must map names to strings or numbers",
+      ],
+      [
+        [...DIR, '--classifiers', fixturePath('bad-outputs-type.json')],
+        "Classifier 'repo/risk' outputs must map names to strings or numbers",
+      ],
       [
         [...DIR, '--classifiers', input.replace('docs-pass.json', '../../invalid-json.txt')],
         'Cannot',
