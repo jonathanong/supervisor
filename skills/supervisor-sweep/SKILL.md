@@ -16,7 +16,7 @@ loop, it needs an explicit user request, which covers that one pass and adds not
 merge policy allows. Arguments, all optional: `--dry-run` reports every intended mutation and makes
 none, and `--owner <owner>`, `--repo <owner>/<repo>`, or `--phase <letter>` narrows the pass.
 
-Requires `@jongleberry/supervisor` 0.4.0 or newer (`pnpm add -g @jongleberry/supervisor`).
+Requires `@jongleberry/supervisor` 0.5.0 or newer (`pnpm add -g @jongleberry/supervisor`).
 
 ## Rules for every phase
 
@@ -112,9 +112,9 @@ Requires `@jongleberry/supervisor` 0.4.0 or newer (`pnpm add -g @jongleberry/sup
 At the start of every sweep, not only at loop startup, verify each dependency the phases need.
 Run `supervisor preflight --json` first. It reports the checks `supervisor`, `config`, `gh`,
 `pr-shepherd`, `hook-harness`, `stop`, and `labels`, each as `{name, ok, detail}`, and exits 0 when
-all are ok and 1 otherwise. The `supervisor` check verifies that `supervisor --version` is 0.4.0 or
+all are ok and 1 otherwise. The `supervisor` check verifies that `supervisor --version` is 0.5.0 or
 newer; if it fails (or if an older CLI does not report it and `supervisor --version` is older than
-0.4.0), stop and upgrade the CLI with `pnpm add -g @jongleberry/supervisor` before running any
+0.5.0), stop and upgrade the CLI with `pnpm add -g @jongleberry/supervisor` before running any
 phase. It checks `hook-harness` only when `eventWait` is configured, verifying the saved or
 environment hook-harness relay URL (`https:`, or `http:` only for loopback) and token without
 spawning `npx`; hook-harness does not need to be on `PATH`. It checks `labels` only when at least one scope is in `enforce` mode (or when `--enforce-scope <owner>`
