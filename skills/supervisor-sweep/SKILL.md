@@ -56,9 +56,14 @@ Requires `@jongleberry/supervisor` 0.4.0 or newer (`pnpm add -g @jongleberry/sup
   (`lateReview.<owner>/<repo>`, `retroCursor`, `commandsThrough`, `scheduledPrompts.next`) and
   completion records (`handledFailures`, `intake` removals, `/fix` `eyes` reactions) only past the
   work that was actually done; keep per-item facts already recorded (`reviewedComments`, `routed`)
-  so the next sweep picks up cleanly without duplicates. Report how many new issues and how many
-  dispatches were held back in the Phase H summary (and on `--dry-run`, report what would be held
-  back).
+  so the next sweep picks up cleanly without duplicates. **Held-back work never expires:** when a
+  cap held work back, the next sweep's scan window starts at the held-back cursor (or the earliest
+  held-back item's timestamp when no cursor is set) even when that is older than the phase's usual
+  rolling window (such as `lateReviewDays`, Phase G's 24-hour window, or Phase G2's 7-day window).
+  On later sweeps, previously held-back dispatches (such as held `/fix` commands from Phase G2 or
+  held failures from Phase G) take dispatch priority ahead of new Phase D one-off work so earlier
+  phases cannot starve them indefinitely. Report how many new issues and how many dispatches were
+  held back in the Phase H summary (and on `--dry-run`, report what would be held back).
 - **Repository:** pass `--repo <owner>/<repo>` on every `gh` command. Lists use `--limit 1000` with
   a below-limit check, or `gh api --paginate`.
 - **Limits:** any `--limit` is fine when the result count is below it. A result that reaches its
@@ -102,16 +107,24 @@ newer; if it fails (or if an older CLI does not report it and `supervisor --vers
 0.4.0), stop and upgrade the CLI with `pnpm add -g @jongleberry/supervisor` before running any
 phase. It checks `hook-harness` only when `eventWait` is configured, verifying the saved or
 environment hook-harness relay URL (`https:`, or `http:` only for loopback) and token without
-spawning `npx`; hook-harness does not need to be on `PATH`. It checks `labels` only when at least
-one scope is in `enforce` mode (or when `--enforce-scope <owner>` is passed for a
-[staged rollout](../supervisor-loop/references/rollout.md) pre-check), verifying that
-`labels.automation` and `labels.needsHuman` exist in every selected repository of those scopes. If
-any label is missing, `labels` reports the missing `<owner>/<repo>` and label names: report them in
-the summary (and send one deduped notification on first failure), do not skip the sweep's phases,
-and never create labels (creating a label is left to a person). Escalation still happens in those
-repositories without `labels.needsHuman`, and the summary notes that the label was missing. It does
-not check dispatch targets or the journal server. A failed check there covers `supervisor`, `gh`,
-`pr-shepherd`, and the event-wait tool.
+spawning `npx`; hook-harness does not need to be on `PATH`. It checks `labels` only when at least one scope is in `enforce` mode (or when `--enforce-scope <owner>`
+is passed for a [staged rollout](../supervisor-loop/references/rollout.md) pre-check) and at least
+one of `labels.automation` or `labels.needsHuman` is configured, verifying that the configured
+label(s) exist in every selected repository of those scopes. When `labels` is not configured, it
+reports `ok` (`skipped: labels not configured`). When any configured label is missing in a
+repository, `labels` reports `ok` with detail `missing: ...` (without making `supervisor preflight`
+exit 1): report the missing `<owner>/<repo>` and label names in the summary (and send one deduped
+notification on first sight), do not skip the sweep's phases globally, and never create labels
+(creating a label is left to a person). Per missing label:
+
+- Missing `labels.needsHuman`: escalation still happens in that repository without the label, and
+  the summary notes that the label was missing.
+- Missing `labels.automation`: do not dispatch workers to that repository (their PRs could not carry
+  the automation label and would drop out of Phase B triage), and report the missing label and any
+  skipped dispatches in the summary.
+
+`supervisor preflight` does not check dispatch targets or the journal server. A failed check there
+covers `supervisor`, `gh`, `pr-shepherd`, and the event-wait tool.
 Then verify the rest:
 
 - for Phase D's project step, a `gh` token with the project scopes (`gh auth status` shows scopes;
@@ -195,7 +208,8 @@ allows its head. The automation label only selects this phase's queue. It grants
 Process `intake` from the state file as described in supervisor-loop
 [Step 4](../supervisor-loop/SKILL.md#step-4---on-demand-intake). Remove each report once its issue
 exists and its dispatch is recorded. If `sweepCap.issues` or `sweepCap.dispatches` holds a report
-back, leave it in `intake` for the next sweep and count it as held back in the summary.
+back, leave it in `intake` for the next sweep and count it as held back in the summary (see
+[Per-sweep cap](#rules-for-every-phase): held-back work never expires).
 
 ## Phase D - Issue triage
 
@@ -319,7 +333,8 @@ these actions, each prefixed with `would` in a `report` scope:
 When `sweepCap` held back work, report the held-back counts for new issues and dispatches (by phase
 and repository, and total) so the user knows how much work waits for the next sweep. When preflight
 reported any missing `labels.automation` or `labels.needsHuman` label, list the affected
-repositories and missing labels in the summary (and note any escalation sent without the label).
+repositories and missing labels in the summary (noting any escalation sent without
+`labels.needsHuman` and any worker dispatches skipped because `labels.automation` was missing).
 
 Run `supervisor state sweep-done`, which sets `lastSweepAt` and releases the sweep claim, except on
 `--dry-run`, which writes no state. Return the next suggested wake delay to the loop.

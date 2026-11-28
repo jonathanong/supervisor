@@ -21,9 +21,15 @@ In a scope in `report` mode, run step 1 only and report what the later steps wou
    watches the PR, so leave it.
 3. **Steer (optional).** Post the reviewed steering file as an ordinary comment with
    `gh pr comment <N> --repo <owner>/<repo> --body-file <path>`. Reject an empty file.
-4. **Mark ready and label.** `gh pr ready <N> --repo <owner>/<repo>` for a draft (the supervisor
-   does this itself: `pr-shepherd` marks ready only clean drafts with auto mark-ready on), then
-   `gh pr edit <N> --repo <owner>/<repo> --add-label <automation-label>`.
+4. **Mark ready and label.** First confirm `labels.automation` exists in `--repo` (from preflight or
+   a read-only label check); if it is missing, do not mark the PR ready — report the repository and
+   label name and stop here (never create the label). Otherwise run
+   `gh pr ready <N> --repo <owner>/<repo>` for a draft (the supervisor does this itself:
+   `pr-shepherd` marks ready only clean drafts with auto mark-ready on), then
+   `gh pr edit <N> --repo <owner>/<repo> --add-label <automation-label>`. If adding the label fails
+   after `gh pr ready` succeeds (for example, the label was removed concurrently), leave the PR
+   ready, report the failure with the repository and label name, and escalate so it does not drop
+   out of triage.
 5. **Check the merge authority (only with `--merge`).** Run every step of
    [before any merge](merge-authority.md#before-any-merge) for the current head, and again after new
    commits. A printed enqueue or requeue command counts as a merge. The policy check is

@@ -7,7 +7,10 @@ infra, or real failure.
 
 ## Finding failures
 
-The sweep's backstop (Phase G) finds both kinds over the last 24 hours:
+The sweep's backstop (Phase G) finds both kinds over the last 24 hours (or from the earliest
+held-back failure's timestamp when `sweepCap.dispatches` held a failure back on an earlier sweep,
+since held-back work never expires per
+[Per-sweep cap](../../supervisor-sweep/SKILL.md#rules-for-every-phase)):
 
 - **Ejections:** per repository, query GraphQL
   `timelineItems(itemTypes: [REMOVED_FROM_MERGE_QUEUE_EVENT])` over recently updated PRs, paginated

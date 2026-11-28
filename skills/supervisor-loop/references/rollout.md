@@ -18,14 +18,16 @@ labeled there. Before changing a scope `<owner>` from `report` to `enforce`, run
 that scope were already in `enforce` mode:
 
 1. **Labels and loop checks:** run
-   `supervisor preflight --enforce-scope <owner> --json` as its own command. This verifies that
-   `labels.automation` and `labels.needsHuman` exist in every selected repository of `<owner>`
-   (alongside `supervisor`, `config`, `gh`, `pr-shepherd`, `hook-harness`, and `stop`).
-   - If any repository is missing a label, report the exact `<owner>/<repo>` and label name to the
-     user. Creating a label is left to a person; the supervisor never creates labels.
+   `supervisor preflight --enforce-scope <owner> --json` as its own command. This verifies that the
+   configured `labels.automation` and `labels.needsHuman` exist in every selected repository of
+   `<owner>` (alongside `supervisor`, `config`, `gh`, `pr-shepherd`, `hook-harness`, and `stop`).
+   - Missing labels are reported in the `labels` check detail (`missing: ...`) without making
+     `supervisor preflight` exit 1, so inspect the `labels` detail line even when the command exits 0. Report the exact `<owner>/<repo>` and label name to the user; creating a label is left to a
+     person and the supervisor never creates labels.
    - Missing `labels.needsHuman` does not block switching if the user accepts it: escalation still
      happens without the label, and the summary notes that the label was missing. Missing
-     `labels.automation` means worker PRs cannot be labeled for Phase B until the label exists.
+     `labels.automation` skips worker dispatches to that repository (since their PRs could not carry
+     the label and would drop out of Phase B triage) and reports the missing label in the summary.
 2. **Dispatch targets:** when `dispatchTargets` is configured, run its read-only check as its own
    standalone command (never chained with `&&` or pipes). This often talks to a local socket (for
    example `herdr agent list`) and may fail inside a harness sandbox with `EPERM`.
@@ -41,7 +43,8 @@ issues, open flakes). The per-sweep [`sweepCap`](config.md#other-keys) (`issues`
 `dispatches`, default `5`) bounds each pass so that backlog drains across sweeps rather than in one
 burst:
 
-- Work over either cap waits for the next sweep.
+- Work over either cap waits for the next sweep and never expires (see
+  [Per-sweep cap](../../supervisor-sweep/SKILL.md#rules-for-every-phase)).
 - The Phase H summary reports how many new issues and how many dispatches were held back.
 - Cursors (`lateReview.<owner>/<repo>`, `retroCursor`, `commandsThrough`, `scheduledPrompts.next`)
   and completion records (`handledFailures`, `intake` removals, `/fix` reactions) advance only past

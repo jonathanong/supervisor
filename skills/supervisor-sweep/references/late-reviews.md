@@ -22,7 +22,10 @@ truncated: split it per repository or into narrower date ranges and rerun.
 The scan has three parts:
 
 1. **New merges:** fully scan every PR merged after `scannedThrough` and within `lateReviewDays`
-   (default the last 14 days).
+   (default the last 14 days). Per [Per-sweep cap](../SKILL.md#rules-for-every-phase), held-back work
+   never expires: when `sweepCap.issues` held back candidates on an earlier sweep, start the scan
+   window at the held-back cursor (`scannedThrough`, or the earliest held-back PR's `mergedAt` when
+   `scannedThrough` was unset) even when that is older than `lateReviewDays`.
 2. **Active older merges:** PRs merged earlier but still in the window are rescanned only when they
    have new review activity since `activityThrough` (falling back to `scannedThrough` when unset).
    Never use `lastSweepAt`: it advances even when Phase F is skipped or fails, so activity in that
@@ -75,14 +78,16 @@ still found.
 
 Prune `reviewedComments` after a successful scan. The state keeps `{id, harvestedAt}` per
 repository, not the creation time, and a comment is harvested only after its PR merged, so an entry
-whose `harvestedAt` is older than `lateReviewDays` belongs to a PR that has left the window. Run
-`supervisor state reviewed --prune-before <ISO time>` with the window start: it drops those entries
-under the state lock, alone or together with `--file`.
+whose `harvestedAt` is older than the active scan window start (`lateReviewDays`, or the earlier
+held-back cursor when held-back work extended the window) belongs to a PR that has left the window.
+Run `supervisor state reviewed --prune-before <ISO time>` with that window start: it drops those
+entries under the state lock, alone or together with `--file`.
 
 Advance `scannedThrough` to the newest `mergedAt` scanned (or the sweep start) only after the scan
 succeeds and every candidate for that repository was handled. When `sweepCap.issues` held back
 candidates for a repository, advance `scannedThrough` only up to the `mergedAt` of the last PR
-whose candidates were all handled (never past a PR with held-back candidates; leave it unadvanced
+whose candidates were all handled and whose `mergedAt` is strictly earlier than the first PR with
+held-back candidates (a PR that shares that timestamp must stay selectable; leave it unadvanced
 when no complete prefix finished), and leave both `activityThrough` and `fullScanAt` unadvanced for
 that repository so the next sweep picks up the remaining candidates. If a `gh search prs` stands in
 for the GraphQL listing, it has no `mergedAt` field (for a merged PR `closedAt` equals the merge

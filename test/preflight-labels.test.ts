@@ -19,7 +19,47 @@ describe('supervisor preflight labels check', () => {
     expect(seen).toEqual(['supervisor --version', 'gh auth status', 'pr-shepherd --version'])
   })
 
-  it('checks a report-mode scope as enforce when named with --enforce-scope', async () => {
+  it('skips as ok with no gh api calls when an enforce config omits labels', async () => {
+    const omitted = await makeLoop({ labels: undefined })
+    const { run, seen } = fake(GOOD)
+    const result = await omitted.cli(['preflight'], run)
+    expect(result.code).toBe(0)
+    expect(result.stdout).toContain('ok   labels: skipped: labels not configured\n')
+    expect(seen).toEqual(['supervisor --version', 'gh auth status', 'pr-shepherd --version'])
+
+    const empty = await makeLoop({ labels: {} })
+    const emptyResult = await empty.cli(['preflight'], fake(GOOD).run)
+    expect(emptyResult.code).toBe(0)
+    expect(emptyResult.stdout).toContain('ok   labels: skipped: labels not configured\n')
+  })
+
+  it('checks only the configured label when one of automation or needsHuman is omitted', async () => {
+    const onlyAutomation = await makeLoop({ labels: { automation: 'automation' } })
+    const autoResult = await onlyAutomation.cli(
+      ['preflight'],
+      fake({
+        ...GOOD,
+        ghGraphql: done(JSON.stringify({ data: { r0: { automation: { name: 'automation' } } } })),
+      }).run,
+    )
+    expect(autoResult.code).toBe(0)
+    expect(autoResult.stdout).toContain('ok   labels: 1 repo checked (automation)\n')
+
+    const onlyNeedsHuman = await makeLoop({ labels: { needsHuman: 'needs-human' } })
+    const humanResult = await onlyNeedsHuman.cli(
+      ['preflight'],
+      fake({
+        ...GOOD,
+        ghGraphql: done(JSON.stringify({ data: { r0: { needsHuman: null } } })),
+      }).run,
+    )
+    expect(humanResult.code).toBe(0)
+    expect(humanResult.stdout).toContain(
+      'ok   labels: missing: example-org/example-repo (needs-human)\n',
+    )
+  })
+
+  it('checks a report-mode scope as enforce with --enforce-scope and reports missing labels as ok', async () => {
     const loop = await makeLoop({ scopes: REPORT_SCOPES })
     const { run, seen } = fake({
       ...GOOD,
@@ -34,13 +74,13 @@ describe('supervisor preflight labels check', () => {
       ),
     })
     const result = await loop.cli(['preflight', '--enforce-scope', 'Example-User', '--json'], run)
-    expect(result.code).toBe(1)
+    expect(result.code).toBe(0)
     const labels = JSON.parse(result.stdout).checks.find(
       (check: { name: string }) => check.name === 'labels',
     )
     expect(labels).toEqual({
       name: 'labels',
-      ok: false,
+      ok: true,
       detail: 'missing: example-user/demo-repo (needs-human)',
     })
     expect(seen.some((cmd) => cmd.includes('gh api user --jq .login'))).toBe(true)
@@ -62,12 +102,10 @@ describe('supervisor preflight labels check', () => {
         userCalls += 1
         return done('example-user\n')
       },
-      ghRepos: (args) => {
-        if (args[2]!.startsWith('user/repos')) {
-          return done('repo-a\tfalse\nrepo-b\tfalse\n')
-        }
-        return done('repo-c\tfalse\n')
-      },
+      ghRepos: (args) =>
+        args[2]!.startsWith('user/repos')
+          ? done('repo-a\tfalse\nrepo-b\tfalse\n')
+          : done('repo-c\tfalse\n'),
       ghGraphql: done(
         JSON.stringify({
           data: {
@@ -87,13 +125,12 @@ describe('supervisor preflight labels check', () => {
 
   it('reports ok when enforced scopes select no repositories', async () => {
     const loop = await makeLoop()
-    const { run } = fake({ ...GOOD, ghRepos: done('') })
-    const result = await loop.cli(['preflight'], run)
+    const result = await loop.cli(['preflight'], fake({ ...GOOD, ghRepos: done('') }).run)
     expect(result.code).toBe(0)
     expect(result.stdout).toContain('ok   labels: no repositories matched\n')
   })
 
-  it('reports missing automation, missing needsHuman, or both (deduplicated when identical)', async () => {
+  it('reports missing labels without exiting 1 and deduplicates identical names', async () => {
     const loop = await makeLoop()
     const missingBoth = await loop.cli(
       ['preflight'],
@@ -110,9 +147,9 @@ describe('supervisor preflight labels check', () => {
         ),
       }).run,
     )
-    expect(missingBoth.code).toBe(1)
+    expect(missingBoth.code).toBe(0)
     expect(missingBoth.stdout).toContain(
-      'FAIL labels: missing: example-org/repo-a (automation, needs-human); example-org/repo-b (automation)\n',
+      'ok   labels: missing: example-org/repo-a (automation, needs-human); example-org/repo-b (automation)\n',
     )
 
     const sameLabel = await makeLoop({ labels: { automation: 'ops', needsHuman: 'ops' } })
@@ -124,8 +161,8 @@ describe('supervisor preflight labels check', () => {
         ghGraphql: done(JSON.stringify({ data: { r0: { automation: null, needsHuman: null } } })),
       }).run,
     )
-    expect(deduped.code).toBe(1)
-    expect(deduped.stdout).toContain('FAIL labels: missing: example-org/repo-a (ops)\n')
+    expect(deduped.code).toBe(0)
+    expect(deduped.stdout).toContain('ok   labels: missing: example-org/repo-a (ops)\n')
   })
 
   it('batches GraphQL label checks across more than 25 repositories', async () => {

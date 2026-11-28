@@ -33,10 +33,12 @@ name, ok, and detail:
                 with wake-ups)
   stop          The stop switch is not set (see: supervisor stop --help); when it is set, the
                 detail says since when and why, and the check is not ok
-  labels        labels.automation and labels.needsHuman exist in every repository selected by
-                scopes in enforce mode (and any owner passed via --enforce-scope). Reported ok,
-                with the detail "skipped: no scopes in enforce mode", when every scope is in report
-                mode. Missing labels are reported and never created automatically
+  labels        Configured labels.automation and labels.needsHuman exist in every repository
+                selected by scopes in enforce mode (and any owner passed via --enforce-scope).
+                Reported ok with "skipped: no scopes in enforce mode" when every scope is in
+                report mode, or "skipped: labels not configured" when labels sets neither key.
+                Missing repository labels are reported in the detail ("missing: ...") with ok
+                status so preflight does not exit 1; labels are never created automatically
 
 When the config does not load, config fails, hook-harness, stop, and labels are not ok (they need
 it), and supervisor, gh, and pr-shepherd still run. Exit 0 when every check is ok, 1 otherwise.

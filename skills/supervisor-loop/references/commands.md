@@ -35,9 +35,13 @@ An agent delegates a PR with `/shepherd` as the [agent handoff](#agent-handoff).
 The sweep backstop finds commands the events missed:
 
 - **Window:** start at the later of `commandsThrough` and 7 days ago, so the window is never longer
-  than 7 days. While `commandsThrough` is unset (the first run), look back the full 7 days and say
-  so in the summary; never fall back to `lastSweepAt`. A command older than 7 days is not looked
-  for: the commenter posts it again.
+  than 7 days — except when `sweepCap.dispatches` held back a `/fix` command on an earlier sweep, in
+  which case held-back work never expires (see
+  [Per-sweep cap](../../supervisor-sweep/SKILL.md#rules-for-every-phase)): start at `commandsThrough`
+  (or the earliest held-back `/fix` timestamp if `commandsThrough` is unset) even when older than 7
+  days. While `commandsThrough` is unset (the first run), look back the full 7 days and say so in
+  the summary; never fall back to `lastSweepAt`. A command older than 7 days that was not held back
+  is not looked for: the commenter posts it again.
 - **Cost:** do not page every comment of a repository. Search for the issues and PRs the trusted
   logins commented on in the window (the search takes dates, not times: one query per owner, for
   example `gh api -X GET search/issues -f q='org:<owner> commenter:<login> updated:>=<date>'`, or

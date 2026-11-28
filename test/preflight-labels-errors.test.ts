@@ -22,17 +22,6 @@ describe('supervisor preflight labels check errors', () => {
     expect(seen).toEqual(['supervisor --version', 'gh auth status', 'pr-shepherd --version'])
   })
 
-  it('fails when labels.automation or labels.needsHuman is missing from config', async () => {
-    const bothMissing = await makeLoop({ labels: undefined })
-    expect((await bothMissing.cli(['preflight'], fake(GOOD).run)).stdout).toContain(
-      'FAIL labels: missing config: labels.automation, labels.needsHuman\n',
-    )
-    const oneMissing = await makeLoop({ labels: { automation: 'automation' } })
-    expect((await oneMissing.cli(['preflight'], fake(GOOD).run)).stdout).toContain(
-      'FAIL labels: missing config: labels.needsHuman\n',
-    )
-  })
-
   it('skips calling gh api when the gh auth check failed', async () => {
     const loop = await makeLoop()
     const { run, seen } = fake({ ...GOOD, gh: done('', 1, 'not logged in') })
