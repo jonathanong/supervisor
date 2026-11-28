@@ -123,7 +123,7 @@ Loops 1, 5 and 7 feed loop 2: a distilled theme, a repeated answer, or a recurri
 | JSON Schemas     | Journal entry shapes, registered in agent-blackboard                                                                                                          |
 | Config           | One JSON file per installation, kept private. Scopes, provenance fields, who may merge, how to request the final review. See [config.md](config.md)           |
 
-`policy_check` is live on `supervisor mcp` and runs the configured merge-policy check for a PR's current head; see [merge-policy.md](merge-policy.md#the-policy_check-mcp-tool).
+`policy_check`, `pr_create`, `pr_update`, and `pr_validate` are live on `supervisor mcp`; see [merge-policy.md](merge-policy.md#the-policy_check-mcp-tool) and [claims-and-taxonomy.md](claims-and-taxonomy.md#claims).
 
 ## Harness agnostic
 

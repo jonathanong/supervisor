@@ -23,7 +23,7 @@ Validate a configuration file:
 supervisor config validate examples/config.example.json
 ```
 
-Start the stdio MCP server (exposes `policy_check`, returning the same result as `supervisor policy check <owner>/<repo> <pr> --dir <policy-dir> --supervisor-policy [--repo-dir <checkout>] --json`):
+Start the stdio MCP server (exposes `policy_check`, `pr_create`, `pr_update`, and `pr_validate`):
 
 ```bash
 supervisor mcp

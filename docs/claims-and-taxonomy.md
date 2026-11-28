@@ -14,7 +14,7 @@ A claim is a provenance comment an agent posts when it opens a PR or picks up an
 - role: author, shepherd or reviewer
 - any further fields a scope's config adds, such as the machine
 
-**One writer.** The MCP tools `pr_create` and `pr_update` render the comment, so its format cannot drift between repositories.
+**One writer.** The MCP tools `pr_create` and `pr_update` render the comment, so its format cannot drift between repositories, and `pr_validate` checks descriptions and provenance comments before a push. The fixed comment format begins with `<!-- supervisor:provenance v1 -->` followed by `- <field>: <value>` lines for `harness`, `version`, `models`, `session`, `role`, and any extra fields configured for the repository scope in supervisor config. Credentials are stripped before writing, and `pr_create` and `pr_update` inherit the linked issue's open milestone and open projects. See [skills/supervisor-pr/SKILL.md](../skills/supervisor-pr/SKILL.md).
 
 **Reconciliation.** Each sweep matches claims against the live agents:
 
