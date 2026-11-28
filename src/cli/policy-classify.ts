@@ -1,18 +1,16 @@
-import { mkdir, readFile, rm, writeFile } from 'node:fs/promises'
+import { mkdir, rm, writeFile } from 'node:fs/promises'
 import { join, resolve } from 'node:path'
-import { checkAnswer } from '../policy/classifier-answer.js'
 import { loadClassifierDef, type ClassifierOutput } from '../policy/classifier-def.js'
 import { buildClassifierInput } from '../policy/classifier-input.js'
+import { findClassifiers, usesCodeReview } from '../policy/classify-find.js'
 import { readDiff, readHead } from '../policy/classify-gh.js'
-import { findClassifiers } from '../policy/classify-find.js'
 import { FactsError, PULL_NUMBER, REPOSITORY } from '../policy/facts-gh.js'
-import type { ClassifierResult } from '../policy/types.js'
-import { isObject } from '../state/json.js'
+import { collectClassifiers } from './policy-classify-collect.js'
 import { loadPolicies } from './policy-load.js'
 import type { CliIo } from './run.js'
 
 /** What `classify-prepare` wrote for one classifier, or why it wrote nothing. */
-type ManifestEntry =
+export type ManifestEntry =
   | {
       name: string
       input: string
@@ -22,15 +20,24 @@ type ManifestEntry =
     }
   | { name: string; error: string }
 
-interface Manifest {
+export interface Manifest {
   pull: { repository: string; number: number; head: string }
   classifiers: ManifestEntry[]
+  /** Set when at least one loaded policy names `claude/code_review`. */
+  codeReview?: true
 }
 
-const VALUE_OPTIONS = new Set(['--dir', '--repo-dir', '--out'])
+export interface ClassifyArgs {
+  positionals: string[]
+  supervisorPolicy: boolean
+  out: string
+  values: Map<string, string>
+}
+
+const VALUE_OPTIONS = new Set(['--dir', '--repo-dir', '--out', '--reviewer'])
 
 /** The parsed arguments, or the usage error to print. */
-function parseArgs(args: string[]) {
+function parseArgs(args: string[]): ClassifyArgs | string {
   const values = new Map<string, string>()
   const positionals: string[] = []
   let supervisorPolicy = false
@@ -46,7 +53,8 @@ function parseArgs(args: string[]) {
   return { positionals, supervisorPolicy, out: resolve(out), values }
 }
 
-async function prepare(args: Exclude<ReturnType<typeof parseArgs>, string>, io: CliIo) {
+async function prepare(args: ClassifyArgs, io: CliIo): Promise<number | string> {
+  if (args.values.has('--reviewer')) return '--reviewer is only valid with classify-collect.'
   const [repository, number, ...extra] = args.positionals
   if (repository === undefined || number === undefined || extra.length > 0) {
     return 'Expected <owner>/<repo> <pr>.'
@@ -59,6 +67,7 @@ async function prepare(args: Exclude<ReturnType<typeof parseArgs>, string>, io: 
   const source = { dir, supervisorPolicy: args.supervisorPolicy, ...(repoDir ? { repoDir } : {}) }
   const policies = await loadPolicies(source, io)
   const found = findClassifiers(policies, (p) => (p.supervisorRoot || !repoDir ? dir : repoDir))
+  const codeReview = usesCodeReview(policies)
 
   const pr = Number(number)
   const head = await readHead(io.runProcess, repository, pr)
@@ -83,60 +92,15 @@ async function prepare(args: Exclude<ReturnType<typeof parseArgs>, string>, io: 
     }
     classifiers.push(entry)
   }
-  const manifest: Manifest = { pull: { repository, number: pr, head }, classifiers }
+  const manifest: Manifest = {
+    pull: { repository, number: pr, head },
+    classifiers,
+    ...(codeReview ? { codeReview: true } : {}),
+  }
   const text = `${JSON.stringify(manifest, null, 2)}\n`
   await writeFile(join(args.out, 'manifest.json'), text)
   io.stdout(text)
   return 0
-}
-
-async function readManifest(out: string): Promise<Manifest> {
-  const raw = JSON.parse(await readFile(join(out, 'manifest.json'), 'utf8')) as unknown
-  if (!isObject(raw) || !isObject(raw.pull) || !Array.isArray(raw.classifiers)) {
-    throw new Error('manifest.json is not a classify-prepare manifest')
-  }
-  return raw as unknown as Manifest
-}
-
-async function collect(args: Exclude<ReturnType<typeof parseArgs>, string>, io: CliIo) {
-  if (args.positionals.length > 0 || args.values.size > 1 || args.supervisorPolicy) {
-    return 'classify-collect takes only --out.'
-  }
-  const manifest = await readManifest(args.out)
-  const { repository, number, head } = manifest.pull
-  const current = await readHead(io.runProcess, repository, number)
-  if (current !== head) {
-    io.stderr(`${repository}#${number} moved from ${head} to ${current}: the results are void.\n`)
-    return 1
-  }
-  const results: Record<string, ClassifierResult> = {}
-  for (const entry of manifest.classifiers) {
-    const reason = await collectOne(entry, results)
-    if (reason) io.stderr(`repo/${entry.name}: no result: ${reason}\n`)
-  }
-  const path = join(args.out, 'classifiers.json')
-  // The head goes in the file, so `policy check` refuses the results for any other head.
-  await writeFile(path, `${JSON.stringify({ pull: manifest.pull, ...results }, null, 2)}\n`)
-  io.stdout(`${path}\n`)
-  return 0
-}
-
-/** Adds the entry's result, or returns why it has none. */
-async function collectOne(
-  entry: ManifestEntry,
-  results: Record<string, ClassifierResult>,
-): Promise<string | undefined> {
-  if ('error' in entry) return entry.error
-  let text: string
-  try {
-    text = await readFile(entry.answer, 'utf8')
-  } catch {
-    return 'there is no answer file'
-  }
-  const result = checkAnswer(entry.outputs, text)
-  if (typeof result === 'string') return result
-  results[`repo/${entry.name}`] = result
-  return undefined
 }
 
 export async function runClassify(
@@ -148,7 +112,9 @@ export async function runClassify(
   const args = parseArgs(argv)
   try {
     const result =
-      typeof args === 'string' ? args : await (command === 'prepare' ? prepare : collect)(args, io)
+      typeof args === 'string'
+        ? args
+        : await (command === 'prepare' ? prepare : collectClassifiers)(args, io)
     if (typeof result === 'number') return result
     io.stderr(`${result}\n${help}`)
     return 2

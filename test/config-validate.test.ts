@@ -80,6 +80,7 @@ describe('config validation', () => {
     ;(config.scopes as Record<string, unknown>[])[0]!.checkoutRoot = 7
     ;(config.scopes as Record<string, unknown>[])[0]!.taxonomy = { projectByRepo: { repo: 1 } }
     ;(config.finalReview as Record<string, unknown>).status = false
+    ;(config.finalReview as Record<string, unknown>).reviewer = ''
     config.trustedLogins = 'example-user'
     config.staleRuns = true
     config.eventWait = { timeout: 'soon', advance: 'yes' }
@@ -95,6 +96,7 @@ describe('config validation', () => {
       '/scopes/0/checkoutRoot',
       '/scopes/0/taxonomy/projectByRepo/repo',
       '/finalReview/status',
+      '/finalReview/reviewer',
       '/trustedLogins',
       '/staleRuns',
       '/eventWait/timeout',

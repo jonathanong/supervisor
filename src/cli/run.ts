@@ -47,7 +47,8 @@ Commands:
   policy check --dir <d> --input <f>   Evaluate a written input file against policies
   policy classify-prepare <owner>/<repo> <pr> --dir <d> --out <o>
                                        Write the input file for each repo/<name> classifier
-  policy classify-collect --out <o>    Check the answers and write the classifier results
+  policy classify-collect --out <o> [--reviewer <a>]
+                                       Check answers, map final review, and write classifier results
   prepush [--range <a>..<b>]           Scan outgoing commits for private names, emails, hostnames
   prepush install                      Install the git pre-push hook
   state <subcommand> [options]         Update the loop's state.json (see: supervisor state --help)

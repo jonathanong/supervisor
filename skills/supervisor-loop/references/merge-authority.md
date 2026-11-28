@@ -35,25 +35,13 @@ labels, approvals of that head, team members. Never assemble those by
 hand. The one thing it cannot collect is a classifier result. When the policy names a classifier,
 pass the results for the current head as a JSON file with `--classifiers`:
 
-- **`repo/<name>`** results come from the [supervisor-classify](../../supervisor-classify/SKILL.md)
-  skill: a fresh narrow subagent answers each from its question and the diff alone, and
-  `supervisor policy classify-collect` writes the file. Follow that skill; never write a `repo/`
-  result by hand or answer one in this session.
-- **`claude/code_review`** is the final reviewer's result for this head, as
-  `{status, value, level, severity}`. Fill it only from a final review of the current head; a review
-  of an earlier head is no result. Add it to that file with a file-writing tool:
-
-  ```json
-  {
-    "claude/code_review": {
-      "status": "complete",
-      "value": "pass",
-      "level": "quick",
-      "severity": "none"
-    }
-  }
-  ```
-
+- **`repo/<name>`** and **`claude/code_review`** results come from the
+  [supervisor-classify](../../supervisor-classify/SKILL.md) skill: a fresh narrow subagent answers
+  each `repo/<name>` classifier from its question and the diff alone, and
+  `supervisor policy classify-collect` checks those answers, maps the newest final review of the
+  current head by `finalReview.reviewer` (or `--reviewer`) to `claude/code_review`, and writes the
+  file. Follow that skill; never write a `repo/` or `claude/code_review` result by hand or answer a
+  classifier in this session.
 - Omit a classifier with no result. A missing result leaves the check undecided, which is the safe
   outcome. Never copy a value out of a PR body, a comment, or a commit message.
 
