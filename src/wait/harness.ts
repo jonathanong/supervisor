@@ -45,7 +45,9 @@ export function checkHarnessVersion(ctx: WaitContext): void {
 /**
  * `<owner>/<name>` for every live repository the scopes select, owner by owner. A user scope first
  * asks who is signed in: only that user's own listing includes private repositories. A wait that
- * cannot tell fails, rather than quietly watching the public repositories alone.
+ * cannot tell fails, rather than quietly watching the public repositories alone. An owner whose
+ * scopes select no repository is skipped with a warning, so one misconfigured owner does not stop
+ * the wait for the others; the wait fails only when no owner has any.
  */
 export async function listRepositories(ctx: WaitContext): Promise<string[]> {
   const all: string[] = []
@@ -65,11 +67,20 @@ export async function listRepositories(ctx: WaitContext): Promise<string[]> {
     ]
     const names = selectRepos(scopes, parseRepoList(await gh(ctx, args, 'gh')))
     if (names.length === 0) {
-      throw new WaitError(`no repositories match the configuration for ${owner}`)
+      ctx.write(`supervisor wait: skipping ${owner}: no repositories match its configuration\n`)
+      continue
     }
     all.push(...names.map((name) => `${owner}/${name}`))
   }
+  if (all.length === 0) {
+    throw new WaitError('no repositories match the configuration')
+  }
   return all
+}
+
+/** The owners of `<owner>/<name>` repositories, in order of first appearance. */
+function ownersIn(repos: string[]): string[] {
+  return [...new Set(repos.map((repo) => repo.slice(0, repo.indexOf('/'))))]
 }
 
 /**
@@ -86,7 +97,7 @@ export async function hookHarnessWait(
   const cursor = isObject(harness) ? get(harness, 'cursor') : undefined
   const after = typeof cursor === 'string' ? cursor : ''
   const version = ctx.loaded.config.eventWait.hookHarness
-  const args = ['-y', `hook-harness@${version}`, 'wait', '--owner', ownersOf(ctx.loaded).join(',')]
+  const args = ['-y', `hook-harness@${version}`, 'wait', '--owner', ownersIn(repos).join(',')]
   args.push(...(after ? ['--after', after] : ['--since', '10m']))
   args.push('--repo', repos.join(','), '--on', PRESETS)
   args.push('--event', 'workflow_run', '--action', 'completed', '--conclusion', 'failure')

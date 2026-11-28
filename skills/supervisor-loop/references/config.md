@@ -189,7 +189,8 @@ All read the configuration file and need `gh`.
   returned ids seen). A state written by 0.3.0 kept a cursor and a seen list per owner
   (`hookHarness.<owner>`); the first wait or `advance-hh` drops those entries and keeps their seen
   ids, and the first wait starts from `--since 10m` as a first run does, because per-owner cursors
-  cannot be combined. Old `hh-last.<owner>.json` files are ignored and can be deleted. A wait does
+  cannot be combined. Events older than those 10 minutes are not returned; the next sweep
+  catches what they missed. Old `hh-last.<owner>.json` files are ignored and can be deleted. A wait does
   not start while `hh-last.json` holds an event id
   that is not seen (unless the wait advances itself): it prints one line naming `advance-hh` and
   exits 4. A hook-harness failure passes its own exit code through, told apart by its message

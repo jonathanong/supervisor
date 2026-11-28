@@ -11,7 +11,10 @@ const SCOPES = [
 ]
 
 /** One `gh` listing per owner, answered by the endpoint it was asked for. */
-function listingWorld(results: Array<Record<string, unknown> | number | string>) {
+function listingWorld(
+  results: Array<Record<string, unknown> | number | string>,
+  overrides: Record<string, string> = {},
+) {
   const world = makeWorld({ results, login: 'example-user' })
   const run = world.run
   world.run = async (command, args, options) => {
@@ -21,6 +24,7 @@ function listingWorld(results: Array<Record<string, unknown> | number | string>)
         'orgs/example-org': 'alpha\tfalse\nextra-repo\tfalse\nskip-me\tfalse\n',
         'user/repos?affiliation=owner&per_page=100': 'demo-repo\tfalse\nother\tfalse\n',
         'orgs/example-team': 'team-repo\tfalse\nforked\ttrue\n',
+        ...overrides,
       }
       const key = Object.keys(lists).find((name) => args[2]!.startsWith(name))!
       return { code: 0, stdout: lists[key]!, stderr: '' }
@@ -155,13 +159,30 @@ describe('supervisor wait over every owner', () => {
     }
   })
 
-  it('names the owner whose scopes select no repository', async () => {
+  it('skips, with a warning, an owner whose scopes select no repository', async () => {
+    const loop = await makeLoop({ scopes: SCOPES })
+    const world = listingWorld([{ events: [], timedOut: true }], {
+      'orgs/example-team': 'forked\ttrue\n',
+    })
+    const result = await loop.cli(['wait'], world.run)
+    expect(result.code).toBe(0)
+    expect(result.stdout).toContain(
+      'supervisor wait: skipping example-team: no repositories match its configuration\n',
+    )
+    const args = world.waits()[0]!
+    expect(args[args.indexOf('--owner') + 1]).toBe('example-org,example-user')
+    expect(args[args.indexOf('--repo') + 1]).toBe(
+      'example-org/alpha,example-org/extra-repo,example-user/demo-repo',
+    )
+  })
+
+  it('fails when no owner selects any repository', async () => {
     const loop = await makeLoop({ scopes: SCOPES })
     const world = makeWorld({ listing: 'skip-me\tfalse\n', login: 'example-user' })
     const result = await loop.cli(['wait'], world.run)
-    expect(result).toMatchObject({
-      code: 1,
-      stderr: 'supervisor wait: no repositories match the configuration for example-org\n',
-    })
+    expect(result.code).toBe(1)
+    expect(result.stderr).toBe('supervisor wait: no repositories match the configuration\n')
+    expect(result.stdout).toContain('skipping example-org')
+    expect(world.waits()).toEqual([])
   })
 })

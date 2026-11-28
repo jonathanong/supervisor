@@ -188,7 +188,7 @@ describe('supervisor wait', () => {
     const none = await loop.cli(WAIT, makeWorld({ listing: 'archived-repo\tfalse\n' }).run)
     expect(none).toMatchObject({
       code: 1,
-      stderr: 'supervisor wait: no repositories match the configuration for example-org\n',
+      stderr: 'supervisor wait: no repositories match the configuration\n',
     })
     const denied = await loop.cli(WAIT, async () => ({
       code: 1,

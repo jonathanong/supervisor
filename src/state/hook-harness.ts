@@ -34,7 +34,8 @@ export function seenIds(state: JsonObject): Json[] {
  * Mark event ids seen and store the cursor when there is one. A 0.3.0 state holds
  * `hookHarness.<owner>.{cursor,seen}`: those entries are dropped and their seen ids merged in, so
  * the field fits the schema when this write changes it. Their cursors cannot be combined, so the
- * next wait starts from `--since` when no new cursor is stored.
+ * next wait starts from `--since` when no new cursor is stored, and events older than that are
+ * not returned.
  */
 export function recordEvents(state: JsonObject, ids: Json[], cursor: Json): void {
   const harness = objectField(state, 'hookHarness')
