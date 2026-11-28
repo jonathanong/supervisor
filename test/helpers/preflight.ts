@@ -1,3 +1,4 @@
+import { MIN_CLI_VERSION } from '../../src/cli/version.js'
 import type { ProcessResult, RunProcess } from '../../src/state/process.js'
 import { done } from './loop.js'
 
@@ -21,6 +22,7 @@ export function fake(replies: Record<string, ProcessResult | Error>): Calls {
 }
 
 export const GOOD = {
+  supervisor: done(`${MIN_CLI_VERSION}\n`),
   gh: done("Logged in\n  - Token scopes: 'repo', 'read:org'\n"),
   'pr-shepherd': done('pr-shepherd 1.2.3\n'),
   npx: done('0.4.1\n'),

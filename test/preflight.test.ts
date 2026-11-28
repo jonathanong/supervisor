@@ -1,6 +1,7 @@
 import { writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
+import { INSTALL_COMMAND, MIN_CLI_VERSION } from '../src/cli/version.js'
 import { cleanupLoops, done, makeLoop, NOW } from './helpers/loop.js'
 import { fake, GOOD } from './helpers/preflight.js'
 
@@ -30,6 +31,7 @@ describe('supervisor preflight', () => {
     expect(result.code).toBe(0)
     const lines = result.stdout.trimEnd().split('\n')
     expect(lines).toEqual([
+      `ok   supervisor: ${MIN_CLI_VERSION}`,
       `ok   config: ${loop.env.SUPERVISOR_CONFIG}`,
       'ok   gh: scopes: repo, read:org',
       'ok   pr-shepherd: pr-shepherd 1.2.3',
@@ -37,6 +39,7 @@ describe('supervisor preflight', () => {
       'ok   stop: not stopped',
     ])
     expect(seen).toEqual([
+      'supervisor --version',
       'gh auth status',
       'pr-shepherd --version',
       'npx -y hook-harness@0.4.1 --version',
@@ -50,6 +53,7 @@ describe('supervisor preflight', () => {
     const data = JSON.parse(result.stdout)
     expect(data.ok).toBe(true)
     expect(data.checks.map((check: { name: string }) => check.name)).toEqual([
+      'supervisor',
       'config',
       'gh',
       'pr-shepherd',
@@ -64,7 +68,49 @@ describe('supervisor preflight', () => {
     const result = await loop.cli(['preflight'], run)
     expect(result.code).toBe(0)
     expect(result.stdout).toContain('ok   hook-harness: not configured\n')
-    expect(seen).toEqual(['gh auth status', 'pr-shepherd --version'])
+    expect(seen).toEqual(['supervisor --version', 'gh auth status', 'pr-shepherd --version'])
+  })
+
+  it('fails when the supervisor CLI is older than the minimum and passes at or above it', async () => {
+    const loop = await makeLoop()
+    for (const older of ['0.3.0', '0.3.9', '0.4.0-rc.1']) {
+      const result = await loop.cli(
+        ['preflight', '--json'],
+        fake({ ...GOOD, supervisor: done(`${older}\n`) }).run,
+      )
+      expect(result.code).toBe(1)
+      const data = JSON.parse(result.stdout)
+      expect(data.ok).toBe(false)
+      expect(data.checks[0]).toEqual({
+        name: 'supervisor',
+        ok: false,
+        detail: `${older} is older than ${MIN_CLI_VERSION}; run: ${INSTALL_COMMAND}`,
+      })
+    }
+    for (const newer of ['0.4.0', '0.4.1', '0.5.0', '1.0.0', 'v0.4.0', '0.4.0+build.1']) {
+      const result = await loop.cli(
+        ['preflight'],
+        fake({ ...GOOD, supervisor: done(`${newer}\n`) }).run,
+      )
+      expect(result.code).toBe(0)
+      expect(result.stdout).toContain(`ok   supervisor: ${newer}\n`)
+    }
+    const invalid = await loop.cli(
+      ['preflight'],
+      fake({ ...GOOD, supervisor: done('not-a-version\n') }).run,
+    )
+    expect(invalid.code).toBe(1)
+    expect(invalid.stdout).toContain(
+      `FAIL supervisor: cannot parse version "not-a-version"; need ${MIN_CLI_VERSION} or newer, run: ${INSTALL_COMMAND}\n`,
+    )
+    const missing = await loop.cli(
+      ['preflight'],
+      fake({ ...GOOD, supervisor: new Error('spawn supervisor ENOENT') }).run,
+    )
+    expect(missing.code).toBe(1)
+    expect(missing.stdout).toContain(
+      `FAIL supervisor: spawn supervisor ENOENT; need ${MIN_CLI_VERSION} or newer, run: ${INSTALL_COMMAND}\n`,
+    )
   })
 
   it('fails on a gh that is not signed in, or has no scopes line, or cannot be run', async () => {
@@ -123,18 +169,19 @@ describe('supervisor preflight', () => {
     expect(result.stdout).toContain('stateDir is required')
   })
 
-  it('still runs gh and pr-shepherd when the config does not load', async () => {
+  it('still runs supervisor, gh, and pr-shepherd when the config does not load', async () => {
     const loop = await makeLoop()
     loop.env.SUPERVISOR_CONFIG = '/nonexistent/config.json'
     const { run, seen } = fake(GOOD)
     const result = await loop.cli(['preflight'], run)
     expect(result.code).toBe(1)
     const lines = result.stdout.trimEnd().split('\n')
-    expect(lines[0]).toMatch(/^FAIL config: supervisor config \/nonexistent\/config.json: /)
-    expect(lines[1]).toBe('ok   gh: scopes: repo, read:org')
-    expect(lines[2]).toBe('ok   pr-shepherd: pr-shepherd 1.2.3')
-    expect(lines[3]).toBe('FAIL hook-harness: skipped: the config did not load')
-    expect(lines[4]).toBe('FAIL stop: unknown: the config did not load')
-    expect(seen).toEqual(['gh auth status', 'pr-shepherd --version'])
+    expect(lines[0]).toBe(`ok   supervisor: ${MIN_CLI_VERSION}`)
+    expect(lines[1]).toMatch(/^FAIL config: supervisor config \/nonexistent\/config.json: /)
+    expect(lines[2]).toBe('ok   gh: scopes: repo, read:org')
+    expect(lines[3]).toBe('ok   pr-shepherd: pr-shepherd 1.2.3')
+    expect(lines[4]).toBe('FAIL hook-harness: skipped: the config did not load')
+    expect(lines[5]).toBe('FAIL stop: unknown: the config did not load')
+    expect(seen).toEqual(['supervisor --version', 'gh auth status', 'pr-shepherd --version'])
   })
 })
