@@ -12,7 +12,7 @@ describe('supervisor state set, append, remove and show', () => {
     const keys = ['lateReview', 'example-org/example-repo', 'scannedThrough']
     const set = await loop.cli(['state', 'set', ...keys, '--json', '"2026-01-01T00:00:00Z"'])
     expect(set).toEqual({ code: 0, stdout: `{"${key}": "2026-01-01T00:00:00Z"}\n`, stderr: '' })
-    await loop.cli(['state', 'set', 'schedule', '--json', '{"id":"job-1","n":[1,2]}'])
+    await loop.cli(['state', 'set', 'escalations', '--json', '{"id":"job-1","n":[1,2]}'])
     expect((await loop.cli(['state', 'set', 'lastSweepAt', '--json=""'])).stdout).toBe(
       '{"lastSweepAt": ""}\n',
     )
@@ -21,7 +21,7 @@ describe('supervisor state set, append, remove and show', () => {
     expect(await readFile(path, 'utf8')).toBe(
       '{\n  "lateReview": {\n    "example-org/example-repo": {\n' +
         '      "scannedThrough": "2026-01-01T00:00:00Z"\n    }\n  },\n' +
-        '  "schedule": {\n    "id": "job-1",\n    "n": [\n      1,\n      2\n    ]\n  },\n' +
+        '  "escalations": {\n    "id": "job-1",\n    "n": [\n      1,\n      2\n    ]\n  },\n' +
         '  "lastSweepAt": ""\n}\n',
     )
     expect((await stat(path)).mode & 0o777).toBe(0o600)
@@ -109,30 +109,30 @@ describe('supervisor state set, append, remove and show', () => {
     expect((await loop.cli(['state', 'append', 'intake', '--json', '1', '--keep', 'x'])).code).toBe(
       2,
     )
-    await loop.cli(['state', 'set', 'schedule.id', '--json', '"job"'])
-    expect((await loop.cli(['state', 'append', 'schedule.id', '--json', '1'])).stderr).toBe(
-      'state.json: schedule.id must be array, got string\n',
+    await loop.cli(['state', 'set', 'escalations.id', '--json', '"job"'])
+    expect((await loop.cli(['state', 'append', 'escalations.id', '--json', '1'])).stderr).toBe(
+      'state.json: escalations.id must be array, got string\n',
     )
   })
 
   it('removes a key and says whether it was there', async () => {
     const loop = await makeLoop()
-    expect((await loop.cli(['state', 'remove', 'schedule.id'])).stdout).toBe(
-      '{"schedule.id": "absent"}\n',
+    expect((await loop.cli(['state', 'remove', 'escalations.id'])).stdout).toBe(
+      '{"escalations.id": "absent"}\n',
     )
     expect(await loop.state()).toEqual({})
-    await loop.seed({ schedule: { id: 'job', empty: null }, lastSweepAt: 't' })
-    expect((await loop.cli(['state', 'remove', 'schedule.id'])).stdout).toBe(
-      '{"schedule.id": "removed"}\n',
+    await loop.seed({ escalations: { id: 'job', empty: null }, lastSweepAt: 't' })
+    expect((await loop.cli(['state', 'remove', 'escalations.id'])).stdout).toBe(
+      '{"escalations.id": "removed"}\n',
     )
-    expect((await loop.cli(['state', 'remove', 'schedule.empty'])).stdout).toBe(
-      '{"schedule.empty": "absent"}\n',
+    expect((await loop.cli(['state', 'remove', 'escalations.empty'])).stdout).toBe(
+      '{"escalations.empty": "absent"}\n',
     )
-    expect((await loop.cli(['state', 'remove', 'schedule.missing'])).stdout).toContain('absent')
+    expect((await loop.cli(['state', 'remove', 'escalations.missing'])).stdout).toContain('absent')
     expect((await loop.cli(['state', 'remove', 'lastSweepAt'])).stdout).toContain('removed')
-    expect(await loop.state()).toEqual({ schedule: {} })
-    expect((await loop.cli(['state', 'remove', 'schedule.a.b'])).stderr).toBe(
-      'state.json: schedule.a must be object, got null\n',
+    expect(await loop.state()).toEqual({ escalations: {} })
+    expect((await loop.cli(['state', 'remove', 'escalations.a.b'])).stderr).toBe(
+      'state.json: escalations.a must be object, got null\n',
     )
   })
 

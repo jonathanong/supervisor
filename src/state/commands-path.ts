@@ -5,12 +5,12 @@ import {
   arrayField,
   expectKind,
   expectObject,
-  FIELDS,
   loadState,
   parseJson,
   saveState,
   StateError,
 } from './store.js'
+import { FIELDS } from './schema.js'
 
 /**
  * The keys of a path. One argument is split on dots. Several arguments are one key each, so a key

@@ -1,35 +1,12 @@
 import { randomUUID } from 'node:crypto'
 import { mkdir, readFile, rename, writeFile } from 'node:fs/promises'
-import { join } from 'node:path'
-import { dumpsIndented, put, type Json, type JsonObject } from './json.js'
+import { join, resolve } from 'node:path'
+import { dumps, dumpsIndented, put, type Json, type JsonObject } from './json.js'
 import { withLock } from './lock.js'
+import { fieldProblem, type Kind } from './schema.js'
 
 /** A state file, argument value, or input file that does not have the shape a command needs. */
 export class StateError extends Error {}
-
-export type Kind = 'string' | 'object' | 'array'
-
-/** The top-level fields and their shapes; `set`, `append`, and `remove` touch only these. */
-export const FIELDS: Record<string, Kind> = {
-  lastSweepAt: 'string',
-  commandsThrough: 'string',
-  reviewedComments: 'object',
-  lateReview: 'object',
-  schedule: 'object',
-  retroCursor: 'string',
-  escalations: 'object',
-  hookHarness: 'object',
-  handledFailures: 'object',
-  intake: 'array',
-  scheduledPrompts: 'object',
-  delegations: 'array',
-  routed: 'array',
-  watches: 'array',
-  quietMerges: 'array',
-  mergeRecords: 'array',
-  sweep: 'object',
-  pendingUpdateChecks: 'array',
-}
 
 function kindOf(value: unknown): string {
   if (value === null || value === undefined) {
@@ -90,15 +67,43 @@ export async function loadState(dir: string): Promise<JsonObject> {
     text = await readFile(join(dir, 'state.json'), 'utf8')
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
-      return {}
+      return remember({})
     }
     throw error
   }
-  return expectObject(parseJson(text, 'state.json'), 'state.json')
+  return remember(expectObject(parseJson(text, 'state.json'), 'state.json'))
 }
 
-/** Replace `state.json` atomically: write a private temporary file beside it, then rename. */
+/** Each top-level field of a loaded state as it was read, to tell later which a write changed. */
+const loaded = new WeakMap<JsonObject, Map<string, string>>()
+
+function remember(state: JsonObject): JsonObject {
+  loaded.set(state, new Map(Object.entries(state).map(([key, value]) => [key, dumps(value)])))
+  return state
+}
+
+/** The first field this write added or changed that breaks `schemas/state.json`, as one line. */
+function writeProblem(dir: string, state: JsonObject): string | undefined {
+  const before = loaded.get(state) ?? new Map<string, string>()
+  for (const [name, value] of Object.entries(state)) {
+    const problem = before.get(name) === dumps(value) ? undefined : fieldProblem(name, value)
+    if (problem !== undefined) {
+      return `${resolve(dir, 'state.json')}: ${problem}; nothing was written`
+    }
+  }
+  return undefined
+}
+
+/**
+ * Replace `state.json` atomically: write a private temporary file beside it, then rename. A field
+ * the caller added or changed since `loadState` must fit `schemas/state.json`, or nothing is
+ * written; a field left as it was, valid or not, never blocks the write, and reads never check.
+ */
 export async function saveState(dir: string, state: JsonObject): Promise<void> {
+  const problem = writeProblem(dir, state)
+  if (problem !== undefined) {
+    throw new StateError(problem)
+  }
   await mkdir(dir, { recursive: true })
   const temporary = join(dir, `.state.${randomUUID()}.json`)
   await writeFile(temporary, `${dumpsIndented(state)}\n`, { mode: 0o600 })

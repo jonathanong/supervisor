@@ -4,7 +4,7 @@ Everything that can differ between owners, repositories or machines is data in o
 
 [Back to the graph](graph.md)
 
-- **Shape:** [schemas/config.json](../schemas/config.json) defines every key. [examples/config.example.json](../examples/config.example.json) is a complete file.
+- **Shape:** [schemas/config.json](../schemas/config.json) defines every key. The state file `supervisor state` writes has its own schema, [schemas/state.json](../schemas/state.json). [examples/config.example.json](../examples/config.example.json) is a complete file.
 - **Location:** the `SUPERVISOR_CONFIG` environment variable names the file. Without it, `supervisor state` and `supervisor wait` read `.supervisor.json` in the current directory.
 - **Check:** `supervisor config validate [path]` validates a file against the schema, and defaults to `$SUPERVISOR_CONFIG`.
 

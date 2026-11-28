@@ -1,5 +1,5 @@
 import { STOPPED_EXIT } from '../state/stop.js'
-import { FIELDS } from '../state/store.js'
+import { FIELDS } from '../state/schema.js'
 
 const FIELD_NAMES = Object.keys(FIELDS)
 const FIELD_LINES = [0, 6, 12, 18]
@@ -70,9 +70,16 @@ Subcommands:
 Fields (the first key of every <path>):
 ${FIELD_LINES}
 
+Each field a write adds or changes is checked against schemas/state.json before the write, and a
+write that breaks it is refused, so a field with a required shape is set in one command, not key
+by key:
+  supervisor state set schedule --json '{"id":"job-1","registeredAt":"2026-01-01T00:00:00Z","cron":"0 */6 * * *","expiresAt":"2026-01-08T00:00:00Z"}'
+Reading never checks the file, and a field a write leaves alone is never checked: an old file with a
+bad field can be shown, does not block writes to other fields, and stays until it is rewritten.
+
 A <path> is its keys as separate arguments, or as one argument joined by dots:
-  supervisor state set schedule id --json '"job-1"'
-  supervisor state set schedule.id --json '"job-1"'
+  supervisor state set lateReview example-org/example-repo --json '{}'
+  supervisor state set hookHarness.example-org --json '{}'
 Separate arguments are never split, so a key given that way can contain a dot. A key that names a
 repository is <owner>/<repo>, and a repository name can contain a dot, so a dotted path that goes
 on after such a key is refused (exit 1) instead of being split in the wrong place. Give those
