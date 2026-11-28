@@ -56,10 +56,8 @@ none, and `--owner <owner>`, `--repo <owner>/<repo>`, or `--phase <letter>` narr
   repository in parallel: batch by owner or space the calls. On a 403 rate-limit response, wait for
   the reset and retry once instead of failing the phase.
 - **Usage limits:** when subagents stop on a model or harness usage limit mid-sweep, follow
-  [references/usage-limits.md](references/usage-limits.md): release the claim with
-  `supervisor state remove sweep` (never `sweep-done`), leave `lastSweepAt` and incomplete phase
-  cursors unadvanced, clean up any temporary local snapshot, and after the reset re-claim and either
-  resume the stopped subagents or rerun the sweep.
+  [references/usage-limits.md](references/usage-limits.md). Release the claim without advancing
+  `lastSweepAt` or incomplete cursors, then resume or rerun after the reset.
 - **Subagent briefing:** every `gh` result carries `<owner>/<repo>` in its output (use `--jq`),
   because parallel results are easy to misattribute. `--paginate --jq` runs the filter per page, so
   never aggregate (count, group) inside it.
@@ -179,18 +177,10 @@ It creates a milestone for a shared theme, never a project.
 
 ## Phase E - Journal distill
 
-Follow [references/journal-distill.md](references/journal-distill.md). Agents write journal entries
-with agent-blackboard's own MCP tools, against a schema registered on its server, and this phase
-turns them into follow-ups with agent-blackboard's own distill skill and tools without wrapping
-them. Once per scope it distills completed sessions after `retroCursor` using `distill.retroDays`
-and `distill.sessionDays`, files verified follow-ups through the `github-issue` skill, archives only
-when `distill.archive` is true, removes the local snapshot, and advances `retroCursor` only after
-clean-up succeeds for every scope. When the distill cannot run (for example a session exceeds the
-partition bound), remove any local snapshot, record one summary line, escalate once keyed in
-`escalations` (`enforce` scope only, never on `--dry-run`), leave `retroCursor` unadvanced, and keep
-the other phases running. In a `report`
-scope it runs structural classification (`distill classify`) and reports the structural counts, then
-inspects and verifies only a labeled sample (see journal-distill).
+Follow [references/journal-distill.md](references/journal-distill.md). Once per scope, it distills
+completed sessions after `retroCursor` using agent-blackboard's own distill skill and tools
+(without wrapping them), handles distill blockers without halting other phases, and in a `report`
+scope reports structural counts with only a labeled sample verified.
 
 ## Phase F - Missed code reviews
 
