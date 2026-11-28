@@ -3,6 +3,9 @@ import { tmpdir } from 'node:os'
 import { requireStateDir, type LoadedConfig } from '../config/load.js'
 import type { RunProcess } from '../state/process.js'
 import { readStop } from '../state/stop.js'
+import { compareVersion, INSTALL_COMMAND, MIN_CLI_VERSION, parseVersion } from './version.js'
+
+const MIN_PARSED = parseVersion(MIN_CLI_VERSION)!
 
 export interface Check {
   name: string
@@ -40,6 +43,32 @@ async function probe(
   } catch (error) {
     return { name, ok: false, detail: firstLine(message(error)) }
   }
+}
+
+/** `supervisor --version`; fails when older than MIN_CLI_VERSION. */
+export async function checkSupervisor(run: RunProcess): Promise<Check> {
+  const result = await probe(run, 'supervisor', 'supervisor', ['--version'])
+  if (!result.ok) {
+    return result
+  }
+  const installed = parseVersion(result.detail)
+  if (installed === undefined) {
+    return {
+      name: 'supervisor',
+      ok: false,
+      detail: firstLine(
+        `cannot parse version "${result.detail}"; need ${MIN_CLI_VERSION} or newer, run: ${INSTALL_COMMAND}`,
+      ),
+    }
+  }
+  if (compareVersion(installed, MIN_PARSED) < 0) {
+    return {
+      name: 'supervisor',
+      ok: false,
+      detail: `${result.detail} is older than ${MIN_CLI_VERSION}; run: ${INSTALL_COMMAND}`,
+    }
+  }
+  return result
 }
 
 /** `gh auth status`; the token scopes are in its text, on stdout or stderr by gh version. */

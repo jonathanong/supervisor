@@ -7,16 +7,20 @@ import {
   checkHarness,
   checkShepherd,
   checkStop,
+  checkSupervisor,
   firstLine,
   type Check,
 } from './preflight-checks.js'
 import type { CliIo } from './run.js'
+import { MIN_CLI_VERSION } from './version.js'
 
 const PREFLIGHT_HELP = `Usage: supervisor preflight [--json]
 
 Checks, in one command, what a supervisor loop needs before it starts. Each check is reported as
 name, ok, and detail:
 
+  supervisor    "supervisor --version" succeeds and is ${MIN_CLI_VERSION} or newer; the detail is
+                the version
   config        The config file loads and validates ($SUPERVISOR_CONFIG, else .supervisor.json
                 in the current directory)
   gh            "gh auth status" succeeds; the detail lists the token scopes when gh prints them
@@ -28,7 +32,7 @@ name, ok, and detail:
                 detail says since when and why, and the check is not ok
 
 When the config does not load, config fails, hook-harness and stop are not ok (they need it), and
-gh and pr-shepherd still run. Exit 0 when every check is ok, 1 otherwise.
+supervisor, gh, and pr-shepherd still run. Exit 0 when every check is ok, 1 otherwise.
 
 Output is one line per check, "ok" or "FAIL", the name, and the detail. With --json it is one JSON
 object, {"ok": <bool>, "checks": [{"name", "ok", "detail"}]}.
@@ -61,6 +65,7 @@ export async function runPreflightCommand(args: string[], io: CliIo): Promise<nu
   }
   const { check, loaded } = await checkConfig(io)
   const checks = [
+    await checkSupervisor(io.runProcess),
     check,
     await checkGh(io.runProcess),
     await checkShepherd(io.runProcess),

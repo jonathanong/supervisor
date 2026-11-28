@@ -16,6 +16,8 @@ loop, it needs an explicit user request, which covers that one pass and adds not
 merge policy allows. Arguments, all optional: `--dry-run` reports every intended mutation and makes
 none, and `--owner <owner>`, `--repo <owner>/<repo>`, or `--phase <letter>` narrows the pass.
 
+Requires `@jongleberry/supervisor` 0.4.0 or newer (`pnpm add -g @jongleberry/supervisor`).
+
 ## Rules for every phase
 
 - **Stop switch:** before starting, before every mutation, and before every merge, run
@@ -74,13 +76,16 @@ none, and `--owner <owner>`, `--repo <owner>/<repo>`, or `--phase <letter>` narr
 ## Preflight
 
 At the start of every sweep, not only at loop startup, verify each dependency the phases need.
-Run `supervisor preflight --json` first. It reports the checks `config`, `gh`, `pr-shepherd`,
-`hook-harness`, and `stop`, each as `{name, ok, detail}`, and exits 0 when all are ok and 1
-otherwise. It checks `hook-harness` only when `eventWait` is configured, as
+Run `supervisor preflight --json` first. It reports the checks `supervisor`, `config`, `gh`,
+`pr-shepherd`, `hook-harness`, and `stop`, each as `{name, ok, detail}`, and exits 0 when all are
+ok and 1 otherwise. The `supervisor` check verifies that `supervisor --version` is 0.4.0 or newer;
+if it fails (or if an older CLI does not report it and `supervisor --version` is older than 0.4.0),
+stop and upgrade the CLI with `pnpm add -g @jongleberry/supervisor` before running any phase. It
+checks `hook-harness` only when `eventWait` is configured, as
 `npx -y hook-harness@<eventWait.hookHarness> --version`, which needs hook-harness 0.4.1 or newer;
 hook-harness does not need to be on `PATH`. It does not check dispatch targets or the journal
-server. A failed check there covers `gh`, `pr-shepherd`, and the event-wait tool. Then verify the
-rest:
+server. A failed check there covers `supervisor`, `gh`, `pr-shepherd`, and the event-wait tool.
+Then verify the rest:
 
 - for Phase D's project step, a `gh` token with the project scopes (`gh auth status` shows scopes;
   when missing, skip only the project step and say so in the summary);

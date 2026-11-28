@@ -11,11 +11,13 @@ describe('supervisor preflight details', () => {
     const loop = await makeLoop()
     const usage = '\n  error: unknown command "--version"\nUsage: hook-harness <command>\n  wait\n'
     const replies = {
+      supervisor: done('', 127, 'supervisor: command not found\n'),
       gh: done('', 1, `\n\nbad credentials\nrun gh auth login\n`),
       'pr-shepherd': done('', 1),
       npx: done(usage, 2),
     }
     const result = await loop.cli(['preflight'], fake(replies).run)
+    expect(result.stdout).toContain('FAIL supervisor: exited 127: supervisor: command not found\n')
     expect(result.stdout).toContain('FAIL gh: exited 1: bad credentials\n')
     expect(result.stdout).toContain('FAIL pr-shepherd: exited 1: \n')
     expect(result.stdout).toContain(
