@@ -1,3 +1,4 @@
+import { inReportMode } from '../config/repos.js'
 import { recordEvents, seenIds } from '../state/hook-harness.js'
 import { dumps, get, isObject, type Json, type JsonObject } from '../state/json.js'
 import { checkLateReview } from '../state/late-review.js'
@@ -101,8 +102,9 @@ export async function sweep(events: Json[], ctx: WaitContext): Promise<Sweep> {
       line = { ...compact(event), tracked: true }
     }
     merged.push(ref)
-    if (isDependencyBot(event, author)) {
-      bots.add(ref.slice(0, ref.indexOf('#')))
+    const repo = ref.slice(0, ref.indexOf('#'))
+    if (isDependencyBot(event, author) && !inReportMode(ctx.loaded, repo)) {
+      bots.add(repo)
     }
     if (line === undefined) {
       quiet.push(ref)

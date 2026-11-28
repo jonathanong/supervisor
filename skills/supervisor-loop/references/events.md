@@ -86,7 +86,9 @@ Never trust `authorAssociation`: it is wrong for private organization members.
     covers one PR, not a window); only the sweep does, and `reviewedComments` keeps the sweep from
     refiling what the event check handled.
   - A closed PR without merge that the supervisor does not track needs nothing further.
-- **`pendingUpdateChecks` or `updateCheckDue`:** after a dependency-bot PR merges, build the script
+- **`pendingUpdateChecks` or `updateCheckDue`:** the check runs only for scopes in enforce mode;
+  the wait neither queues nor reports a repository in a report-mode scope. After a dependency-bot
+  PR merges, build the script
   with `supervisor state update-check-script --owner <owner> --repo <repo>[:<ecosystem>,...]` for those
   repositories (repeat `--repo`; one script per owner, from each event's owner), run it as in supervisor-sweep's
   [dependency update check](../../supervisor-sweep/references/dependency-update-check.md), then

@@ -28,7 +28,7 @@ function seconds(text: string): number {
 
 /** Seconds until the oldest pending update check is due; undefined when none is. */
 async function pendingDeadline(ctx: WaitContext, delay: number): Promise<number | undefined> {
-  const pending = pendingChecks(await loadState(ctx.dir))
+  const pending = pendingChecks(await loadState(ctx.dir), ctx.loaded)
   if (pending.length === 0) {
     return undefined
   }
