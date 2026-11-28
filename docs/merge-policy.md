@@ -172,7 +172,16 @@ pr-shepherd reads its `.pr-shepherdrc.yml` from a checkout of the target reposit
 
 `--repo-dir <checkout>` adds the repository's own policy files below the supervisor policy, on either form of the command; without it, `--dir` alone is evaluated.
 
-`supervisor policy explain <dir> [path] [--repo-dir <checkout>]` describes the policy without a PR. The MCP tool `policy_check` runs the same check, so a worker can ask what its PR needs. Under `policyEngine: "compare"` the check also reads the Claude Approvals check and reports any disagreement.
+`supervisor policy explain <dir> [path] [--repo-dir <checkout>]` describes the policy without a PR. Under `policyEngine: "compare"` the check also reads the Claude Approvals check and reports any disagreement.
+
+### The `policy_check` MCP tool
+
+`supervisor mcp` exposes `policy_check` so a worker can ask what its PR needs. It runs the same check as `supervisor policy check <owner>/<repo> <pr> --dir <policy-dir> --supervisor-policy [--repo-dir <checkout>] --json` and returns the same JSON object — verdict, seats, review depth, readiness, blockers, `policyNextStep`, and `nextStep` for the current head — both as `structuredContent` and as JSON text in `content`. When the PR, config, policy, or arguments cannot be read or validated, it returns `isError: true` with the reason.
+
+- **`repository`** (required): `<owner>/<repo>`.
+- **`pr`** (required): pull request number.
+
+Everything that decides the verdict comes from the supervisor configuration (`$SUPERVISOR_CONFIG`, else `.supervisor.json` in the working directory), never from tool arguments: the server resolves `mergeAuthority.policy` against the real path of the config file's directory as the supervisor policy, enforces `mergeAuthority.requiredAlwaysHuman`, and layers `.supervisor/approvals.yml` (and locates `.pr-shepherdrc.yml`) from `<checkoutRoot>/<repo>` when a matching scope configures `checkoutRoot` and that directory exists. Any extra argument (such as a policy directory, checkout path, or classifier results) is refused.
 
 ## A sketch
 

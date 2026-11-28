@@ -1,10 +1,17 @@
 import { readFile } from 'node:fs/promises'
 import { evaluatePolicies } from '../policy/evaluate.js'
 import { FactsError, PULL_NUMBER, REPOSITORY } from '../policy/facts-gh.js'
-import { teamsNamed } from '../policy/facts-teams.js'
-import { collectPullFacts, type PullFacts } from '../policy/facts.js'
+import type { PullFacts } from '../policy/facts.js'
 import { checkPull, type PullCheckResult } from '../policy/pull-check.js'
-import type { ClassifierResult, EvaluationInput, PolicyFile } from '../policy/types.js'
+import {
+  collectPullCheckFacts,
+  parseClassifiersData,
+  runPullCheck,
+  type ClassifiersInput,
+  type PullCheckDeps,
+  type PullCheckRequest,
+} from '../policy/run-check.js'
+import type { EvaluationInput } from '../policy/types.js'
 import { isObject } from '../state/json.js'
 import { formatHumanCheck, formatPullCheck } from './policy-format.js'
 import { loadPolicies } from './policy-load.js'
@@ -101,54 +108,33 @@ async function readInput(path: string): Promise<EvaluationInput | PullFacts> {
   return raw as unknown as EvaluationInput | PullFacts
 }
 
-interface ClassifiersFile {
-  results: Record<string, ClassifierResult>
-  /** The head the results were collected for, when `classify-collect` wrote the file. */
-  pull?: PullFacts['pull']
+async function readClassifiers(path: string): Promise<ClassifiersInput> {
+  return parseClassifiersData(await readJson(path, 'classifiers'))
 }
 
-async function readClassifiers(path: string): Promise<ClassifiersFile> {
-  const raw = await readJson(path, 'classifiers')
-  if (!isObject(raw) || !Object.values(raw).every(isObject)) {
-    throw new FactsError('Classifiers JSON must be an object of classifier results')
-  }
-  const { pull, ...results } = raw
-  return {
-    results: results as unknown as Record<string, ClassifierResult>,
-    ...(pull ? { pull: pull as unknown as PullFacts['pull'] } : {}),
-  }
-}
-
-/** Results collected for one head say nothing about another pull request or a later head. */
-function sameHead(bound: PullFacts['pull'], read: PullFacts['pull']): void {
-  const same =
-    bound.repository === read.repository && bound.number === read.number && bound.head === read.head
-  if (same) return
-  throw new FactsError(
-    `The classifier results are for ${bound.repository}#${bound.number} at ${bound.head}, ` +
-      `not ${read.repository}#${read.number} at ${read.head}: run the classifiers again`,
-  )
-}
-
-async function checkPullRequest(
-  args: CheckArgs,
-  policies: PolicyFile[],
-  io: CliIo,
-): Promise<number> {
+async function checkPullRequest(args: CheckArgs, io: CliIo): Promise<number> {
   const [repository, number] = args.positionals as [string, string]
-  const given = args.classifiers ? await readClassifiers(args.classifiers) : undefined
-  const facts = await collectPullFacts(io.runProcess, repository, Number(number), {
-    teams: teamsNamed(policies),
-    status: io.shepherdStatus,
-    cwd: args.repoDir ?? process.cwd(),
-    ...(given ? { classifiers: given.results } : {}),
-  })
-  if (given?.pull) sameHead(given.pull, facts.pull)
+  const classifiers = args.classifiers ? await readClassifiers(args.classifiers) : undefined
+  const request: PullCheckRequest = {
+    repository,
+    pr: Number(number),
+    dir: args.dir!,
+    supervisorPolicy: args.supervisorPolicy,
+    ...(args.repoDir ? { repoDir: args.repoDir } : {}),
+    ...(classifiers ? { classifiers } : {}),
+  }
+  const deps: PullCheckDeps = {
+    env: io.env,
+    cwd: process.cwd(),
+    runProcess: io.runProcess,
+    shepherdStatus: io.shepherdStatus,
+  }
   if (args.printInput) {
+    const { facts } = await collectPullCheckFacts(request, deps)
     io.stdout(`${JSON.stringify(facts, null, 2)}\n`)
     return 0
   }
-  const result = checkPull(policies, facts)
+  const result = await runPullCheck(request, deps)
   io.stdout(args.json ? `${JSON.stringify(result, null, 2)}\n` : formatPullCheck(result))
   return result.nextStep.action === 'merge' ? 0 : 1
 }
@@ -160,8 +146,8 @@ export async function runCheck(argv: string[], io: CliIo, help: string): Promise
     return 2
   }
   try {
+    if (args.positionals.length > 0) return await checkPullRequest(args, io)
     const policies = await loadPolicies(args, io)
-    if (args.positionals.length > 0) return await checkPullRequest(args, policies, io)
     const input = await readInput(args.input!)
     const collected = 'blockers' in input
     const result = collected ? checkPull(policies, input) : evaluatePolicies(policies, input)

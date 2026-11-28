@@ -6,7 +6,7 @@ import { mapFinalReview } from '../policy/code-review.js'
 import type { ClassifierResult } from '../policy/types.js'
 import { isObject } from '../state/json.js'
 import type { ClassifyArgs, Manifest, ManifestEntry } from './policy-classify.js'
-import { reviewerFromConfig } from './policy-required.js'
+import { reviewerFromConfig } from '../config/policy.js'
 import type { CliIo } from './run.js'
 
 async function readManifest(out: string): Promise<Manifest> {

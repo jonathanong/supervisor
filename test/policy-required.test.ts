@@ -4,7 +4,7 @@ import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { validateConfigData } from '../src/cli/config-validate.js'
-import { requiredAlwaysHumanFromConfig, reviewerFromConfig } from '../src/cli/policy-required.js'
+import { requiredAlwaysHumanFromConfig, reviewerFromConfig } from '../src/config/policy.js'
 import { runCli, type CliIo } from '../src/cli/run.js'
 import { repoFixture } from './helpers/repo-fixture.js'
 
