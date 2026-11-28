@@ -55,9 +55,10 @@ When `--dir` is omitted, the command resolves the policy from the configuration 
 `policy_check` MCP tool does): `mergeAuthority.policy` resolved against the config file's real path
 as the supervisor policy, and—unless `--repo-dir` is passed—`<checkoutRoot>/<repo>` from the
 matching scope when that checkout directory exists (layering its `.supervisor/approvals.yml` below
-the supervisor policy and passing it to `pr-shepherd`). Passing `--dir` explicitly disables implicit
-config lookup and layering (pass `--repo-dir` explicitly too if you want layered policies); explicit
-flags always win. Keep every checkout used for policy layering—both configured
+the supervisor policy and passing it to `pr-shepherd`). Passing `--dir` explicitly skips resolving the policy directory and checkout from the config (no
+implicit layering; pass `--repo-dir` explicitly too if you want layered policies), though
+`mergeAuthority.requiredAlwaysHuman` still applies when `--supervisor-policy` or `--repo-dir` is
+given; explicit flags always win. Keep every checkout used for policy layering—both configured
 `<checkoutRoot>/<repo>` checkouts and any explicit `--repo-dir`—on the default branch (work in
 temporary worktrees, never on the PR's head), or a PR could loosen the rules that judge it. Save the
 JSON the command prints with a file-writing tool; the [merge record](#merge-record) needs it. The

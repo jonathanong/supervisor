@@ -29,7 +29,9 @@ In a scope in `report` mode, run step 1 only and report what the later steps wou
    commits. A printed enqueue or requeue command counts as a merge. The policy check is
    `supervisor policy check <owner>/<repo> <N> --json` (omitting `--dir` resolves both
    `mergeAuthority.policy` and `<checkoutRoot>/<repo>` from the configuration; passing `--dir`
-   explicitly disables implicit config lookup and layering); keep its output in a file,
+   explicitly skips resolving the policy directory and checkout from config, though
+   `mergeAuthority.requiredAlwaysHuman` still applies with `--supervisor-policy` or `--repo-dir`);
+   keep its output in a file,
    and merge only the head in its `pull.head`.
    - When the policy check's next step is `request_review`, request a final review of the current
      head at the depth it names, as `finalReview.request` says, at most once per head. The record,

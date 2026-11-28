@@ -45,14 +45,15 @@ When --dir is omitted, check resolves the policy from the supervisor configurati
 ($SUPERVISOR_CONFIG, else .supervisor.json in the current directory): mergeAuthority.policy
 resolved against the config file's real path (as the supervisor policy), and—unless --repo-dir is
 passed—<checkoutRoot>/<repo> from the matching scope when that directory exists. Passing --dir
-explicitly evaluates only that directory (with no implicit checkout lookup or layering) unless
---repo-dir is also passed; explicit values always win.
+explicitly skips resolving the policy directory and checkout from the config (no implicit
+layering); the config's mergeAuthority.requiredAlwaysHuman floor still applies when
+--supervisor-policy or --repo-dir is given, and explicit values always win.
 
 pr-shepherd reads its .pr-shepherdrc.yml from the target repository's checkout (--repo-dir, else
 the configured checkout when --dir was omitted, else the current directory).
 
   --dir <dir>           Policy directory (default: mergeAuthority.policy from config). Passing it
-                        explicitly disables implicit --repo-dir lookup from config.
+                        explicitly skips resolving the policy directory and checkout from config.
   --classifiers <json>  Classifier results to evaluate with: {"<name>": {"status": ...}}.
                         Without it no classifier has a result.
   --print-input         Print the collected input as JSON and do not evaluate.

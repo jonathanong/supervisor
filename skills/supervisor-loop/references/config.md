@@ -16,8 +16,9 @@ A quoted leading `~/` in the variable is expanded by the CLI but not by this com
 `checkoutRoot` expand only `~/` and are otherwise used as written (relative to the working
 directory), so write them absolute or with `~/`; when `--dir` is omitted and `--repo-dir` is not
 passed, `supervisor policy check` also resolves the repository checkout from `<checkoutRoot>/<repo>`.
-Passing `--dir` explicitly disables implicit config lookup and layering, and explicit CLI flags
-always win. The file is
+Passing `--dir` explicitly skips resolving the policy directory and checkout from the config (no
+implicit layering), though `mergeAuthority.requiredAlwaysHuman` still applies when
+`--supervisor-policy` or `--repo-dir` is given; explicit CLI flags always win. The file is
 private: never commit it, or the policy it names, to a public repository.
 
 ## Scopes

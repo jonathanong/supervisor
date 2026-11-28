@@ -98,9 +98,9 @@ async function resolvePolicyDir(loaded: LoadedConfig): Promise<string> {
  * Resolves `mergeAuthority.policy`, `requiredAlwaysHuman`, and any configured local checkout for
  * `repository` from the supervisor config (`$SUPERVISOR_CONFIG`, else `.supervisor.json` in `cwd`),
  * letting explicit `overrides` win. A relative policy path resolves against the real path of the
- * config file's directory. When `overrides.dir` is given, no config lookup or implicit checkout
- * layering happens; only the explicit directory (and explicit `overrides.repoDir`, if given) is
- * used.
+ * config file's directory. When `overrides.dir` is given, policy-directory and checkout resolution
+ * from config are skipped; only the explicit directory (and explicit `overrides.repoDir`, if
+ * given) is returned (loading a supervisor policy still reads `requiredAlwaysHuman` from config).
  */
 export async function resolvePolicyFromConfig(
   env: Record<string, string | undefined>,
