@@ -47,11 +47,12 @@ describe('supervisor preflight details', () => {
   it('reports hook-harness as failed when the config file cannot be re-read', async () => {
     const loop = await makeLoop()
     const path = loop.env.SUPERVISOR_CONFIG!
-    const run: RunProcess = async (command) => {
-      if (command === 'gh') {
+    const base = fake(GOOD).run
+    const run: RunProcess = async (command, args, opts) => {
+      if (command === 'gh' && args[0] === 'auth') {
         await writeFile(path, '{ half written')
       }
-      return GOOD[command as keyof typeof GOOD]!
+      return await base(command, args, opts)
     }
     const result = await loop.cli(['preflight'], run)
     expect(result.code).toBe(1)

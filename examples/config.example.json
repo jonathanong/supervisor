@@ -71,6 +71,10 @@
   "lateReviewDays": 14,
   "fullRescanDays": 7,
   "layerCap": 10,
+  "sweepCap": {
+    "issues": 10,
+    "dispatches": 5
+  },
   "scheduledPrompts": {
     "glob": "docs/prompts/scheduled/*.md",
     "prWrapper": "docs/prompts/automation/scheduled-prompt.md",

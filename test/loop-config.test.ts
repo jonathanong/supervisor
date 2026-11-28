@@ -44,6 +44,7 @@ describe('loop config loading', () => {
     expect(config.scopes[1]!.checkoutRoot).toBeUndefined()
     expect(config.staleRuns).toEqual({ olderThan: '6h', cancelAfter: '24h' })
     expect(config.finalReview.status).toBe('review-status')
+    expect(config.sweepCap).toEqual({ issues: 10, dispatches: 5 })
   })
 
   it('fills in defaults for keys the file omits and keeps the ones it sets', async () => {
@@ -54,6 +55,7 @@ describe('loop config loading', () => {
       lateReviewDays: 14,
       fullRescanDays: 7,
       layerCap: 10,
+      sweepCap: { issues: 10, dispatches: 5 },
       scheduledPrompts: { glob: 'prompts/*.md', quota: 1, history: 5 },
       staleRuns: false,
       eventWait: { timeout: '90s', advance: false, updateCheckDelay: '10m' },
@@ -65,14 +67,20 @@ describe('loop config loading', () => {
 
   it('leaves scheduledPrompts absent, turns staleRuns on, and returns a set stateDir', async () => {
     const loaded = await loadConfig({ SUPERVISOR_CONFIG: examplePath }, '/unused')
-    const { scheduledPrompts: _prompts, staleRuns: _stale, ...rest } = loaded.config
+    const { scheduledPrompts: _prompts, staleRuns: _stale, sweepCap: _cap, ...rest } = loaded.config
     const config = applyDefaults({
       ...rest,
       stateDir: '/var/state',
       eventWait: { hookHarness: '0.3.5', timeout: '30m' },
+      sweepCap: { issues: 0 },
     })
     expect(config.scheduledPrompts).toBeUndefined()
     expect(config.staleRuns).toEqual({ olderThan: '6h', cancelAfter: '24h' })
+    expect(config.sweepCap).toEqual({ issues: 0, dispatches: 5 })
+    expect(applyDefaults({ ...rest, sweepCap: { dispatches: 0 } }).sweepCap).toEqual({
+      issues: 10,
+      dispatches: 0,
+    })
     expect(config.eventWait).toEqual({
       timeout: '30m',
       advance: false,

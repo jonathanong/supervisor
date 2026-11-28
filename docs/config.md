@@ -22,7 +22,7 @@ A scope is one GitHub owner and the repositories the supervisor covers there.
 
 - **`kind`** is `org` or `user`. It matters because GitHub lists an organization's repositories and a user account's repositories through different endpoints, so the wait lists each owner's repositories its own way, then runs one wait over every owner with one cursor. A `user` scope needs `gh` signed in as a user: the wait calls `gh api user` to tell whether the owner is the signed-in account, and that call fails with an installation token or the Actions `GITHUB_TOKEN`, so the wait fails too.
 - **`repos`** is `"*"` or a list of names. With `"*"`, `excludeForks` and `excludedRepos` narrow it. With a list, only those repositories are supervised. Archived repositories are always skipped.
-- **`mode`** is `enforce` or `report`. `enforce` runs every phase. `report` triages and reports, with no worker PRs and no merges. It suits a scope with outside contributors, where the [untrusted-text rule](guardrails.md) and the list of trusted logins carry more weight.
+- **`mode`** is `enforce` or `report`. `enforce` runs every phase. `report` triages and reports, with no worker PRs and no merges. It suits a scope with outside contributors, where the [untrusted-text rule](guardrails.md) and the list of trusted logins carry more weight. When rolling out a new installation, start in `report` mode and move one scope to `enforce` at a time, smallest first: before switching a scope, run the preflight checks for dispatch targets and labels (`supervisor preflight --enforce-scope <owner>`) as if that scope were already in `enforce`, and approve any harness permission prompt (such as a terminal multiplexer running outside the sandbox) before editing the config. See [skills/supervisor-loop/references/rollout.md](../skills/supervisor-loop/references/rollout.md).
 - **`taxonomy`** holds a scope's own milestone and project conventions, such as which project a repository's issues belong to.
 
 ## Who may merge
@@ -48,3 +48,16 @@ Whether a review is required is a rule in the merge policy, not a setting here.
 - **`advance`** (default `false`) advances the stored cursor and marks returned event ids seen at return instead of waiting for `supervisor state advance-hh`.
 - **`updateCheckDelay`** (default `"10m"`) bounds how long the wait stays idle after a dependency-bot pull request merges cleanly.
 - **`hookHarness`** (deprecated) is accepted for compatibility with older configuration files and ignored, because `supervisor` now uses its bundled `hook-harness` dependency directly.
+
+## Sweep cap
+
+`sweepCap` (optional) bounds how much new work one `enforce`-mode sweep creates, so switching a scope from `report` to `enforce` (or recovering from a backlog) drains across sweeps instead of acting in one burst.
+
+- **`issues`** (integer >= `0`, default `10`) is the maximum number of new issues filed in one sweep across all phases.
+- **`dispatches`** (integer >= `0`, default `5`) is the maximum number of worker or workspace-agent dispatches in one sweep across all phases (flakes, default-branch failures, dependency-bot update failures, intake, one-off issues, `/fix` commands, and scheduled prompts).
+
+Work over either cap waits for the next sweep, the sweep summary reports how much was held back, and cursors advance only past the work that was actually done. Held-back work never expires: the next sweep's scan window starts at the held-back cursor even when that is older than the phase's usual rolling window. Setting either value to `0` holds back that kind of work while still running the rest of the sweep.
+
+## Labels
+
+`labels` names the two labels the supervisor uses in `enforce` scopes: `automation` (marks worker PRs for the triage queue; never grants merge authority) and `needsHuman` (added when escalating a PR or issue to a person). Both must already exist in every repository acted on. `supervisor preflight` checks whichever of the two keys are configured across `enforce` scopes (and any owner passed via `--enforce-scope <owner>`); when `labels` sets neither key, the check is skipped as `ok`. If a configured label is missing in a repository, preflight reports it (`ok`, detail `missing: ...`, without exiting 1) and never creates it — creating labels is left to a person. Escalation still happens without `labels.needsHuman` (noting the missing label in the summary), while worker dispatches are skipped for any repository missing `labels.automation` because their PRs could not carry the label and would drop out of triage.

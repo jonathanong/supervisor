@@ -17,13 +17,20 @@ In a scope in `report` mode, run step 1 only and report what the later steps wou
    tool, never shell interpolation, and read it back in full.
 2. **Preflight.** Before every mutation below, run `supervisor stop --status` and go no further on
    any exit but 0 (see the [stop switch](stop-switch.md)), then re-read `headRefOid`; if it moved,
-   return for re-review. Run `pr-shepherd`; exit 17 (`WATCHED`) means another live `pr-shepherd` already
-   watches the PR, so leave it.
+   return for re-review. Run `pr-shepherd`; exit 17 (`WATCHED`) means another live `pr-shepherd`
+   already watches the PR, so leave it.
 3. **Steer (optional).** Post the reviewed steering file as an ordinary comment with
    `gh pr comment <N> --repo <owner>/<repo> --body-file <path>`. Reject an empty file.
-4. **Mark ready and label.** `gh pr ready <N> --repo <owner>/<repo>` for a draft (the supervisor
-   does this itself: `pr-shepherd` marks ready only clean drafts with auto mark-ready on), then
-   `gh pr edit <N> --repo <owner>/<repo> --add-label <automation-label>`.
+4. **Mark ready and label.** Run `gh pr ready <N> --repo <owner>/<repo>` for a draft (the supervisor
+   does this itself: `pr-shepherd` marks ready only clean drafts with auto mark-ready on), then add
+   the automation label with `gh pr edit <N> --repo <owner>/<repo> --add-label <automation-label>`.
+   If `labels.automation` is missing in `--repo` (from preflight or a label check), skip adding the
+   label, leave the PR ready, report the repository and label name without creating it, and escalate
+   so it does not drop out of triage; if adding the label fails on
+   any ready PR (whether this run marked it ready or it was already ready), leave the PR ready,
+   report the failure with the repository and label name, and escalate so it does not drop out of
+   triage. Either way, a missing automation label never stops Steps 5–6 when `--merge` is set and the
+   merge authority allows the merge.
 5. **Check the merge authority (only with `--merge`).** Run every step of
    [before any merge](merge-authority.md#before-any-merge) for the current head, and again after new
    commits. A printed enqueue or requeue command counts as a merge. The policy check is
@@ -96,5 +103,7 @@ supervisor's own:
 - **Layer cap.** An agent building a stack keeps at most `layerCap` open layers (default 10),
   counting every locally tracked layer not yet submitted. Beyond the cap, independent work opens as
   its own PR on the default branch and dependent work waits for the bottom layers to merge.
-- **Escalate per layer.** A layer that needs a human gets the `labels.needsHuman` label and one
-  comment per escalation event, with its position in the stack and what it needs.
+- **Escalate per layer.** A layer that needs a human gets the `labels.needsHuman` label (skipping
+  the label without creating it and noting it missing in the summary when `labels.needsHuman` does
+  not exist in that repository) and one comment per escalation event, with its position in the stack
+  and what it needs.

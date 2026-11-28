@@ -5,6 +5,9 @@ import type { LoopConfig, SupervisorConfig } from './types.js'
 /** How many scheduled-prompt runs state keeps when `scheduledPrompts.history` is not set. */
 export const DEFAULT_PROMPT_HISTORY = 20
 
+/** Default per-sweep caps in enforce mode when `sweepCap` or either member is not set. */
+export const DEFAULT_SWEEP_CAP = { issues: 10, dispatches: 5 } as const
+
 /** A leading `~/` (or a bare `~`) means the home directory. */
 export function expandHome(value: string): string {
   if (value === '~') {
@@ -15,7 +18,7 @@ export function expandHome(value: string): string {
 
 /** Expand `~/` in the path values and fill in every documented default. */
 export function applyDefaults(raw: SupervisorConfig): LoopConfig {
-  const { scheduledPrompts, staleRuns, stateDir, eventWait, ...rest } = raw
+  const { scheduledPrompts, staleRuns, stateDir, eventWait, sweepCap, ...rest } = raw
   const { hookHarness: _ignored, ...wait } = eventWait ?? {}
   return {
     ...rest,
@@ -29,6 +32,10 @@ export function applyDefaults(raw: SupervisorConfig): LoopConfig {
     lateReviewDays: raw.lateReviewDays ?? 14,
     fullRescanDays: raw.fullRescanDays ?? 7,
     layerCap: raw.layerCap ?? 10,
+    sweepCap: {
+      issues: sweepCap?.issues ?? DEFAULT_SWEEP_CAP.issues,
+      dispatches: sweepCap?.dispatches ?? DEFAULT_SWEEP_CAP.dispatches,
+    },
     ...(scheduledPrompts === undefined
       ? {}
       : {

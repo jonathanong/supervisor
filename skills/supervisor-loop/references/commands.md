@@ -24,7 +24,9 @@ An agent delegates a PR with `/shepherd` as the [agent handoff](#agent-handoff).
 - **`/fix` on an issue:** an implementation-tier worker in an isolated worktree opens a new PR that
   links the issue. PRs the supervisor's workers create (this one and flake-fix PRs from
   [failures](failures.md)) get the configured automation label at creation, so Phase B and the
-  merge authority see them.
+  merge authority see them. If `labels.automation` is missing in the repository, do not dispatch or
+  post an `eyes` reaction — hold the `/fix` back (see
+  [Per-sweep cap](../../supervisor-sweep/SKILL.md#rules-for-every-phase)).
 - **`/fix` on a PR:** the worker pushes the fix to that PR's branch, only when the branch is in the
   same repository; never push to a fork. After the push the head is new, so
   [ready and merge](ready-and-merge.md) step 5 runs again for it.
@@ -34,10 +36,17 @@ An agent delegates a PR with `/shepherd` as the [agent handoff](#agent-handoff).
 
 The sweep backstop finds commands the events missed:
 
-- **Window:** start at the later of `commandsThrough` and 7 days ago, so the window is never longer
-  than 7 days. While `commandsThrough` is unset (the first run), look back the full 7 days and say
-  so in the summary; never fall back to `lastSweepAt`. A command older than 7 days is not looked
-  for: the commenter posts it again.
+- **Window:** apply the 7-day limit per command: start at the later of `commandsThrough` and 7 days
+  ago, so normal scans never exceed 7 days. Except when a `/fix` command was held back on an earlier
+  sweep (by `sweepCap.dispatches` or a missing `labels.automation` label; see
+  [Per-sweep cap](../../supervisor-sweep/SKILL.md#rules-for-every-phase)), held-back work never
+  expires: widen the query start to `commandsThrough` — or, when `commandsThrough` is unset, to a
+  timestamp strictly earlier than the earliest held-back `/fix` comment (for example 1 second before
+  it) so `since=<ts>` includes that comment — and filter results so only held-back `/fix` commands
+  are exempt from the 7-day limit (older unheld commands such as `/plan` or `/shepherd` stay
+  excluded). While `commandsThrough` is unset (the first run), look back the full 7 days and say so
+  in the summary; never fall back to `lastSweepAt`. A command older than 7 days that was not held
+  back is not looked for: the commenter posts it again.
 - **Cost:** do not page every comment of a repository. Search for the issues and PRs the trusted
   logins commented on in the window (the search takes dates, not times: one query per owner, for
   example `gh api -X GET search/issues -f q='org:<owner> commenter:<login> updated:>=<date>'`, or
@@ -52,7 +61,14 @@ The sweep backstop finds commands the events missed:
 
 In a scope in `report` mode, report what the command would have started; post no reaction and
 dispatch nothing. `commandsThrough` advances only when no selected repository is in `report` mode
-(see [report mode](../../supervisor-sweep/SKILL.md#rules-for-every-phase)).
+(see [report mode](../../supervisor-sweep/SKILL.md#rules-for-every-phase)). In `enforce` mode,
+each `/fix` dispatch counts toward `sweepCap.dispatches`; if a `/fix` command is held back (by the
+cap or a missing `labels.automation` label; see
+[Per-sweep cap](../../supervisor-sweep/SKILL.md#rules-for-every-phase)), post no `eyes` reaction on
+it, leave `commandsThrough` unadvanced, and report it as held back so the next sweep handles it.
+Because `commandsThrough` is global, a repository whose `labels.automation` label stays missing
+holds the cursor back for every repository and the search window grows until someone creates the
+label; the held-back `/fix` is reported on every sweep.
 
 ## Agent handoff
 

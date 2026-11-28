@@ -34,12 +34,17 @@ sorted.
 - **Work on now** an issue with no theme (a one-off, or a flaky test): it needs no milestone.
   Dispatch a fixer (an implementation-tier worker or a fitting workspace agent), as for a flake (see
   [failures](../../supervisor-loop/references/failures.md)). It is not listed for the owner.
-  Dispatch at most 5 new one-off fixers per repository per sweep, oldest issue first; later sweeps
-  pick up the rest, and the summary counts them. Flaky-test issues are exempt from the cap and
-  follow [failures](../../supervisor-loop/references/failures.md): each gets a fixer or a confirmed
-  owner (an open fix PR or an agent claim), and an assignee alone does not suppress dispatch. Skip a
-  one-off that already has an assignee, or a recorded dispatch younger than 24 hours (the record's
-  `at`), or a linked open PR; otherwise dispatch again and say `re-dispatched` in the summary. `routed` is a list of
+  Every dispatch counts toward the sweep-wide `sweepCap.dispatches` cap (default `5`; see
+  [Per-sweep cap](../SKILL.md#rules-for-every-phase)). Prioritize flaky-test issues ahead of
+  one-offs; flaky-test issues are exempt from the per-repository 5-one-off limit below, but still
+  count toward `sweepCap.dispatches`. Within the remaining `sweepCap.dispatches` budget, dispatch at
+  most 5 new one-off fixers per repository per sweep, oldest issue first; later sweeps pick up the
+  rest, do not record held-back issues in `routed`, and report the held-back count in the summary.
+  Flaky-test issues follow [failures](../../supervisor-loop/references/failures.md): each gets a
+  fixer (up to `sweepCap.dispatches`) or a confirmed owner (an open fix PR or an agent claim), and
+  an assignee alone does not suppress dispatch. Skip a one-off that already has an assignee, or a
+  recorded dispatch younger than 24 hours (the record's `at`), or a linked open PR; otherwise
+  dispatch again and say `re-dispatched` in the summary. `routed` is a list of
   `{what, to, at, evidence?, issue?, note?}` with no issue key, so match a record whose `what` or
   `issue` text contains `<owner>/<repo>#N` not followed by another digit.
 - **Needs decision** is left only for urgent or risky work the merge policy would send to a person

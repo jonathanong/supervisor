@@ -22,7 +22,10 @@ truncated: split it per repository or into narrower date ranges and rerun.
 The scan has three parts:
 
 1. **New merges:** fully scan every PR merged after `scannedThrough` and within `lateReviewDays`
-   (default the last 14 days).
+   (default the last 14 days). Per [Per-sweep cap](../SKILL.md#rules-for-every-phase), held-back work
+   never expires: when `sweepCap.issues` held back candidates on an earlier sweep, start the scan
+   window at the held-back cursor (`scannedThrough`, or the earliest held-back PR's `mergedAt` when
+   `scannedThrough` was unset) even when that is older than `lateReviewDays`.
 2. **Active older merges:** PRs merged earlier but still in the window are rescanned only when they
    have new review activity since `activityThrough` (falling back to `scannedThrough` when unset).
    Never use `lastSweepAt`: it advances even when Phase F is skipped or fails, so activity in that
@@ -54,6 +57,12 @@ finding.
 
 ## Verify and file
 
+Process candidates in chronological `mergedAt` order (oldest merged PR first) up to the sweep's
+remaining `sweepCap.issues` budget (see
+[Per-sweep cap](../SKILL.md#rules-for-every-phase)). Once `sweepCap.issues` new issues have been
+filed in this sweep, stop verifying and filing the remaining candidates, leave them for the next
+sweep, and report the held-back count in the summary.
+
 An implementation-tier subagent verifies each comment against the default branch read through the
 API (or a freshly fetched temporary worktree), never a local checkout's possibly stale ref, and drops
 anything already addressed, non-actionable, or a duplicate of an open issue. File one issue per root
@@ -62,23 +71,32 @@ qualified reference. The issue carries the exact existing `follow-up` label; re-
 the label and link. When labeling or linking is unavailable or unauthorized, report the blocker
 instead of filing it unlabeled. Add a harvested comment id to `reviewedComments`
 (`supervisor state reviewed --file <ids file>`, a `{"<owner>/<repo>": [ids]}` file) only once it is
-dropped or its issue's label and link are verified; leave a blocked comment out so a later sweep
-retries it. While any comment of a repository is left blocked, advance neither `activityThrough` nor
-`scannedThrough` for it in that sweep. A comment posted days after merge is still found.
+dropped or its issue's label and link are verified; leave a blocked or held-back comment out so a
+later sweep retries it. While any comment of a repository is left blocked, advance neither
+`activityThrough` nor `scannedThrough` for it in that sweep. A comment posted days after merge is
+still found.
 
 Prune `reviewedComments` after a successful scan. The state keeps `{id, harvestedAt}` per
-repository, not the creation time, and a comment is harvested only after its PR merged, so an entry
-whose `harvestedAt` is older than `lateReviewDays` belongs to a PR that has left the window. Run
-`supervisor state reviewed --prune-before <ISO time>` with the window start: it drops those entries
-under the state lock, alone or together with `--file`.
+repository, not the creation time, and a comment is harvested only after its PR merged. Because
+`supervisor state reviewed --prune-before <ISO time>` applies one cutoff across all repositories,
+pass the earliest active scan-window start across every repository (the earliest of `lateReviewDays`
+and any repository's extended held-back cursor), never a single repository's narrower window start,
+so no other repository's held-back window loses its recorded comment ids. It drops entries older
+than that cutoff under the state lock, alone or together with `--file`.
 
 Advance `scannedThrough` to the newest `mergedAt` scanned (or the sweep start) only after the scan
-succeeds. If a `gh search prs` stands in for the GraphQL listing, it has no `mergedAt` field (for a
-merged PR `closedAt` equals the merge time) and takes dates, not times, so filter by exact time
-after fetching; a `--limit 1000` search is ten search-API calls, so batch it.
-Advance `activityThrough` to the sweep start only after step 2 succeeds, and set
-`fullScanAt` after a full rescan. Pass each key as its own argument, because a repository name can
-contain a dot:
+succeeds and every candidate for that repository was handled. When `sweepCap.issues` held back
+candidates for a repository, advance `scannedThrough` only up to the `mergedAt` of the last PR
+whose candidates were all handled and whose `mergedAt` is strictly earlier than the first PR with
+held-back candidates (a PR that shares that timestamp must stay selectable; leave it unadvanced
+when no complete prefix finished), and leave both `activityThrough` and `fullScanAt` unadvanced for
+that repository so the next sweep picks up the remaining candidates. If a `gh search prs` stands in
+for the GraphQL listing, it has no `mergedAt` field (for a merged PR `closedAt` equals the merge
+time) and takes dates, not times, so filter by exact time after fetching; a `--limit 1000` search
+is ten search-API calls, so batch it.
+Advance `activityThrough` to the sweep start only after step 2 succeeds with no held-back
+candidates, and set `fullScanAt` after a full rescan with no held-back candidates. Pass each key as
+its own argument, because a repository name can contain a dot:
 `supervisor state set lateReview <owner>/<repo> scannedThrough --json '"<ISO time>"'`.
 
 The supervisor loop also runs this scan for one PR as soon as a wait reports it merged (see
