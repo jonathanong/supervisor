@@ -18,24 +18,17 @@ export interface ResolvedPolicyConfig {
   repoDir?: string
 }
 
-async function loadOptionalLoadedConfig(
+async function loadOptionalConfig(
   env: Record<string, string | undefined>,
   cwd: string,
-): Promise<LoadedConfig | undefined> {
+): Promise<LoopConfig | undefined> {
   try {
-    return await loadConfig(env, cwd)
+    return (await loadConfig(env, cwd)).config
   } catch (error) {
     const cause = (error as { cause?: { code?: string } }).cause
     if (!env.SUPERVISOR_CONFIG && cause?.code === 'ENOENT') return undefined
     throw error
   }
-}
-
-async function loadOptionalConfig(
-  env: Record<string, string | undefined>,
-  cwd: string,
-): Promise<LoopConfig | undefined> {
-  return (await loadOptionalLoadedConfig(env, cwd))?.config
 }
 
 /**
@@ -104,9 +97,10 @@ async function resolvePolicyDir(loaded: LoadedConfig): Promise<string> {
 /**
  * Resolves `mergeAuthority.policy`, `requiredAlwaysHuman`, and any configured local checkout for
  * `repository` from the supervisor config (`$SUPERVISOR_CONFIG`, else `.supervisor.json` in `cwd`),
- * letting any explicit `overrides` win. A relative policy path resolves against the real path of
- * the config file's directory. When `overrides.dir` is given and no config file is present (with
- * `$SUPERVISOR_CONFIG` unset), returns the explicit values without error.
+ * letting explicit `overrides` win. A relative policy path resolves against the real path of the
+ * config file's directory. When `overrides.dir` is given, no config lookup or implicit checkout
+ * layering happens; only the explicit directory (and explicit `overrides.repoDir`, if given) is
+ * used.
  */
 export async function resolvePolicyFromConfig(
   env: Record<string, string | undefined>,
@@ -114,27 +108,24 @@ export async function resolvePolicyFromConfig(
   repository?: string,
   overrides: PolicyConfigOverrides = {},
 ): Promise<ResolvedPolicyConfig> {
-  const needsDir = overrides.dir === undefined
-  const needsRepoDir = overrides.repoDir === undefined && repository !== undefined
-  const supervisorPolicy = needsDir || overrides.supervisorPolicy === true
-  if (!needsDir && !needsRepoDir) {
+  if (overrides.dir !== undefined) {
     return {
-      dir: overrides.dir!,
-      supervisorPolicy,
+      dir: overrides.dir,
+      supervisorPolicy: overrides.supervisorPolicy === true,
       ...(overrides.repoDir !== undefined ? { repoDir: overrides.repoDir } : {}),
     }
   }
-  const loaded = needsDir ? await loadConfig(env, cwd) : await loadOptionalLoadedConfig(env, cwd)
-  if (!loaded) {
-    return { dir: overrides.dir!, supervisorPolicy }
-  }
-  const dir = needsDir ? await resolvePolicyDir(loaded) : overrides.dir!
-  const repoDir = needsRepoDir
-    ? await configuredRepoDir(loaded.config.scopes, repository)
-    : overrides.repoDir
+  const loaded = await loadConfig(env, cwd)
+  const dir = await resolvePolicyDir(loaded)
+  const repoDir =
+    overrides.repoDir !== undefined
+      ? overrides.repoDir
+      : repository !== undefined
+        ? await configuredRepoDir(loaded.config.scopes, repository)
+        : undefined
   return {
     dir,
-    supervisorPolicy,
+    supervisorPolicy: true,
     requiredAlwaysHuman: loaded.config.mergeAuthority.requiredAlwaysHuman ?? [],
     ...(repoDir !== undefined ? { repoDir } : {}),
   }

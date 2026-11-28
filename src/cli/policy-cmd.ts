@@ -41,23 +41,27 @@ and every unmet seat names only bots, the next step is request_review: request a
 the head. An unmet seat a person or team can fill, a verdict that does not approve, and a blocker,
 such as a draft or a closed pull request, escalate.
 
-When --dir or --repo-dir is omitted, check resolves it from the supervisor configuration
+When --dir is omitted, check resolves the policy from the supervisor configuration
 ($SUPERVISOR_CONFIG, else .supervisor.json in the current directory): mergeAuthority.policy
-resolved against the config file's real path (as the supervisor policy), and <checkoutRoot>/<repo>
-from the matching scope when that directory exists. Explicit values always win.
+resolved against the config file's real path (as the supervisor policy), and—unless --repo-dir is
+passed—<checkoutRoot>/<repo> from the matching scope when that directory exists. Passing --dir
+explicitly evaluates only that directory (with no implicit checkout lookup or layering) unless
+--repo-dir is also passed; explicit values always win.
 
 pr-shepherd reads its .pr-shepherdrc.yml from the target repository's checkout (--repo-dir, else
-the configured checkout, else the current directory).
+the configured checkout when --dir was omitted, else the current directory).
 
-  --dir <dir>           Policy directory (default: mergeAuthority.policy from config).
+  --dir <dir>           Policy directory (default: mergeAuthority.policy from config). Passing it
+                        explicitly disables implicit --repo-dir lookup from config.
   --classifiers <json>  Classifier results to evaluate with: {"<name>": {"status": ...}}.
                         Without it no classifier has a result.
   --print-input         Print the collected input as JSON and do not evaluate.
   --input <json>        Evaluate a written input file instead of a pull request.
   --repo-dir <checkout> Treat the policy directory as the supervisor policy and add the
                         repository's own .supervisor/approvals.yml files from a default-branch
-                        checkout. Also the directory pr-shepherd reads its config from (default:
-                        <checkoutRoot>/<repo> from config when present, else current directory).
+                        checkout. Also the directory pr-shepherd reads its config from (default
+                        when --dir is omitted: <checkoutRoot>/<repo> from config when present,
+                        else current directory).
 
 Exit codes: 0 the next step is merge (or --print-input printed the input), 1 it is not,
 2 the pull request, the policies or the input could not be read.

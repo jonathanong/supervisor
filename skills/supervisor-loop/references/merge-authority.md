@@ -51,15 +51,17 @@ pass the results for the current head as a JSON file with `--classifiers`:
 supervisor policy check <owner>/<repo> <N> --json [--classifiers <classifiers file>]
 ```
 
-When `--dir` or `--repo-dir` is omitted, the command resolves both from the configuration (the same
-way the `policy_check` MCP tool does): `mergeAuthority.policy` resolved against the config file's
-real path as the supervisor policy, and `<checkoutRoot>/<repo>` from the matching scope when that
-checkout directory exists (layering its `.supervisor/approvals.yml` below the supervisor policy and
-passing it to `pr-shepherd`). Pass `--dir <policy dir> [--supervisor-policy]` or
-`--repo-dir <default-branch checkout>` explicitly only to override the config; when passing
-`--repo-dir` explicitly, give it a checkout of the default branch, never of the PR's head, or the
-PR could loosen the rules that judge it. Save the JSON the command prints with a file-writing tool;
-the [merge record](#merge-record) needs it. The command exits 0 only when the next step is a merge.
+When `--dir` is omitted, the command resolves the policy from the configuration (the same way the
+`policy_check` MCP tool does): `mergeAuthority.policy` resolved against the config file's real path
+as the supervisor policy, and—unless `--repo-dir` is passed—`<checkoutRoot>/<repo>` from the
+matching scope when that checkout directory exists (layering its `.supervisor/approvals.yml` below
+the supervisor policy and passing it to `pr-shepherd`). Passing `--dir` explicitly disables implicit
+config lookup and layering (pass `--repo-dir` explicitly too if you want layered policies); explicit
+flags always win. Keep every checkout used for policy layering—both configured
+`<checkoutRoot>/<repo>` checkouts and any explicit `--repo-dir`—on the default branch (work in
+temporary worktrees, never on the PR's head), or a PR could loosen the rules that judge it. Save the
+JSON the command prints with a file-writing tool; the [merge record](#merge-record) needs it. The
+command exits 0 only when the next step is a merge.
 
 | Result                                                                  | The supervisor does                                                                                                                                                                                                             |
 | ----------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |

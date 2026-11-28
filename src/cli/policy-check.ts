@@ -1,5 +1,6 @@
 import { readFile } from 'node:fs/promises'
-import { resolvePolicyFromConfig } from '../config/policy.js'
+import { ConfigError } from '../config/load.js'
+import { resolvePolicyFromConfig, type ResolvedPolicyConfig } from '../config/policy.js'
 import { evaluatePolicies } from '../policy/evaluate.js'
 import { FactsError, PULL_NUMBER, REPOSITORY } from '../policy/facts-gh.js'
 import type { PullFacts } from '../policy/facts.js'
@@ -125,6 +126,23 @@ function inputRepository(input: EvaluationInput | PullFacts): string | undefined
   return typeof candidate === 'string' && REPOSITORY.test(candidate) ? candidate : undefined
 }
 
+async function resolveCliPolicy(
+  env: Record<string, string | undefined>,
+  cwd: string,
+  repository: string | undefined,
+  args: CheckArgs,
+): Promise<ResolvedPolicyConfig> {
+  try {
+    return await resolvePolicyFromConfig(env, cwd, repository, policyOverrides(args))
+  } catch (error) {
+    const code = (error as { cause?: { code?: string } }).cause?.code
+    if (error instanceof ConfigError && code === 'ENOENT') {
+      throw new ConfigError(`${error.message}; or pass --dir`, { cause: error })
+    }
+    throw error
+  }
+}
+
 async function checkPullRequest(args: CheckArgs, io: CliIo): Promise<number> {
   const [repository, number] = args.positionals as [string, string]
   const classifiers = args.classifiers ? await readClassifiers(args.classifiers) : undefined
@@ -134,12 +152,7 @@ async function checkPullRequest(args: CheckArgs, io: CliIo): Promise<number> {
     runProcess: io.runProcess,
     shepherdStatus: io.shepherdStatus,
   }
-  const source = await resolvePolicyFromConfig(
-    deps.env,
-    deps.cwd,
-    repository,
-    policyOverrides(args),
-  )
+  const source = await resolveCliPolicy(deps.env, deps.cwd, repository, args)
   const request: PullCheckRequest = {
     repository,
     pr: Number(number),
@@ -166,12 +179,7 @@ export async function runCheck(argv: string[], io: CliIo, help: string): Promise
     if (args.positionals.length > 0) return await checkPullRequest(args, io)
     const input = await readInput(args.input!)
     const cwd = process.cwd()
-    const source = await resolvePolicyFromConfig(
-      io.env,
-      cwd,
-      args.dir === undefined ? inputRepository(input) : undefined,
-      policyOverrides(args),
-    )
+    const source = await resolveCliPolicy(io.env, cwd, inputRepository(input), args)
     const policies = await loadPolicySet(source, io.env, cwd)
     const collected = 'blockers' in input
     const result = collected ? checkPull(policies, input) : evaluatePolicies(policies, input)

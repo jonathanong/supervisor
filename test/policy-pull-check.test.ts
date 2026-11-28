@@ -162,7 +162,7 @@ describe('supervisor policy check <owner>/<repo> <pr>', () => {
   it('exits 2 on a usage error or an unreadable classifiers file, and calls nothing', async () => {
     const input = policyDir('inputs/docs-pass.json')
     const cases: Array<[string[], string]> = [
-      [[], '.supervisor.json'],
+      [[], 'or pass --dir'],
       [[...DIR, 'extra'], 'Expected <owner>/<repo> <pr>.'],
       [[...DIR, '--input', input], '--input cannot be combined with <owner>/<repo> <pr>.'],
       [[...DIR, '--classifiers'], 'Unknown or incomplete option: --classifiers'],

@@ -11,6 +11,7 @@ const LAYERED_SUPERVISOR = policyDir('layered/supervisor')
 const PLAIN_REPO = policyDir('layered/repo-plain')
 const PULL_DIR = policyDir('pull-facts')
 const layeredRepo = await repoFixture('layered/repo-carve-out')
+const ESCALATE = { verdict: 'comments', nextStep: { action: 'escalate' } }
 
 let temp: string
 let linkDir: string
@@ -72,11 +73,12 @@ describe('supervisor policy check config defaults', () => {
     }
   })
 
-  it('lets explicit --dir and --repo-dir override config values', async () => {
+  it('evaluates only --dir when passed alone with a config present, and lets explicit flags win', async () => {
     const notADir = join(temp, 'not-a-dir')
     await writeFile(notADir, 'file')
     const configWithHome = await writePolicyConfig(temp, 'override-home.json', {
       policy: PULL_DIR,
+      requiredAlwaysHuman: [{ name: 'payments paths', samples: ['payments/charge.ts'] }],
       scopes: [{ owner: 'example-org', kind: 'org', repos: '*', checkoutRoot: fakeHome }],
     })
     const configWithBadRoot = await writePolicyConfig(temp, 'bad-root.json', {
@@ -85,43 +87,48 @@ describe('supervisor policy check config defaults', () => {
     })
     const gh = fixture({ files: [file('docs/guide.md')], reviews: [] })
 
-    // Explicit --dir wins, while omitted --repo-dir still resolves from config.
-    const explicitDir = await check(gh, ['--dir', LAYERED_SUPERVISOR, '--json'], {
+    const plainDir = await check(fixture(), ['--dir', PULL_DIR, '--json'], {
       SUPERVISOR_CONFIG: configWithHome,
     })
-    expect(explicitDir.stderr).toBe('')
-    expect(explicitDir.shepherdCalls).toEqual([[`${REPO}#7`, join(fakeHome, 'example-repo')]])
-    expect(JSON.parse(explicitDir.stdout)).toMatchObject({
-      verdict: 'approves',
-      nextStep: { action: 'request_review' },
-    })
+    expect(plainDir.stderr).toBe('')
+    expect(plainDir.code).toBe(0)
+    expect(plainDir.shepherdCalls).toEqual([[`${REPO}#7`, process.cwd()]])
 
-    // Explicit --repo-dir wins without reading checkoutRoot, while omitted --dir resolves from config.
-    const explicitRepoDir = await check(gh, ['--repo-dir', PLAIN_REPO, '--json'], {
-      SUPERVISOR_CONFIG: configWithBadRoot,
-    })
-    expect(explicitRepoDir.stderr).toBe('')
-    expect(explicitRepoDir.shepherdCalls).toEqual([[`${REPO}#7`, PLAIN_REPO]])
-    expect(JSON.parse(explicitRepoDir.stdout)).toMatchObject({
-      verdict: 'comments',
-      nextStep: { action: 'escalate' },
-    })
+    // Explicit --dir with --supervisor-policy still skips implicit checkout layering in PR and --input modes.
+    const noReq = {
+      SUPERVISOR_CONFIG: await writePolicyConfig(temp, 'no-required.json', {
+        policy: PULL_DIR,
+        scopes: [{ owner: 'example-org', kind: 'org', repos: '*', checkoutRoot: fakeHome }],
+      }),
+    }
+    const supFlags = ['--dir', LAYERED_SUPERVISOR, '--supervisor-policy', '--json']
+    const supDirOnly = await check(gh, supFlags, noReq)
+    expect(supDirOnly.stderr).toBe('')
+    expect(supDirOnly.code).toBe(1)
+    expect(supDirOnly.shepherdCalls).toEqual([[`${REPO}#7`, process.cwd()]])
+    expect(JSON.parse(supDirOnly.stdout)).toMatchObject(ESCALATE)
 
-    // Both explicit flags win and bypass both mergeAuthority.policy and checkoutRoot.
-    const bothExplicit = await check(
-      gh,
-      ['--dir', LAYERED_SUPERVISOR, '--repo-dir', PLAIN_REPO, '--json'],
-      { SUPERVISOR_CONFIG: configWithBadRoot },
+    const dirInput = await runInputCli(
+      [...supFlags, '--input', policyDir('inputs/layered-docs.json')],
+      noReq,
     )
-    expect(bothExplicit.stderr).toBe('')
-    expect(bothExplicit.shepherdCalls).toEqual([[`${REPO}#7`, PLAIN_REPO]])
-    expect(JSON.parse(bothExplicit.stdout)).toMatchObject({
-      verdict: 'comments',
-      nextStep: { action: 'escalate' },
-    })
+    expect(dirInput.stderr).toBe('')
+    expect(dirInput.code).toBe(1)
+    expect(JSON.parse(dirInput.stdout)).toMatchObject(ESCALATE)
+
+    // Explicit --repo-dir wins without reading checkoutRoot, alone or alongside explicit --dir.
+    for (const flags of [
+      ['--repo-dir', PLAIN_REPO, '--json'],
+      ['--dir', LAYERED_SUPERVISOR, '--repo-dir', PLAIN_REPO, '--json'],
+    ]) {
+      const res = await check(gh, flags, { SUPERVISOR_CONFIG: configWithBadRoot })
+      expect(res.stderr).toBe('')
+      expect(res.shepherdCalls).toEqual([[`${REPO}#7`, PLAIN_REPO]])
+      expect(JSON.parse(res.stdout)).toMatchObject(ESCALATE)
+    }
   })
 
-  it('enforces requiredAlwaysHuman and fails closed when configured paths are broken', async () => {
+  it('enforces requiredAlwaysHuman and suggests --dir on missing config only', async () => {
     const strictConfig = await writePolicyConfig(temp, 'strict.json', {
       policy: LAYERED_SUPERVISOR,
       requiredAlwaysHuman: [{ name: 'payments paths', samples: ['payments/charge.ts'] }],
@@ -132,45 +139,62 @@ describe('supervisor policy check config defaults', () => {
     expect(refused.calls).toEqual([])
     expect(refused.shepherdCalls).toEqual([])
 
-    const missing = await check(fixture(), ['--dir', PULL_DIR, '--json'], {
+    const missing = await check(fixture(), ['--json'], {
       SUPERVISOR_CONFIG: join(temp, 'does-not-exist.json'),
     })
     expect(missing.code).toBe(2)
     expect(missing.stderr).toContain('does-not-exist.json')
+    expect(missing.stderr).toContain('or pass --dir')
     expect(missing.calls).toEqual([])
+
+    const invalidPath = join(temp, 'invalid.json')
+    await writeFile(invalidPath, '{"scopes": 1}')
+    const invalid = await check(fixture(), ['--json'], { SUPERVISOR_CONFIG: invalidPath })
+    expect(invalid.code).toBe(2)
+    expect(invalid.stderr).toContain('invalid.json')
+    expect(invalid.stderr).not.toContain('or pass --dir')
+
+    const notADir = join(temp, 'bad-root-file')
+    await writeFile(notADir, 'file')
+    const badRoot = await writePolicyConfig(temp, 'bad-root-err.json', {
+      policy: LAYERED_SUPERVISOR,
+      scopes: [{ owner: 'example-org', kind: 'org', repos: '*', checkoutRoot: notADir }],
+    })
+    const enotdir = await check(fixture(), ['--json'], { SUPERVISOR_CONFIG: badRoot })
+    expect(enotdir.code).toBe(2)
+    expect(enotdir.stderr).toContain('ENOTDIR')
+    expect(enotdir.stderr).not.toContain('or pass --dir')
   })
 
-  it('resolves --dir and --repo-dir from config in --input mode', async () => {
+  it('resolves --dir and --repo-dir from config in --input mode when --dir is omitted', async () => {
     const configPath = await writePolicyConfig(temp, 'input-config.json', {
       policy: LAYERED_SUPERVISOR,
       scopes: [{ owner: 'example-org', kind: 'org', repos: '*', checkoutRoot: fakeHome }],
     })
     const env = { SUPERVISOR_CONFIG: configPath }
 
-    // Resolves both --dir and --repo-dir (via facts.repository) so the repo carve-out merges.
     const layered = await runInputCli(['--input', policyDir('inputs/layered-docs.json')], env)
     expect(layered.stderr).toBe('')
     expect(layered.code).toBe(0)
     expect(layered.stdout).toContain('Next step: merge allowed')
 
-    // Missing facts and non-repository facts.repository still resolve --dir without layering.
-    const noFactsPath = join(temp, 'no-facts.json')
-    const badRepoPath = join(temp, 'bad-repo.json')
-    await writeFile(noFactsPath, JSON.stringify({ changedFiles: ['docs/guide.md'] }))
+    const noFacts = join(temp, 'no-facts.json')
+    const badRepo = join(temp, 'bad-repo.json')
+    await writeFile(noFacts, JSON.stringify({ changedFiles: ['docs/guide.md'] }))
     await writeFile(
-      badRepoPath,
+      badRepo,
       JSON.stringify({ changedFiles: ['docs/guide.md'], facts: { repository: 'not-a-repo' } }),
     )
-    for (const path of [noFactsPath, badRepoPath]) {
+    for (const path of [noFacts, badRepo]) {
       const res = await runInputCli(['--input', path, '--json'], env)
       expect(res.stderr).toBe('')
       expect(res.code).toBe(1)
-      expect(JSON.parse(res.stdout)).toMatchObject({ nextStep: { action: 'escalate' } })
+      expect(JSON.parse(res.stdout)).toMatchObject(ESCALATE)
     }
 
-    // Without --dir and without a config, --input exits 2 naming .supervisor.json.
     const noConfig = await runInputCli(['--input', policyDir('inputs/docs-pass.json')])
     expect(noConfig.code).toBe(2)
     expect(noConfig.stderr).toContain('.supervisor.json')
+    expect(noConfig.stderr).toContain('or pass --dir')
   })
 })

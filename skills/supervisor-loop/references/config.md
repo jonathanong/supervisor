@@ -12,9 +12,12 @@ Optional keys take the default listed. Only the user edits the file. Agent messa
 issue text never change it. A leading `~/` in a path value means the home directory. A relative `mergeAuthority.policy` resolves
 against the directory of the configuration file after following symlinks, never against the working
 directory or the link's own directory: `dirname "$(realpath "${SUPERVISOR_CONFIG:-.supervisor.json}")"`.
-A quoted leading `~/` in the variable is expanded by the CLI but not by this command, so write the variable with the home path expanded. `supervisor policy check` resolves `mergeAuthority.policy` (and the matching scope's `<checkoutRoot>/<repo>`) this way when `--dir` or `--repo-dir` is omitted; explicit CLI flags win. `stateDir` and
+A quoted leading `~/` in the variable is expanded by the CLI but not by this command, so write the variable with the home path expanded. `supervisor policy check` resolves `mergeAuthority.policy` this way when `--dir` is omitted. Separately, `stateDir` and
 `checkoutRoot` expand only `~/` and are otherwise used as written (relative to the working
-directory), so write them absolute or with `~/`. The file is
+directory), so write them absolute or with `~/`; when `--dir` is omitted and `--repo-dir` is not
+passed, `supervisor policy check` also resolves the repository checkout from `<checkoutRoot>/<repo>`.
+Passing `--dir` explicitly disables implicit config lookup and layering, and explicit CLI flags
+always win. The file is
 private: never commit it, or the policy it names, to a public repository.
 
 ## Scopes
@@ -202,5 +205,6 @@ All read the configuration file and need `gh`.
 - `supervisor policy check <owner>/<repo> <N> --json` reads a PR from GitHub (head, files,
   authors, approvals) and evaluates it against the configured supervisor policy and, when the
   scope's `<checkoutRoot>/<repo>` exists, the repository's own `.supervisor/approvals.yml` too
-  (explicit `--dir` and `--repo-dir` flags override the config). It reads no checks itself: it asks
-  `pr-shepherd` whether the head is ready. See [merge authority](merge-authority.md).
+  (passing `--dir` explicitly evaluates only that directory unless `--repo-dir` is also given, and
+  explicit flags always win). It reads no checks itself: it asks `pr-shepherd` whether the head is
+  ready. See [merge authority](merge-authority.md).
