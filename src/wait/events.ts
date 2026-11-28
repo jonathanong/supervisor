@@ -90,21 +90,23 @@ function runOf(event: JsonObject): JsonObject | undefined {
   return isObject(run) ? run : undefined
 }
 
-const UPDATE_WORKFLOW = 'dependabot updates'
+const UPDATE_PATH = 'dynamic/dependabot/'
 
 /**
  * True for a `workflow_run` of the dependency bot's own update job: the run's triggering event is
- * `dynamic` (GitHub's name for its own managed runs) and the workflow is "Dependabot Updates".
- * Neither alone is enough: CodeQL's default setup is also `dynamic`, and a repository workflow the
- * bot's push triggers has the bot as its actor but is an ordinary CI run.
+ * `dynamic` (GitHub's name for its own managed runs) and its workflow path is under
+ * `dynamic/dependabot/`. The run's `name` is the job's title, not the workflow name, so it is not
+ * used. Neither field alone is enough: CodeQL's default setup is also `dynamic` (path
+ * `dynamic/github-code-scanning/...`), and a repository workflow the bot's push triggers has the
+ * bot as its actor but is an ordinary CI run.
  */
 export function isDependencyUpdateRun(event: JsonObject): boolean {
-  const name = runOf(event)?.name ?? event.workflow
+  const run = runOf(event)
   return (
     event.event === 'workflow_run' &&
-    runOf(event)?.event === 'dynamic' &&
-    typeof name === 'string' &&
-    name.toLowerCase() === UPDATE_WORKFLOW
+    run?.event === 'dynamic' &&
+    typeof run.path === 'string' &&
+    run.path.startsWith(UPDATE_PATH)
   )
 }
 

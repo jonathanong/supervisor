@@ -13,37 +13,43 @@ async function waitLine(event: Record<string, unknown>) {
 const run = (workflowRun: Record<string, unknown>) =>
   envelope({ payload: { workflow_run: workflowRun } })
 
+// The fields of a real Dependabot update run: `name` is the job title, not the workflow name.
+const UPDATE_RUN = {
+  event: 'dynamic',
+  name: 'npm_and_yarn in /. for @vitest/mocker - Update #1735964079',
+  path: 'dynamic/dependabot/dependabot-updates',
+  actor: { login: 'dependabot[bot]' },
+}
+
 describe('supervisor wait: dependency-bot update job', () => {
   afterEach(cleanupLoops)
 
-  it('marks a run whose triggering event is dynamic', async () => {
-    const line = await waitLine(run({ event: 'dynamic', name: 'Dependabot Updates' }))
+  it('marks a dynamic run under the dependabot path', async () => {
+    const line = await waitLine(run(UPDATE_RUN))
     expect(line).toMatchObject({ event: 'workflow_run', conclusion: 'failure' })
     expect(line.dependencyUpdate).toBe(true)
   })
 
   it('does not mark an ordinary failure, even one the dependency bot triggered', async () => {
-    const line = await waitLine(run({ event: 'push', actor: { login: 'dependabot[bot]' } }))
+    const line = await waitLine(
+      run({ ...UPDATE_RUN, event: 'push', path: '.github/workflows/ci.yml' }),
+    )
     expect(line).toMatchObject({ event: 'workflow_run', conclusion: 'failure' })
     expect(line.dependencyUpdate).toBeUndefined()
   })
 
-  it('marks a run named only by the event workflow field', async () => {
-    const event = envelope({
-      workflow: 'Dependabot Updates',
-      payload: { workflow_run: { event: 'dynamic' } },
+  it('does not mark CodeQL default setup, which is also dynamic', async () => {
+    const codeql = run({
+      event: 'dynamic',
+      name: 'CodeQL',
+      path: 'dynamic/github-code-scanning/codeql',
+      actor: { login: 'github[bot]' },
     })
-    expect((await waitLine(event)).dependencyUpdate).toBe(true)
+    expect((await waitLine(codeql)).dependencyUpdate).toBeUndefined()
   })
 
-  it('does not mark another dynamic run such as CodeQL default setup', async () => {
-    const line = await waitLine(run({ event: 'dynamic', name: 'CodeQL' }))
-    expect(line.dependencyUpdate).toBeUndefined()
-  })
-
-  it('does not mark a dynamic run with no workflow name', async () => {
-    const event = envelope({ workflow: null, payload: { workflow_run: { event: 'dynamic' } } })
-    expect((await waitLine(event)).dependencyUpdate).toBeUndefined()
+  it('does not mark a dynamic run with no path', async () => {
+    expect((await waitLine(run({ event: 'dynamic' }))).dependencyUpdate).toBeUndefined()
   })
 
   it('does not mark a run with no run payload', async () => {
@@ -54,7 +60,7 @@ describe('supervisor wait: dependency-bot update job', () => {
     const other = envelope({
       event: 'pull_request',
       action: 'closed',
-      payload: { workflow_run: { event: 'dynamic' }, pull_request: { merged: false } },
+      payload: { workflow_run: UPDATE_RUN, pull_request: { merged: false } },
     })
     expect((await waitLine(other)).dependencyUpdate).toBeUndefined()
   })
