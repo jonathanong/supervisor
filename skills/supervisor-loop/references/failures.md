@@ -15,9 +15,12 @@ recent merge-queue event is an unhandled ejection and is not queued again (see
 
 - **Ejections:** per repository, query GraphQL
   `timelineItems(itemTypes: [REMOVED_FROM_MERGE_QUEUE_EVENT])` over recently updated PRs, paginated
-  until a PR's update time leaves the window, and past the 24-hour window also include any open PR
-  whose most recent merge-queue event is a removal that was an ejection, that is not queued again,
-  and that has had no handling since. Judge by the returned `nodes`, never by `totalCount`:
+  until a PR's update time leaves the window. Past the 24-hour window, list the repository's open
+  PRs (a bounded set) and read each one's latest merge-queue events with both
+  `ADDED_TO_MERGE_QUEUE_EVENT` and `REMOVED_FROM_MERGE_QUEUE_EVENT` in `itemTypes`. Take a PR whose
+  most recent event is a removal that was an ejection (so it is not queued again) and that has had
+  no handling since: after that removal's `createdAt`, read live, it has no new head commit and no
+  supervisor comment, dispatch, or requeue. Judge by the returned `nodes`, never by `totalCount`:
   with `itemTypes`, `totalCount` counts every timeline item, unfiltered, and `nodes` is empty when
   there are no removals. `reason` is a free string, not an enum, so print the distinct reasons seen
   and judge by meaning. An ejection is a removal for any reason other than the PR merging; a
