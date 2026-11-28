@@ -1,5 +1,6 @@
 import { writeFile } from 'node:fs/promises'
 import { afterEach, describe, expect, it } from 'vitest'
+import { INSTALL_COMMAND, MIN_CLI_VERSION } from '../src/cli/version.js'
 import type { RunProcess } from '../src/state/process.js'
 import { cleanupLoops, done, makeLoop, NOW } from './helpers/loop.js'
 import { fake, GOOD } from './helpers/preflight.js'
@@ -30,6 +31,11 @@ describe('supervisor preflight details', () => {
     const long = { ...GOOD, npx: done('x'.repeat(500), 1) }
     const capped = await loop.cli(['preflight'], fake(long).run)
     expect(capped.stdout).toContain(`exited 1: ${'x'.repeat(200)}\n`)
+    const longVersion = { ...GOOD, supervisor: done('x'.repeat(500)) }
+    const cappedVersion = await loop.cli(['preflight'], fake(longVersion).run)
+    expect(cappedVersion.stdout).toContain(
+      `FAIL supervisor: cannot parse version "${'x'.repeat(200)}"; need ${MIN_CLI_VERSION} or newer, run: ${INSTALL_COMMAND}\n`,
+    )
   })
 
   it('keeps a multi-line stop reason to one line', async () => {

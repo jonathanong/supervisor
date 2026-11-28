@@ -56,9 +56,7 @@ export async function checkSupervisor(run: RunProcess): Promise<Check> {
     return {
       name: 'supervisor',
       ok: false,
-      detail: firstLine(
-        `cannot parse version "${result.detail}"; need ${MIN_CLI_VERSION} or newer, run: ${INSTALL_COMMAND}`,
-      ),
+      detail: `cannot parse version "${result.detail}"; need ${MIN_CLI_VERSION} or newer, run: ${INSTALL_COMMAND}`,
     }
   }
   if (compareVersion(installed, MIN_PARSED) < 0) {
