@@ -95,8 +95,13 @@ describe('supervisor wait relay outage across rounds and relaunches', () => {
     expect(saved.relayErrors).toBeUndefined()
   })
 
-  it('carries relayErrors across relaunches when --advance is used', async () => {
-    const loop = await makeLoop({ scopes: SCOPES })
+  it('carries relayErrors across relaunches with --advance and mixed-case scope owners', async () => {
+    const loop = await makeLoop({
+      scopes: [
+        { owner: 'Example-Org', kind: 'org', repos: '*', mode: 'enforce' },
+        { owner: 'Example-Team', kind: 'org', repos: '*', mode: 'report' },
+      ],
+    })
     let seq = 0
     const world = makeWorld({
       replies: (req) => {
@@ -127,13 +132,7 @@ describe('supervisor wait relay outage across rounds and relaunches', () => {
   it('preserves valid relayErrors on early return and drops invalid, removed, or skipped owners', async () => {
     const scopes = [
       { owner: 'example-org', kind: 'org', repos: '*', mode: 'enforce' },
-      {
-        owner: 'example-team',
-        kind: 'org',
-        repos: ['team-repo'],
-        excludeForks: true,
-        mode: 'report',
-      },
+      { owner: 'example-team', kind: 'org', repos: ['team-repo'], excludeForks: true },
       { owner: 'example-other', kind: 'org', repos: '*', mode: 'report' },
     ]
     const loop = await makeLoop({ scopes })
@@ -173,13 +172,8 @@ describe('supervisor wait relay outage across rounds and relaunches', () => {
     })
     const baseRun = world.run
     world.run = async (command, args, options) => {
-      if (
-        command === 'gh' &&
-        args[1] === '--paginate' &&
-        args[2]!.startsWith('orgs/example-team')
-      ) {
+      if (command === 'gh' && args[1] === '--paginate' && args[2]!.startsWith('orgs/example-team'))
         return { code: 0, stdout: 'forked\ttrue\n', stderr: '' }
-      }
       return await baseRun(command, args, options)
     }
     const polled = await loop.cli(['wait'], world.run, undefined, world.io)

@@ -146,18 +146,19 @@ export async function hookHarnessWait(
     })
     for await (const batch of stream) {
       started = true
+      const owner = batch.owner.toLowerCase()
       if ('error' in batch) {
-        const count = (failures.get(batch.owner) ?? 0) + 1
-        failures.set(batch.owner, count)
+        const count = (failures.get(owner) ?? 0) + 1
+        failures.set(owner, count)
         if (count >= MAX_CONSECUTIVE_ERRORS) {
           throw new WaitError(
-            `hook-harness relay unreachable (${count} consecutive errors for ${batch.owner}): ${batch.error.message}`,
+            `hook-harness relay unreachable (${count} consecutive errors for ${owner}): ${batch.error.message}`,
             { cause: batch.error },
           )
         }
         continue
       }
-      failures.delete(batch.owner)
+      failures.delete(owner)
       cursor = batch.cursor
       if (batch.gap || batch.events.length > 0) {
         return {

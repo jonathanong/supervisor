@@ -49,9 +49,10 @@ job), `merged`, and for a merge `unresolved`, `late`, `truncated`, or
   and [Phase G2](../../supervisor-sweep/SKILL.md#phase-g2---command-comments).
 - `relayErrors`: one or more owners failed to poll the relay before another owner's events, a watch,
   or a timeout ended the wait. The wait carries each owner's count forward in `hh-last.json`, clears
-  it as soon as a page for that owner succeeds, and exits 1 at 5 consecutive errors. Handle the
-  returned events as usual, and follow [Relay outage](failures.md#relay-outage) when a count climbs
-  across waits.
+  it as soon as a page for that owner succeeds, and exits 1 at 5 consecutive errors. An owner whose
+  failure arrives after another owner's event, such as a connect that hangs until the fetch timeout,
+  is aborted uncounted each round, so its outage can still go unreported. Handle the returned events
+  as usual, and follow [Relay outage](failures.md#relay-outage) when a count climbs across waits.
 - Exit 1 (auth, cursor, or sustained relay error): report it and fall back to sweeps until it is
   fixed (see [Relay outage](failures.md#relay-outage) for a sustained per-owner relay error).
 - Skip events for repositories outside the configured scopes.

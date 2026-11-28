@@ -40,7 +40,8 @@ export async function readLastWait(dir: string): Promise<JsonObject | undefined>
 
 /**
  * Per-owner consecutive relay error counts carried from the previous `hh-last.json`, limited to
- * currently configured owners. Invalid or non-positive entries are ignored.
+ * currently configured owners. Keys are lowercased to match `hook-harness`'s `pollEvents`, which
+ * emits `batch.owner` in lowercase. Invalid or non-positive entries are ignored.
  */
 export function priorRelayErrors(
   last: JsonObject | undefined,
