@@ -201,7 +201,10 @@ then verifies only a labeled sample (see late-reviews).
 The backstop for `ejection` and `main-failure` events, run on `gap: true`, on a failed wait, and
 each full sweep. A mechanical-tier subagent per owner lists merge-queue ejections and failed
 default-branch runs for each of that owner's repositories from the last 24 hours, paginating fully, by the mechanisms in the loop's
-[failures](../supervisor-loop/references/failures.md#finding-failures). Handle each as failures
+[failures](../supervisor-loop/references/failures.md#finding-failures). Failed runs of the
+dependency bot's own update job are not ordinary failures: handle them as
+[Dependency-bot update job failed](../supervisor-loop/references/failures.md#dependency-bot-update-job-failed)
+describes. Handle each other failure as failures
 describes: group, dedupe against fixes in flight, diagnose, and file or delegate flakes. Skip run
 ids already in `handledFailures`, and record every handled run (in a `report` repository, none).
 

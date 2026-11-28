@@ -47,6 +47,9 @@ export function compact(event: JsonObject): JsonObject {
   if (sender) {
     line.sender = isObject(sender) ? (get(sender, 'login') ?? null) : null
   }
+  if (isDependencyUpdateRun(event)) {
+    line.dependencyUpdate = true
+  }
   const pull = pullOf(event)
   if (event.event === 'pull_request' && pull !== undefined) {
     line.merged = pull.merged === true
@@ -79,6 +82,32 @@ function login(name: Json | undefined): string {
     .replace(/^app\//, '')
     .replace(/\[bot\]$/, '')
     .toLowerCase()
+}
+
+function runOf(event: JsonObject): JsonObject | undefined {
+  const payload = get(event, 'payload')
+  const run = isObject(payload) ? get(payload, 'workflow_run') : undefined
+  return isObject(run) ? run : undefined
+}
+
+const UPDATE_PATH = 'dynamic/dependabot/'
+
+/**
+ * True for a `workflow_run` of the dependency bot's own update job: the run's triggering event is
+ * `dynamic` (GitHub's name for its own managed runs) and its workflow path is under
+ * `dynamic/dependabot/`. The run's `name` is the job's title, not the workflow name, so it is not
+ * used. Neither field alone is enough: CodeQL's default setup is also `dynamic` (path
+ * `dynamic/github-code-scanning/...`), and a repository workflow the bot's push triggers has the
+ * bot as its actor but is an ordinary CI run.
+ */
+export function isDependencyUpdateRun(event: JsonObject): boolean {
+  const run = runOf(event)
+  return (
+    event.event === 'workflow_run' &&
+    run?.event === 'dynamic' &&
+    typeof run.path === 'string' &&
+    run.path.startsWith(UPDATE_PATH)
+  )
 }
 
 /** True when the pull request's author is the configured dependency bot. */
