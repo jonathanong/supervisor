@@ -29,6 +29,7 @@ The claims answer "who owns this?". The supervisor uses them, with the live agen
 - **PRs inherit.** A PR that closes an issue takes that issue's milestone and project.
 - **One project per issue,** by default. Before adding an issue to a project, the agent checks that the project's auto-add won't pull a sub-issue into a second project. A repository can override this in its `AGENTS.md`.
 - **Agents may create milestones.** A milestone is an epic within one repository: created for a piece of work and completed with it, so it needs no approval. A milestone with nothing open is proposed for closing. A closed milestone is never reopened: new work gets a new milestone.
+- **Reopened issues move to an open milestone.** When an issue in a closed milestone is reopened, the closed milestone stays closed. During the sweep, the agent moves the issue to a fitting open milestone, or creates a new open milestone for it if none fits, so the [backlog](backlog.md) can dispatch it again.
 - **Projects need a person's approval to create.** A project spans repositories and is high-level, so an agent proposes one and waits. Agents may add issues to existing projects.
 - **Progress in the sweep summary.** For each open milestone: open and closed counts, items with no claim and no linked PR, and items claimed but idle.
 
@@ -45,7 +46,7 @@ The generic procedure for both lives in the `github-issue` and `github-repositor
 
 ## Audit
 
-Each sweep checks PRs and issues for a milestone, labels, a closing reference and an owner, and fixes what is missing. It closes duplicates and issues already fixed, after checking each against the current default branch, with a comment and the right close reason. Every open issue should be in a milestone or a project, or be in progress; a flake is always in progress. A periodic taxonomy audit reports:
+Each sweep checks PRs and issues for a milestone, labels, a closing reference and an owner, fixes what is missing, and moves any open issue still in a closed milestone to an existing or new open milestone. It closes duplicates and issues already fixed, after checking each against the current default branch, with a comment and the right close reason. Every open issue should be in an open milestone or a project, or be in progress; a flake is always in progress. A periodic taxonomy audit reports:
 
 - near-duplicate and unused labels
 - labels made for one-off work
