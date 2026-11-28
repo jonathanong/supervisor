@@ -24,7 +24,9 @@ An agent delegates a PR with `/shepherd` as the [agent handoff](#agent-handoff).
 - **`/fix` on an issue:** an implementation-tier worker in an isolated worktree opens a new PR that
   links the issue. PRs the supervisor's workers create (this one and flake-fix PRs from
   [failures](failures.md)) get the configured automation label at creation, so Phase B and the
-  merge authority see them.
+  merge authority see them. If `labels.automation` is missing in the repository, do not dispatch or
+  post an `eyes` reaction — hold the `/fix` back (see
+  [Per-sweep cap](../../supervisor-sweep/SKILL.md#rules-for-every-phase)).
 - **`/fix` on a PR:** the worker pushes the fix to that PR's branch, only when the branch is in the
   same repository; never push to a fork. After the push the head is new, so
   [ready and merge](ready-and-merge.md) step 5 runs again for it.
@@ -64,6 +66,9 @@ each `/fix` dispatch counts toward `sweepCap.dispatches`; if a `/fix` command is
 cap or a missing `labels.automation` label; see
 [Per-sweep cap](../../supervisor-sweep/SKILL.md#rules-for-every-phase)), post no `eyes` reaction on
 it, leave `commandsThrough` unadvanced, and report it as held back so the next sweep handles it.
+Because `commandsThrough` is global, a repository whose `labels.automation` label stays missing
+holds the cursor back for every repository and the search window grows until someone creates the
+label; the held-back `/fix` is reported on every sweep.
 
 ## Agent handoff
 

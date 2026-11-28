@@ -62,7 +62,9 @@ Requires `@jongleberry/supervisor` 0.4.0 or newer (`pnpm add -g @jongleberry/sup
   rolling window (such as `lateReviewDays` or Phase G2's 7-day window); for Phase G, derive this
   live without adding a state field by looking back past the 24-hour window to any failure that is
   still the latest run of its workflow on the default branch and is not in `handledFailures` (a
-  failure later superseded by a green run needs no fix and drops out). A `/fix` command (or other
+  failure later superseded by a green run needs no fix and drops out), and to any open PR whose most
+  recent merge-queue event is a removal that was an ejection, that is not queued again, and that has
+  had no handling since. A `/fix` command (or other
   worker dispatch) skipped because `labels.automation` is missing in its repository counts as held
   back in the same way: post no `eyes` reaction, leave `commandsThrough` behind it, and do not treat
   it as handled when the wait returns it, so it runs once the label exists. Held-back work,

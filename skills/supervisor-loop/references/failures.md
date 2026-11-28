@@ -9,12 +9,15 @@ infra, or real failure.
 
 The sweep's backstop (Phase G) finds both kinds over the last 24 hours, plus any older failure that
 is still the latest run of its workflow on the default branch and is not in `handledFailures` (a
-failure later superseded by a green run needs no fix and drops out; see
+failure later superseded by a green run needs no fix and drops out) and any open PR whose most
+recent merge-queue event is an unhandled ejection and is not queued again (see
 [Per-sweep cap](../../supervisor-sweep/SKILL.md#rules-for-every-phase)):
 
 - **Ejections:** per repository, query GraphQL
   `timelineItems(itemTypes: [REMOVED_FROM_MERGE_QUEUE_EVENT])` over recently updated PRs, paginated
-  until a PR's update time leaves the window. Judge by the returned `nodes`, never by `totalCount`:
+  until a PR's update time leaves the window, and past the 24-hour window also include any open PR
+  whose most recent merge-queue event is a removal that was an ejection, that is not queued again,
+  and that has had no handling since. Judge by the returned `nodes`, never by `totalCount`:
   with `itemTypes`, `totalCount` counts every timeline item, unfiltered, and `nodes` is empty when
   there are no removals. `reason` is a free string, not an enum, so print the distinct reasons seen
   and judge by meaning. An ejection is a removal for any reason other than the PR merging; a
