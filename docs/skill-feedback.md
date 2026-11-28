@@ -1,6 +1,6 @@
 # Loop 2: feedback → skill and rule changes
 
-This is the self-improving loop. A mistake an agent made becomes a rule, and the rule merges only when an eval shows it helps.
+This is the self-improving loop. A mistake an agent made becomes a rule, and the rule merges only when an eval shows it helps, or when it scores equal to no rule and is added as a guard.
 
 [Back to the graph](graph.md)
 
@@ -44,20 +44,20 @@ A worker in the owning repository:
 3. runs both arms, with and without the rule
 4. puts both scores in the PR description
 
-**Rules are encoded even when the model already follows them.** A rule that scores equal to no rule is still added, as a guard: the next model, or a switch to another model or harness, may not follow it unaided. The eval case stays too, so it catches a later model that regresses.
+**Rules are encoded even when the model already follows them.** A rule that scores equal to no rule is still added, as a guard: the next model, or a switch to another model or harness, may not follow it unaided. The eval case stays too, kept for future reruns.
 
 **Which model runs the evals.** Today the evals run on Claude Sonnet only, since the eval harness is Claude-based. A case Sonnet already passes at 100% is kept for the same reason as its rule: it is the test a smaller or different model must also pass. Running the same cases on other models and harnesses is still to do; it is what will show which tier each kind of work needs.
 
 ## The merge gate
 
-| Result                                 | Outcome                                                         |
-| -------------------------------------- | --------------------------------------------------------------- |
-| Better with the rule                   | May merge once the final reviewer approves the head             |
-| Equal                                  | May merge once the final reviewer approves the head, as a guard |
-| Worse                                  | Goes to a person                                                |
-| Changes the eval runner or its scripts | Always goes to a person                                         |
+| Result                                 | Outcome                                                                                                                                                  |
+| -------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Better with the rule                   | May merge once the final reviewer approves the head                                                                                                      |
+| Equal                                  | May merge as a guard once the final reviewer approves the head after checking its scope and effects on other tasks that load the same skill or rule file |
+| Worse                                  | Goes to a person                                                                                                                                         |
+| Changes the eval runner or its scripts | Always goes to a person                                                                                                                                  |
 
-Shared skills reach every session as soon as they merge, so the eval delta is the only thing between a harmful rule and every agent. That is why changes to the eval runner are never merged autonomously.
+Shared skills reach every session as soon as they merge, so the eval delta and final review are what stand between a harmful rule and every agent. For an equal-score rule, final review checks that the rule stays scoped to the mistake it prevents and does not block or conflict with other tasks that load the same skill or rule file (such as an overbroad prohibition that passes the target case while blocking unrelated work). Changes to the eval runner are never merged autonomously.
 
 ## Recurrence check
 
