@@ -57,7 +57,8 @@ describe('MCP pr_create', () => {
       ) {
         return okJson({ data: { addProjectV2ItemById: { item: { id: 'PVTI_1' } } } })
       }
-      if (args.includes(`repos/${REPO}`) && args.includes('.default_branch')) return okJson('main')
+      if (args.includes(`repos/${REPO}`) && args.includes('.default_branch'))
+        return { code: 0, stdout: 'main\n', stderr: '' }
       if (args.includes(`repos/${REPO}/pulls`)) {
         return okJson({ number: 42, url: `https://github.com/${REPO}/pull/42`, nodeId: 'PR_42' })
       }
@@ -168,20 +169,25 @@ describe('MCP pr_create', () => {
       body: VALID_BODY,
       provenance: VALID_PROVENANCE,
     }
-    const cases: Array<[Record<string, unknown>, string]> = [
-      [{ ...base, provenanceFields: ['custom'] }, 'Unknown argument: provenanceFields.'],
-      [{ ...base, head: '' }, 'head must be a non-empty string.'],
-      [{ ...base, base: ' ' }, 'base must be a non-empty string.'],
-      [{ ...base, title: 123 }, 'title must be a string.'],
-      [{ ...base, body: 123 }, 'body must be a string.'],
-      [{ ...base, draft: 'yes' }, 'draft must be a boolean.'],
-      [{ ...base, issue: 0 }, 'must be a positive integer for issue.'],
-      [{ ...base, title: 'Fixes #17' }, 'PR validation failed:'],
+    const cases: Array<[Record<string, unknown>, string, string]> = [
+      [
+        { ...base, provenanceFields: ['custom'] },
+        'Unknown argument: provenanceFields.',
+        'invalid-argument',
+      ],
+      [{ ...base, head: '' }, 'head must be a non-empty string.', 'invalid-argument'],
+      [{ ...base, base: ' ' }, 'base must be a non-empty string.', 'invalid-argument'],
+      [{ ...base, title: 123 }, 'title must be a string.', 'invalid-argument'],
+      [{ ...base, body: 123 }, 'body must be a string.', 'invalid-argument'],
+      [{ ...base, draft: 'yes' }, 'draft must be a boolean.', 'invalid-argument'],
+      [{ ...base, issue: 0 }, 'must be a positive integer for issue.', 'invalid-argument'],
+      [{ ...base, title: 'Fixes #17' }, 'PR validation failed:', 'validation-failed'],
     ]
 
-    for (const [args, expected] of cases) {
+    for (const [args, expected, code] of cases) {
       const res = await callMcpTool('pr_create', args, { env, runProcess: gh.run })
       expect(res.isError, expected).toBe(true)
+      expect(res.structuredContent, expected).toEqual({ code })
       expect(textContent(res), expected).toContain(expected)
     }
     expect(gh.calls).toEqual([])

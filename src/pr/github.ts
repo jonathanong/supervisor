@@ -1,7 +1,6 @@
 import { isObject } from '../state/json.js'
 import type { RunProcess } from '../state/process.js'
-import { ghJson, ghJsonLines, PrToolError } from './gh-client.js'
-import { PROVENANCE_MARKER } from './provenance.js'
+import { ghJson, PrToolError, runGh } from './gh-client.js'
 
 export interface PullRef {
   number: number
@@ -14,11 +13,6 @@ export interface PullDetails extends PullRef {
   body: string
 }
 
-export interface CommentRef {
-  id: number
-  url: string
-}
-
 function parsePullRef(raw: unknown, label: string): PullRef {
   if (
     !isObject(raw) ||
@@ -26,28 +20,28 @@ function parsePullRef(raw: unknown, label: string): PullRef {
     typeof raw.url !== 'string' ||
     typeof raw.nodeId !== 'string'
   ) {
-    throw new PrToolError(`gh ${label} returned an unexpected pull request payload`)
+    throw new PrToolError(
+      'gh-invalid-response',
+      `gh ${label} returned an unexpected pull request payload`,
+    )
   }
   return { number: raw.number, url: raw.url, nodeId: raw.nodeId }
 }
 
-function parseCommentRef(raw: unknown, label: string): CommentRef {
-  if (!isObject(raw) || typeof raw.id !== 'number' || typeof raw.url !== 'string') {
-    throw new PrToolError(`gh ${label} returned an unexpected comment payload`)
-  }
-  return { id: raw.id, url: raw.url }
-}
-
 export async function readDefaultBranch(run: RunProcess, repository: string): Promise<string> {
-  const raw = await ghJson(
+  const stdout = await runGh(
     run,
     ['api', `repos/${repository}`, '--jq', '.default_branch'],
     `api repos/${repository}`,
   )
-  if (typeof raw !== 'string' || raw === '') {
-    throw new PrToolError(`GitHub returned no default branch for ${repository}`)
+  const branch = stdout.trim()
+  if (branch === '') {
+    throw new PrToolError(
+      'gh-invalid-response',
+      `GitHub returned no default branch for ${repository}`,
+    )
   }
-  return raw
+  return branch
 }
 
 export async function readPull(
@@ -69,7 +63,10 @@ export async function readPull(
   const ref = parsePullRef(raw, label)
   const obj = raw as Record<string, unknown>
   if (typeof obj.title !== 'string' || typeof obj.body !== 'string') {
-    throw new PrToolError(`gh ${label} returned an unexpected pull request payload`)
+    throw new PrToolError(
+      'gh-invalid-response',
+      `gh ${label} returned an unexpected pull request payload`,
+    )
   }
   return { ...ref, title: obj.title, body: obj.body }
 }
@@ -109,9 +106,13 @@ export async function updatePull(
   run: RunProcess,
   repository: string,
   pr: number,
-  params: { title: string; body: string },
+  params: { title?: string; body?: string },
 ): Promise<PullRef> {
   const label = `api repos/${repository}/pulls/${pr}`
+  const fields = [
+    ...(params.title !== undefined ? ['-f', `title=${params.title}`] : []),
+    ...(params.body !== undefined ? ['-f', `body=${params.body}`] : []),
+  ]
   const raw = await ghJson(
     run,
     [
@@ -119,77 +120,11 @@ export async function updatePull(
       '-X',
       'PATCH',
       `repos/${repository}/pulls/${pr}`,
-      '-f',
-      `title=${params.title}`,
-      '-f',
-      `body=${params.body}`,
+      ...fields,
       '--jq',
       '{number, url: .html_url, nodeId: .node_id}',
     ],
     label,
   )
   return parsePullRef(raw, label)
-}
-
-export async function upsertProvenanceComment(
-  run: RunProcess,
-  repository: string,
-  pr: number,
-  comment: string,
-  createOnly: boolean,
-): Promise<CommentRef> {
-  if (!createOnly) {
-    const comments = await ghJsonLines(
-      run,
-      [
-        'api',
-        '--paginate',
-        `repos/${repository}/issues/${pr}/comments`,
-        '--jq',
-        '.[] | {id, body: (.body // "")}',
-      ],
-      `api repos/${repository}/issues/${pr}/comments`,
-    )
-    const existing = comments.find(
-      (entry) =>
-        typeof entry.id === 'number' &&
-        typeof entry.body === 'string' &&
-        entry.body.trimStart().startsWith(PROVENANCE_MARKER),
-    )
-    if (existing !== undefined) {
-      const id = existing.id as number
-      const label = `api repos/${repository}/issues/comments/${id}`
-      const raw = await ghJson(
-        run,
-        [
-          'api',
-          '-X',
-          'PATCH',
-          `repos/${repository}/issues/comments/${id}`,
-          '-f',
-          `body=${comment}`,
-          '--jq',
-          '{id, url: .html_url}',
-        ],
-        label,
-      )
-      return parseCommentRef(raw, label)
-    }
-  }
-  const label = `api repos/${repository}/issues/${pr}/comments`
-  const raw = await ghJson(
-    run,
-    [
-      'api',
-      '-X',
-      'POST',
-      `repos/${repository}/issues/${pr}/comments`,
-      '-f',
-      `body=${comment}`,
-      '--jq',
-      '{id, url: .html_url}',
-    ],
-    label,
-  )
-  return parseCommentRef(raw, label)
 }

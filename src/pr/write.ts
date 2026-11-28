@@ -1,5 +1,6 @@
 import { PrToolError } from './gh-client.js'
-import { upsertProvenanceComment, type PullRef } from './github.js'
+import { upsertProvenanceComment } from './comments.js'
+import type { PullRef } from './github.js'
 import {
   renderProvenanceComment,
   sanitizeProvenanceInput,
@@ -58,7 +59,7 @@ export async function preparePrWrite(
   })
   if (!validation.valid) {
     const details = validation.errors.map((e) => `- [${e.rule}] ${e.message}`).join('\n')
-    throw new PrToolError(`PR validation failed:\n${details}`)
+    throw new PrToolError('validation-failed', `PR validation failed:\n${details}`)
   }
   const linkedIssue = params.issue ?? extractClosingIssue(cleanBody.text, params.repository)
   const taxonomy: IssueTaxonomy =

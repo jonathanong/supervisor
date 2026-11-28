@@ -44,8 +44,28 @@ describe('PR GitHub error and malformed payload handling', () => {
       { env, runProcess: ghError.run },
     )
     expect(failed.isError).toBe(true)
+    expect(failed.structuredContent).toEqual({ code: 'gh-failed' })
     expect(textContent(failed)).toContain('[REDACTED]')
     expect(textContent(failed)).not.toContain(secret)
+
+    const longError = createFakeGh(() => ({
+      code: 1,
+      stdout: '',
+      stderr: `${'x'.repeat(190)} "password": "super secret value that is long"`,
+    }))
+    const truncated = await callMcpTool(
+      'pr_update',
+      {
+        repository: REPO,
+        pr: 1,
+        title: VALID_TITLE,
+        body: VALID_BODY,
+        provenance: VALID_PROVENANCE,
+      },
+      { env, runProcess: longError.run },
+    )
+    expect(textContent(truncated)).not.toContain('super secret')
+    expect(textContent(truncated)).not.toContain('"super')
 
     const readCases: Array<
       [string, () => { code: number; stdout: string; stderr: string }, string]
@@ -65,6 +85,7 @@ describe('PR GitHub error and malformed payload handling', () => {
         { env, runProcess: createFakeGh(handler).run },
       )
       expect(res.isError, label).toBe(true)
+      expect(res.structuredContent, label).toEqual({ code: 'gh-invalid-response' })
       expect(textContent(res), label).toContain(message)
     }
 
@@ -86,6 +107,7 @@ describe('PR GitHub error and malformed payload handling', () => {
         { env, runProcess: createFakeGh(() => okJson(payload)).run },
       )
       expect(res.isError, label).toBe(true)
+      expect(res.structuredContent, label).toEqual({ code: 'not-found' })
       expect(textContent(res), label).toContain('Issue example-org/example-repo#404 was not found.')
     }
 
@@ -98,9 +120,10 @@ describe('PR GitHub error and malformed payload handling', () => {
         body: VALID_BODY,
         provenance: VALID_PROVENANCE,
       },
-      { env, runProcess: createFakeGh(() => okJson('')).run },
+      { env, runProcess: createFakeGh(() => ({ code: 0, stdout: '\n', stderr: '' })).run },
     )
     expect(badBranch.isError).toBe(true)
+    expect(badBranch.structuredContent).toEqual({ code: 'gh-invalid-response' })
     expect(textContent(badBranch)).toContain('no default branch')
 
     for (const [label, commentStdout, expected] of [
@@ -124,6 +147,7 @@ describe('PR GitHub error and malformed payload handling', () => {
         { env, runProcess: gh.run },
       )
       expect(res.isError, label).toBe(true)
+      expect(res.structuredContent, label).toEqual({ code: 'gh-invalid-response' })
       expect(textContent(res), label).toContain(expected)
     }
 

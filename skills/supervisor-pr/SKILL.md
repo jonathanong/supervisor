@@ -34,9 +34,8 @@ configured extra fields in `provenance.fields`.
 
 `pr_create` and `pr_update` render one comment in this fixed, parseable shape:
 
-```markdown
+```text
 <!-- supervisor:provenance v1 -->
-
 - harness: claude-code
 - version: 2.1.0
 - models: claude-sonnet-4-6

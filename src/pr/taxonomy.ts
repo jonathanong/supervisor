@@ -54,7 +54,7 @@ export async function readIssueTaxonomy(
   const repoObj = data && isObject(data.repository) ? data.repository : undefined
   const issueObj = repoObj && isObject(repoObj.issue) ? repoObj.issue : undefined
   if (!issueObj) {
-    throw new PrToolError(`Issue ${repository}#${issue} was not found.`)
+    throw new PrToolError('not-found', `Issue ${repository}#${issue} was not found.`)
   }
   let milestone: { number: number; title: string } | null = null
   if (

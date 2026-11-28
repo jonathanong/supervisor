@@ -123,6 +123,52 @@ describe('MCP pr_update', () => {
       provenanceCommentId: 205,
       inherited: { issue: null, milestone: null, projects: [] },
     })
+    expect(
+      gh.calls.some((c) => c.args.includes('PATCH') && c.args.includes(`repos/${REPO}/pulls/15`)),
+    ).toBe(false)
+  })
+
+  it('sends only the supplied field when updating a title or body alone', async () => {
+    const respond = (args: string[]) => {
+      if (args.includes(`repos/${REPO}/pulls/16`) && !args.includes('PATCH')) {
+        return okJson({
+          number: 16,
+          url: `https://github.com/${REPO}/pull/16`,
+          nodeId: 'PR_16',
+          title: VALID_TITLE,
+          body: VALID_BODY,
+        })
+      }
+      if (args.includes(`repos/${REPO}/pulls/16`)) {
+        return okJson({ number: 16, url: `https://github.com/${REPO}/pull/16`, nodeId: 'PR_16' })
+      }
+      if (args.includes('--paginate')) return { code: 0, stdout: '', stderr: '' }
+      return okJson({ id: 1, url: 'u' })
+    }
+    const env = { SUPERVISOR_CONFIG: configPath }
+    const titleOnly = createFakeGh(respond)
+    await callMcpTool(
+      'pr_update',
+      { repository: REPO, pr: 16, title: 'Better title', provenance: VALID_PROVENANCE },
+      { env, runProcess: titleOnly.run },
+    )
+    const titlePatch = titleOnly.calls.find(
+      (c) => c.args.includes('PATCH') && c.args.includes(`repos/${REPO}/pulls/16`),
+    )
+    expect(getFieldArg(titlePatch!.args, 'title')).toBe('Better title')
+    expect(getFieldArg(titlePatch!.args, 'body')).toBeUndefined()
+
+    const bodyOnly = createFakeGh(respond)
+    await callMcpTool(
+      'pr_update',
+      { repository: REPO, pr: 16, body: `${VALID_BODY}\n\nMore.`, provenance: VALID_PROVENANCE },
+      { env, runProcess: bodyOnly.run },
+    )
+    const bodyPatch = bodyOnly.calls.find(
+      (c) => c.args.includes('PATCH') && c.args.includes(`repos/${REPO}/pulls/16`),
+    )
+    expect(getFieldArg(bodyPatch!.args, 'title')).toBeUndefined()
+    expect(getFieldArg(bodyPatch!.args, 'body')).toContain('More.')
   })
 
   it('rejects bad update arguments without calling gh', async () => {
@@ -145,6 +191,7 @@ describe('MCP pr_update', () => {
     for (const [args, message] of cases) {
       const res = await callMcpTool('pr_update', args, { env })
       expect(res.isError, message).toBe(true)
+      expect(res.structuredContent, message).toEqual({ code: 'invalid-argument' })
       expect(textContent(res)).toContain(message)
     }
   })

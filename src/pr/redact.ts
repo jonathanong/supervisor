@@ -47,12 +47,12 @@ const TOKEN_PATTERNS: readonly RedactionRule[] = [
   },
   {
     pattern:
-      /\b((?:[A-Za-z0-9_-]*[_-])?(?:token|secret|api[_-]?key|apikey|password|passwd|private[_-]?key|access[_-]?key|client[_-]?secret))(\s*=\s*)(['"]?)(?!\[REDACTED\])([^\s'"\r\n]{8,})\3/gi,
+      /\b((?:[A-Za-z0-9_-]*[_-])?(?:token|secret|api[_-]?key|apikey|password|passwd|private[_-]?key|access[_-]?key|client[_-]?secret))(\s*=\s*)(?:(['"])(?!\[REDACTED\])[^'"\r\n]{8,}\3|(?!\[REDACTED\])[^\s'"\r\n]{8,})/gi,
     replace: (_match, key, sep, quote) => `${key}${sep}${quote}${REDACTED}${quote}`,
   },
   {
     pattern:
-      /("(?:[A-Za-z0-9_-]*[_-])?(?:token|secret|api[_-]?key|apikey|password|passwd|private[_-]?key|access[_-]?key|client[_-]?secret)"\s*:\s*")(?!\[REDACTED\])([^"\s\r\n]{8,})(")/gi,
+      /("(?:[A-Za-z0-9_-]*[_-])?(?:token|secret|api[_-]?key|apikey|password|passwd|private[_-]?key|access[_-]?key|client[_-]?secret)"\s*:\s*")(?!\[REDACTED\])([^"\r\n]{8,})(")/gi,
     replace: (_match, prefix, _secret, suffix) => `${prefix}${REDACTED}${suffix}`,
   },
 ]

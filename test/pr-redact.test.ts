@@ -31,6 +31,16 @@ describe('credential redaction', () => {
         'https://[REDACTED]@example.com/repo.git',
       ],
       ['Env var secret', 'GH_TOKEN=super_secret_value_123', 'GH_TOKEN=[REDACTED]'],
+      [
+        'Multi-word quoted password',
+        'password="correct horse battery staple"',
+        'password="[REDACTED]"',
+      ],
+      [
+        'Multi-word JSON password',
+        '{"password": "correct horse battery"}',
+        '{"password": "[REDACTED]"}',
+      ],
       ['Quoted env secret', 'api_key="super_secret_value_123"', 'api_key="[REDACTED]"'],
       [
         'JSON secret',

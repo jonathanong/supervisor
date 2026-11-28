@@ -1,4 +1,5 @@
 import { CORE_PROVENANCE_FIELDS } from '../config/provenance.js'
+import { createCommentStripper } from './html-comments.js'
 import { validateProvenanceComment } from './provenance.js'
 import { containsCredential } from './redact.js'
 
@@ -40,7 +41,6 @@ const BARE_ISSUE_RE =
 const CLOSING_ISSUE_RE =
   /\b(?:close[sd]?|fix(?:e[sd])?|resolve[sd]?)\s+(?:([\w.-]+\/[\w.-]+))?#([1-9]\d{0,9})\b/gi
 const HEADING_RE = /^##\s+(.+?)\s*$/
-const HTML_COMMENT_RE = /<!--[\s\S]*?-->/g
 
 const REQUIRED_SECTIONS: ReadonlyArray<{ heading: string; rule: ValidatorRuleId }> = [
   { heading: 'problem', rule: 'section-problem' },
@@ -81,7 +81,9 @@ function parseSections(markdown: string): Map<string, string> {
   let current: string | undefined
   let fenceChar = ''
   let fenceLen = 0
-  for (const line of markdown.replace(/\r\n/g, '\n').split('\n')) {
+  const stripComments = createCommentStripper()
+  for (const raw of markdown.replace(/\r\n/g, '\n').split('\n')) {
+    const line = fenceChar === '' ? stripComments(raw) : raw
     const fence = /^\s{0,3}(`{3,}|~{3,})/.exec(line)
     if (fenceChar === '') {
       if (fence) {
@@ -111,7 +113,7 @@ function parseSections(markdown: string): Map<string, string> {
   }
   const result = new Map<string, string>()
   for (const [key, lines] of sections) {
-    result.set(key, lines.join('\n').replace(HTML_COMMENT_RE, '').trim())
+    result.set(key, lines.join('\n').trim())
   }
   return result
 }

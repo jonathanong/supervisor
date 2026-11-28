@@ -1,5 +1,6 @@
 import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js'
 import { resolveProvenanceFields } from '../config/provenance.js'
+import { PrToolError } from '../pr/gh-client.js'
 import { createPull, readDefaultBranch, readPull, updatePull } from '../pr/github.js'
 import { renderProvenanceComment } from '../pr/provenance.js'
 import { validatePr } from '../pr/validate.js'
@@ -24,8 +25,11 @@ function okResult(value: unknown): CallToolResult {
 }
 
 function errorResult(err: unknown): CallToolResult {
+  const structured =
+    err instanceof PrToolError ? { code: err.code, ...err.details } : { code: 'unexpected-error' }
   return {
     content: [{ type: 'text', text: (err as Error).message }],
+    structuredContent: structured,
     isError: true,
   }
 }
@@ -77,7 +81,15 @@ export async function handlePrCreate(
       base,
       draft: args.draft,
     })
-    return okResult(await finishPrWrite(args.repository, pull, prepared, true, deps.runProcess))
+    try {
+      return okResult(await finishPrWrite(args.repository, pull, prepared, true, deps.runProcess))
+    } catch (err) {
+      throw new PrToolError(
+        'pr-partially-written',
+        `PR #${pull.number} was opened at ${pull.url}, but a later step failed: ${(err as Error).message} Do not call pr_create again; finish with pr_update.`,
+        { cause: err, details: { repository: args.repository, pr: pull.number, url: pull.url } },
+      )
+    }
   } catch (err) {
     return errorResult(err)
   }
@@ -105,10 +117,13 @@ export async function handlePrUpdate(
       },
       deps.runProcess,
     )
-    const pull = await updatePull(deps.runProcess, args.repository, args.pr, {
-      title: prepared.title,
-      body: prepared.body,
-    })
+    const pull =
+      existing !== undefined && args.title === undefined && args.body === undefined
+        ? existing
+        : await updatePull(deps.runProcess, args.repository, args.pr, {
+            ...(args.title !== undefined ? { title: prepared.title } : {}),
+            ...(args.body !== undefined ? { body: prepared.body } : {}),
+          })
     return okResult(await finishPrWrite(args.repository, pull, prepared, false, deps.runProcess))
   } catch (err) {
     return errorResult(err)
