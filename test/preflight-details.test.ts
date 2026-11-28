@@ -18,7 +18,9 @@ describe('supervisor preflight details', () => {
       npx: done(usage, 2),
     }
     const result = await loop.cli(['preflight'], fake(replies).run)
-    expect(result.stdout).toContain('FAIL supervisor: exited 127: supervisor: command not found\n')
+    expect(result.stdout).toContain(
+      `FAIL supervisor: exited 127: supervisor: command not found; need ${MIN_CLI_VERSION} or newer, run: ${INSTALL_COMMAND}\n`,
+    )
     expect(result.stdout).toContain('FAIL gh: exited 1: bad credentials\n')
     expect(result.stdout).toContain('FAIL pr-shepherd: exited 1: \n')
     expect(result.stdout).toContain(

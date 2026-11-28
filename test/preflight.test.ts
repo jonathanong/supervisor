@@ -108,7 +108,9 @@ describe('supervisor preflight', () => {
       fake({ ...GOOD, supervisor: new Error('spawn supervisor ENOENT') }).run,
     )
     expect(missing.code).toBe(1)
-    expect(missing.stdout).toContain('FAIL supervisor: spawn supervisor ENOENT\n')
+    expect(missing.stdout).toContain(
+      `FAIL supervisor: spawn supervisor ENOENT; need ${MIN_CLI_VERSION} or newer, run: ${INSTALL_COMMAND}\n`,
+    )
   })
 
   it('fails on a gh that is not signed in, or has no scopes line, or cannot be run', async () => {

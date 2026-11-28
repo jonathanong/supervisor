@@ -49,7 +49,10 @@ async function probe(
 export async function checkSupervisor(run: RunProcess): Promise<Check> {
   const result = await probe(run, 'supervisor', 'supervisor', ['--version'])
   if (!result.ok) {
-    return result
+    return {
+      ...result,
+      detail: `${result.detail}; need ${MIN_CLI_VERSION} or newer, run: ${INSTALL_COMMAND}`,
+    }
   }
   const installed = parseVersion(result.detail)
   if (installed === undefined) {
