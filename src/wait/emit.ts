@@ -17,6 +17,17 @@ export interface WaitResult {
   advance: boolean
   /** A dependency update check has been pending for the configured delay. */
   due: boolean
+  /** Consecutive relay error counts per owner that have not yet cleared. */
+  relayErrors: ReadonlyMap<string, number>
+}
+
+function relayErrorRecord(failures: ReadonlyMap<string, number>): JsonObject | undefined {
+  if (failures.size === 0) {
+    return undefined
+  }
+  return Object.fromEntries(
+    [...failures.keys()].sort().map((owner) => [owner, failures.get(owner)!]),
+  )
 }
 
 /**
@@ -59,8 +70,10 @@ export async function emit(ctx: WaitContext, result: WaitResult): Promise<void> 
       pending: [...new Set(repos)].sort(),
     }
   })
+  const relayErrors = relayErrorRecord(result.relayErrors)
+  const payload = relayErrors ? { ...data, relayErrors } : data
   const temporary = join(ctx.dir, `.hh-last.${randomUUID()}.json`)
-  await writeFile(temporary, dumps(data), { mode: 0o600 })
+  await writeFile(temporary, dumps(payload), { mode: 0o600 })
   await rename(temporary, lastWaitPath(ctx.dir))
 
   const summary: JsonObject = {}
@@ -78,6 +91,9 @@ export async function emit(ctx: WaitContext, result: WaitResult): Promise<void> 
   }
   if (result.due) {
     summary.updateCheckDue = true
+  }
+  if (relayErrors) {
+    summary.relayErrors = relayErrors
   }
   if (result.advance) {
     summary.advanced = true

@@ -111,8 +111,9 @@ function mapHarnessError(error: unknown, configuration: boolean): WaitError {
  * Poll the hook-harness relay in-process over every owner from the stored cursor until a batch
  * returns events or a gap, or the timeout signal aborts. Main-branch failures come from
  * `workflow_run` only; pull-request checks are left to pr-shepherd. `failures` counts consecutive
- * `{error}` batches per owner; the caller passes one map across rounds so a sustained outage still
- * ends the wait, and an owner's count resets only when a page for that owner succeeds.
+ * `{error}` batches per owner; the caller seeds it from the previous `hh-last.json` and passes it
+ * across rounds so a sustained outage still ends the wait across relaunches, and an owner's count
+ * resets only when a page for that owner succeeds.
  */
 export async function hookHarnessWait(
   ctx: WaitContext,

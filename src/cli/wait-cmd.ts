@@ -41,7 +41,9 @@ The wait does not start while hh-last.json holds an event whose id is not seen, 
 returned and not yet advanced: it prints one line naming the "advance-hh" command and exits
 ${UNADVANCED_EXIT}. Handle the events, run advance-hh, then relaunch. This check is skipped when the
 wait advances itself (--advance or eventWait.advance). Auth, configuration, cursor, and sustained
-relay errors print one line and exit 1.
+relay errors print one line and exit 1. Per-owner consecutive relay errors that have not yet reached
+the limit are reported as relayErrors in the summary line and hh-last.json, carried across
+relaunched waits, and cleared as soon as a page for that owner succeeds.
 
 While the stop switch is set (see: supervisor stop --help) the wait does not start: it prints one
 line and exits ${STOPPED_EXIT}. A wait in progress ends the same way when the switch appears between two

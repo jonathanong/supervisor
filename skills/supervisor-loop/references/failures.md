@@ -129,3 +129,24 @@ no commit broke `main`. Both the wait and the sweep surface these runs and route
   reason, and the run ids, and dispatch nothing.
 - **Recording.** Record every handled run id in `handledFailures`, as for other failures (in a
   `report` repository, or when dispatch was held back by `sweepCap.dispatches`, none).
+
+## Relay outage
+
+`supervisor wait` counts consecutive relay poll errors per owner across rounds and across relaunched
+waits. Surviving counts are written as `relayErrors: {<owner>: <count>}` in both the exit-0 summary
+line and `<stateDir>/hh-last.json`, carried into the next wait, and cleared as soon as a poll page
+for that owner succeeds. At 5 consecutive errors for any owner, the wait prints one error line
+naming that owner and exits 1.
+
+- **Climbing `relayErrors` on exit 0:** handle the returned events, advance the cursor, and relaunch
+  the wait as usual. A single transient error (`1`) that clears on the next wait needs no report
+  (quiet by default). When an owner's count climbs across waits, note the failing owner in the
+  summary and do not assume its scopes are quiet just because no events arrived for them.
+- **Exit 1 on a sustained relay error:** report the error and the failing owner, and fall back to
+  sweeps (and self-paced wake-ups per Step 2) until the relay recovers. A relaunched wait fails fast
+  if the owner is still failing on the carried count in `hh-last.json`, and clears `relayErrors` on
+  its next exit-0 return once a poll for that owner succeeds. After recovery, run the backstop
+  (supervisor-sweep
+  [Phase G](../../supervisor-sweep/SKILL.md#phase-g---queue-ejections-and-default-branch-failures)
+  and [Phase G2](../../supervisor-sweep/SKILL.md#phase-g2---command-comments)) for the affected
+  owner's scopes if events may have been missed while it was down.
