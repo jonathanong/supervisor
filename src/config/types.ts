@@ -43,7 +43,12 @@ export interface SupervisorConfig {
     models: string[]
     requiredAlwaysHuman?: Array<{ name: string; samples: string[] }>
   }
-  finalReview: { request: Array<'session' | 'label'>; label?: string; status?: string }
+  finalReview: {
+    request: Array<'session' | 'label'>
+    label?: string
+    reviewer?: string
+    status?: string
+  }
   harness: string
   trustedLogins?: string[]
   stateDir?: string

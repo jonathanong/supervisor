@@ -15,18 +15,21 @@ const POLICY_HELP = `Usage:
                           [--repo-dir <checkout>]
   supervisor policy classify-prepare <owner>/<repo> <pr> --dir <dir> --out <out dir>
                           [--supervisor-policy] [--repo-dir <checkout>]
-  supervisor policy classify-collect --out <out dir>
+  supervisor policy classify-collect --out <out dir> [--reviewer <account>]
 
 classify-prepare reads the pull request's head and diff with \`gh api\`, finds the repo/<name>
 classifiers the policies in <dir> name, and writes for each one input file <out dir>/<name>.md
 (its question and the diff, nothing else about the pull request) and the path its answer goes to.
-It prints <out dir>/manifest.json. A classifier whose definition cannot be loaded is listed with
-its error and gets no input file. A diff too large for GitHub to return whole fails the command.
+It prints <out dir>/manifest.json, and sets codeReview: true when any policy names
+claude/code_review. A classifier whose definition cannot be loaded is listed with its error and gets
+no input file. A diff too large for GitHub to return whole fails the command.
 An agent answers each input file with one JSON object, {"<output>": <value>, ...}, written to
 the answer path. classify-collect checks each answer against the outputs the definition allows,
-writes the valid ones to <out dir>/classifiers.json for check --classifiers, and prints its path.
-An answer that is missing or not allowed is left out, with the reason on stderr. It exits 1,
-writing nothing, when the pull request has a new head since classify-prepare.
+maps the newest final review of the head by --reviewer (or finalReview.reviewer in config) to
+claude/code_review when codeReview is set, writes the valid results to <out dir>/classifiers.json
+for check --classifiers, and prints its path. An answer or final review that is missing, untrusted
+or not allowed is left out, with the reason on stderr. It exits 1, writing nothing, when the pull
+request has a new head since classify-prepare.
 
 check <owner>/<repo> <pr> reads the pull request from GitHub with \`gh api\`: its current head,
 changed files, authors, labels and approvals of that head. It evaluates the policies in <dir>,

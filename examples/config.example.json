@@ -39,6 +39,7 @@
   "finalReview": {
     "request": ["session", "label"],
     "label": "ready-for-review",
+    "reviewer": "bot:example-reviewer",
     "status": "review-status"
   },
   "harness": "claude-code",

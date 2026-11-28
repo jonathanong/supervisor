@@ -4,7 +4,7 @@ import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { validateConfigData } from '../src/cli/config-validate.js'
-import { requiredAlwaysHumanFromConfig } from '../src/cli/policy-required.js'
+import { requiredAlwaysHumanFromConfig, reviewerFromConfig } from '../src/cli/policy-required.js'
 import { runCli, type CliIo } from '../src/cli/run.js'
 import { repoFixture } from './helpers/repo-fixture.js'
 
@@ -96,6 +96,13 @@ describe('requiredAlwaysHumanFromConfig', () => {
     const missing = join(await tempDir(), 'missing.json')
     const load = requiredAlwaysHumanFromConfig({ SUPERVISOR_CONFIG: missing }, await tempDir())
     await expect(load).rejects.toThrow(missing)
+  })
+
+  it('reads finalReview.reviewer from config, or undefined when absent', async () => {
+    expect(await reviewerFromConfig({}, await tempDir())).toBeUndefined()
+    expect(
+      await reviewerFromConfig({ SUPERVISOR_CONFIG: exampleConfigPath }, await tempDir()),
+    ).toBe('bot:example-reviewer')
   })
 })
 

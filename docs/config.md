@@ -36,6 +36,6 @@ A scope is one GitHub owner and the repositories the supervisor covers there.
 
 ## Requesting the final review
 
-`finalReview` says how to ask the final reviewer for a review of a head: a message to its session, a label on the PR, or both. `label` names that label. The supervisor requests a review of each head once; for a head that follows an earlier request it removes the label and adds it again.
+`finalReview` says how to ask the final reviewer for a review of a head: a message to its session, a label on the PR, or both. `label` names that label. Optional `reviewer` names the reviewer's GitHub account (`bot:<app slug>` or `<login>`) whose final review `classify-collect` maps to `claude/code_review`. The supervisor requests a review of each head once; for a head that follows an earlier request it removes the label and adds it again.
 
 Whether a review is required is a rule in the merge policy, not a setting here.

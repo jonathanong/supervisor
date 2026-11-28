@@ -13,13 +13,15 @@ export interface FakeGh {
   diff?: string
   /** The exit code of the diff call. */
   diffCode?: number
+  /** Reviews returned by `/reviews?per_page=100`, as JSON objects printed one per line. */
+  reviews?: unknown[]
 }
 
 export const DIFF = 'diff --git a/src/a.ts b/src/a.ts\n-await sleep(50)\n+await queue.idle()\n'
 
 /**
  * A fake `gh api`. The pull request has a title, a body and an author that it would hand over
- * if asked for them; each call here answers only the head or the diff.
+ * if asked for them; each call here answers only the head, the diff, or the reviews.
  */
 export function classifyGh(options: FakeGh = {}): { run: RunProcess; calls: string[][] } {
   const calls: string[][] = []
@@ -30,6 +32,10 @@ export function classifyGh(options: FakeGh = {}): { run: RunProcess; calls: stri
     if (args.includes('Accept: application/vnd.github.diff')) {
       const code = options.diffCode ?? 0
       return code === 0 ? done(options.diff ?? DIFF) : done('', code, 'gh: diff too large')
+    }
+    if (args.some((arg) => arg.includes('/reviews?'))) {
+      const lines = (options.reviews ?? []).map((entry) => `${JSON.stringify(entry)}\n`).join('')
+      return done(lines)
     }
     const head = heads.length > 1 ? heads.shift() : heads[0]
     return done(`${JSON.stringify({ head })}\n`)

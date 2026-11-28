@@ -1,6 +1,6 @@
 import { join } from 'node:path'
 import { extractClassifierCalls } from './condition-validate.js'
-import type { PolicyFile } from './types.js'
+import type { ClassifierCall, PolicyFile, PolicyRule } from './types.js'
 
 /** A `repo/<name>` classifier a policy names, and where its definition is, or why it has none. */
 export interface FoundClassifier {
@@ -10,6 +10,23 @@ export interface FoundClassifier {
   classifiers: string
   /** Set when the call asks for something this runner does not support. */
   error?: string
+}
+
+function ruleClassifierCalls(rule: PolicyRule): ClassifierCall[] {
+  return [
+    ...extractClassifierCalls(rule.if),
+    ...rule.override.flatMap((override) => extractClassifierCalls(override.if)),
+    ...rule.advisory,
+  ]
+}
+
+/** Whether any rule in `policies` names `claude/code_review`. */
+export function usesCodeReview(policies: PolicyFile[]): boolean {
+  return policies.some((policy) =>
+    policy.rules.some((rule) =>
+      ruleClassifierCalls(rule).some((call) => call.name === 'claude/code_review'),
+    ),
+  )
 }
 
 /**
@@ -25,11 +42,7 @@ export function findClassifiers(
 ): FoundClassifier[] {
   const found = new Map<string, FoundClassifier>()
   for (const policy of policies) {
-    const calls = policy.rules.flatMap((rule) => [
-      ...extractClassifierCalls(rule.if),
-      ...rule.override.flatMap((override) => extractClassifierCalls(override.if)),
-      ...rule.advisory,
-    ])
+    const calls = policy.rules.flatMap(ruleClassifierCalls)
     for (const call of calls.filter((c) => c.name.startsWith('repo/'))) {
       const name = call.name.slice('repo/'.length)
       const unsupported =
