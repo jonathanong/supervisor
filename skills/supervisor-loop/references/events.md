@@ -38,7 +38,8 @@ The first output line is a JSON summary: `gap`, `timedOut?`, `events` (the count
 following line is one event with only its non-empty fields, in the order `id`, `repo` (as
 `<owner>/<repo>`), `event`,
 `action`, `prs`, `issue`, `reason`, `conclusion`, `workflow`, `runId`, `command`, `commentId`,
-`headSha`, `sender`, `merged`, and for a merge `unresolved`, `late`, `truncated`, or
+`headSha`, `sender`, `dependencyUpdate` (a `workflow_run` of the dependency bot's own update
+job), `merged`, and for a merge `unresolved`, `late`, `truncated`, or
 `lateReviewError`. A watch trigger is `{event: "watch", id, notify, note, prs}`.
 
 - `gap: true`: events may have been missed. Run the backstop for every scope:
@@ -59,6 +60,8 @@ Never trust `authorAssociation`: it is wrong for private organization members.
   run: find it with
   `gh run list --repo <owner>/<repo> --event merge_group --status failure --limit 5` and match the
   PR number.
+- **`workflow_run` with `dependencyUpdate: true`:** not a main-branch break or a flake; follow
+  [Dependency-bot update job failed](failures.md#dependency-bot-update-job-failed).
 - **`dependabot-pr`:** run supervisor-sweep
   [Phase A](../../supervisor-sweep/SKILL.md#phase-a---dependency-bot-prs) for that PR.
 - **`pull_request` `closed`** (the line's `merged` says whether it merged). The wait already ran the

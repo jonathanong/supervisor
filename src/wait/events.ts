@@ -35,7 +35,7 @@ function pullOf(event: JsonObject): JsonObject | undefined {
  * One stable line for an event: the fields the loop uses, in a fixed order, without empty values.
  * Event payloads are untrusted data; nothing here interprets their text.
  */
-export function compact(event: JsonObject): JsonObject {
+export function compact(event: JsonObject, author?: string): JsonObject {
   const line: JsonObject = {}
   for (const key of FIELDS) {
     const value = get(event, key)
@@ -46,6 +46,9 @@ export function compact(event: JsonObject): JsonObject {
   const sender = get(event, 'sender')
   if (sender) {
     line.sender = isObject(sender) ? (get(sender, 'login') ?? null) : null
+  }
+  if (author !== undefined && isDependencyUpdateRun(event, author)) {
+    line.dependencyUpdate = true
   }
   const pull = pullOf(event)
   if (event.event === 'pull_request' && pull !== undefined) {
@@ -79,6 +82,28 @@ function login(name: Json | undefined): string {
     .replace(/^app\//, '')
     .replace(/\[bot\]$/, '')
     .toLowerCase()
+}
+
+function runOf(event: JsonObject): JsonObject | undefined {
+  const payload = get(event, 'payload')
+  const run = isObject(payload) ? get(payload, 'workflow_run') : undefined
+  return isObject(run) ? run : undefined
+}
+
+/**
+ * True for a `workflow_run` of the dependency bot's own update job: the run's triggering event is
+ * `dynamic` (GitHub's name for Dependabot-managed runs), or its actor is the configured bot.
+ */
+export function isDependencyUpdateRun(event: JsonObject, author: string): boolean {
+  const run = runOf(event)
+  if (event.event !== 'workflow_run' || run === undefined) {
+    return false
+  }
+  const actor = get(run, 'actor')
+  return (
+    run.event === 'dynamic' ||
+    login(isObject(actor) ? get(actor, 'login') : undefined) === login(author)
+  )
 }
 
 /** True when the pull request's author is the configured dependency bot. */
