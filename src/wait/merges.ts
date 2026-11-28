@@ -91,7 +91,7 @@ export async function sweep(events: Json[], ctx: WaitContext): Promise<Sweep> {
       continue
     }
     if (!isMerge(event)) {
-      lines.push(compact(event, author))
+      lines.push(compact(event))
       raw.push(event)
       continue
     }
