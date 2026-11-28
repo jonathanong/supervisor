@@ -2,7 +2,7 @@ import { mkdir, readFile, stat, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
 import { cleanupLoops, makeLoop, NOW } from './helpers/loop.js'
-import { makeWorld, mergeEvent, ORG_ONLY } from './helpers/wait.js'
+import { decodeCursor, envelope, makeWorld, mergeEvent, ORG_ONLY } from './helpers/wait.js'
 
 const WAIT = ['wait']
 const STATUS = ['stop', '--status']
@@ -152,42 +152,39 @@ describe('the stop switch in state and wait', () => {
 
   it('ends a wait in progress when the stop appears between two rounds', async () => {
     const loop = await makeLoop(ORG_ONLY)
-    const quiet = { events: [mergeEvent('m1', 'example-repo', 5)], cursor: 'c1' }
-    let stopping: Promise<unknown> | undefined
+    const quiet = { events: [mergeEvent('m1', 'example-repo', 5)], cursor: '1767323045001#1' }
     const world = makeWorld({
-      results: [quiet, quiet],
-      onWait: () => {
-        stopping = loop.cli(['stop', '--reason', 'mid-wait'])
+      replies: [quiet, quiet],
+      onPoll: async () => {
+        await loop.cli(['stop', '--reason', 'mid-wait'])
       },
     })
-    const result = await loop.cli(WAIT, async (...call) => {
-      const done = await world.run(...call)
-      await stopping
-      return done
-    })
+    const result = await loop.cli(WAIT, world.run, undefined, world.io)
     expect(result).toMatchObject({ code: 3, stdout: '' })
     expect(result.stderr).toContain('(mid-wait)')
-    expect(world.waits()).toHaveLength(1)
+    expect(world.requests).toHaveLength(1)
     const state = await loop.state()
     expect(state.quietMerges).toEqual(['example-org/example-repo#5'])
-    expect(state.hookHarness.cursor).toBe('c1')
+    expect(decodeCursor(state.hookHarness.cursor).sk).toBe('1767323045001#1')
   })
 
   it('still returns the events of a round that was running when the stop appeared', async () => {
     const loop = await makeLoop(ORG_ONLY)
-    const failed = { id: 'e1', repo: 'example-repo', event: 'workflow_run', action: 'completed' }
-    let stopping: Promise<unknown> | undefined
+    const failed = envelope({
+      id: 'e1',
+      repo: 'example-repo',
+      event: 'workflow_run',
+      action: 'completed',
+      conclusion: 'failure',
+      headRef: 'main',
+    })
     const world = makeWorld({
-      results: [{ events: [failed], cursor: 'c1' }],
-      onWait: () => {
-        stopping = loop.cli(['stop'])
+      replies: [{ events: [failed], cursor: '1767323045001#1' }],
+      onPoll: async () => {
+        await loop.cli(['stop'])
       },
     })
-    const result = await loop.cli(WAIT, async (...call) => {
-      const done = await world.run(...call)
-      await stopping
-      return done
-    })
+    const result = await loop.cli(WAIT, world.run, undefined, world.io)
     expect(result.code).toBe(0)
     expect(result.stdout).toContain('"id":"e1"')
     expect((await loop.cli(STATUS)).code).toBe(3)

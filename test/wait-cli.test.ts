@@ -2,8 +2,9 @@ import { realpath } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { afterEach, describe, expect, it } from 'vitest'
 import { runProcess } from '../src/state/process.js'
+import { compact } from '../src/wait/events.js'
 import { cleanupLoops, makeLoop } from './helpers/loop.js'
-import { lines, makeWorld, ORG_ONLY } from './helpers/wait.js'
+import { envelope, lines, makeWorld, ORG_ONLY } from './helpers/wait.js'
 
 const WAIT = ['wait']
 
@@ -60,7 +61,9 @@ describe('supervisor wait: command line and events', () => {
       ],
     })
     const world = makeWorld()
-    expect(lines((await loop.cli([...WAIT, '--advance'], world.run)).stdout)).toEqual([
+    expect(
+      lines((await loop.cli([...WAIT, '--advance'], world.run, undefined, world.io)).stdout),
+    ).toEqual([
       {
         gap: false,
         events: 0,
@@ -74,6 +77,7 @@ describe('supervisor wait: command line and events', () => {
       },
     ])
     expect(world.calls).toEqual([])
+    expect(world.requests).toEqual([])
   })
 
   it('does not shorten the wait for a check that is due after the timeout or has no time', async () => {
@@ -82,59 +86,89 @@ describe('supervisor wait: command line and events', () => {
     await loop.seed({
       pendingUpdateChecks: [{ repo: 'example-org/other-repo', at: '2026-01-02T03:04:05Z' }],
     })
-    const later = makeWorld({ results: [{ events: [], timedOut: true }] })
-    const [summary] = lines((await loop.cli(WAIT, later.run)).stdout)
+    const later = makeWorld({ replies: [{ events: [], timedOut: true }] })
+    const [summary] = lines((await loop.cli(WAIT, later.run, undefined, later.io)).stdout)
     expect(summary).toEqual({
+      gap: false,
       timedOut: true,
       events: 0,
       pendingUpdateChecks: ['example-org/other-repo'],
     })
-    expect(later.waits()[0]!.at(-1)).toBe('1m')
+    expect(later.timeouts).toEqual([60_000])
 
     await loop.seed({ pendingUpdateChecks: [{ repo: 'example-org/other-repo' }] })
-    const undated = makeWorld({ results: [{ events: [] }] })
-    await loop.cli(WAIT, undated.run)
-    expect(undated.waits()[0]!.at(-1)).toBe('1m')
+    const undated = makeWorld({ replies: [{ events: [], timedOut: true }] })
+    await loop.cli(WAIT, undated.run, undefined, undated.io)
+    expect(undated.timeouts).toEqual([60_000])
   })
 
   it('prints only the fields the loop uses, and never an empty one', async () => {
     const loop = await makeLoop(ORG_ONLY)
     const events = [
-      {
+      envelope({
         id: 'a',
+        repo: null,
         event: 'issue_comment',
+        action: 'created',
         command: '/fix',
         commentId: 9,
         issue: 3,
-        sender: 'text',
+        headRef: null,
+        conclusion: null,
+        workflow: null,
+        runId: null,
+        sender: { login: 'example-user', type: 'User' },
         headSha: 'abc',
         extra: 'x',
-      },
-      {
+      }),
+      envelope({
         id: 'b',
+        repo: null,
         event: 'pull_request',
         action: 'closed',
+        headRef: null,
+        conclusion: null,
+        workflow: null,
+        runId: null,
         sender: {},
         payload: { pull_request: { merged: false } },
-      },
-      { id: 'c', event: 'pull_request', action: 'opened', reason: 'dequeued', payload: 'text' },
-      { id: 'd', event: 'push', payload: { pull_request: { merged: true } } },
+      }),
+      envelope({
+        id: 'c',
+        repo: null,
+        event: 'pull_request',
+        action: 'dequeued',
+        reason: 'CI_FAILURE',
+        headRef: null,
+        conclusion: null,
+        workflow: null,
+        runId: null,
+        sender: null,
+        payload: 'text',
+      }),
     ]
-    const world = makeWorld({ results: [{ events }] })
-    expect(lines((await loop.cli(WAIT, world.run)).stdout).slice(1)).toEqual([
+    const world = makeWorld({ replies: [{ events }] })
+    expect(lines((await loop.cli(WAIT, world.run, undefined, world.io)).stdout).slice(1)).toEqual([
       {
         id: 'a',
         event: 'issue_comment',
+        action: 'created',
         issue: 3,
         command: '/fix',
         commentId: 9,
         headSha: 'abc',
-        sender: null,
+        sender: 'example-user',
       },
       { id: 'b', event: 'pull_request', action: 'closed', sender: null, merged: false },
-      { id: 'c', event: 'pull_request', action: 'opened', reason: 'dequeued' },
-      { id: 'd', event: 'push' },
+      { id: 'c', event: 'pull_request', action: 'dequeued', reason: 'CI_FAILURE' },
     ])
+    expect(
+      compact({ id: 'd', event: 'push', sender: 'text', payload: { pull_request: {} } }),
+    ).toEqual({
+      id: 'd',
+      event: 'push',
+      sender: null,
+    })
   })
 
   it('runs a process in a directory and can leave its stderr uncaptured', async () => {

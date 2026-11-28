@@ -2,7 +2,7 @@ import { writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
 import { INSTALL_COMMAND, MIN_CLI_VERSION } from '../src/cli/version.js'
-import { cleanupLoops, done, makeLoop, NOW } from './helpers/loop.js'
+import { cleanupLoops, done, makeLoop, NOW, TEST_RELAY_URL } from './helpers/loop.js'
 import { fake, GOOD } from './helpers/preflight.js'
 
 describe('supervisor preflight', () => {
@@ -35,15 +35,10 @@ describe('supervisor preflight', () => {
       `ok   config: ${loop.env.SUPERVISOR_CONFIG}`,
       'ok   gh: scopes: repo, read:org',
       'ok   pr-shepherd: pr-shepherd 1.2.3',
-      'ok   hook-harness: 0.4.1',
+      `ok   hook-harness: ${TEST_RELAY_URL}`,
       'ok   stop: not stopped',
     ])
-    expect(seen).toEqual([
-      'supervisor --version',
-      'gh auth status',
-      'pr-shepherd --version',
-      'npx -y hook-harness@0.4.1 --version',
-    ])
+    expect(seen).toEqual(['supervisor --version', 'gh auth status', 'pr-shepherd --version'])
   })
 
   it('prints one JSON object with --json', async () => {
@@ -62,8 +57,10 @@ describe('supervisor preflight', () => {
     ])
   })
 
-  it('reports ok without running hook-harness when eventWait is not configured', async () => {
+  it('reports ok without checking hook-harness credentials when eventWait is not configured', async () => {
     const loop = await makeLoop({ eventWait: undefined })
+    delete loop.env.HOOK_HARNESS_URL
+    delete loop.env.HOOK_HARNESS_TOKEN
     const { run, seen } = fake(GOOD)
     const result = await loop.cli(['preflight'], run)
     expect(result.code).toBe(0)
@@ -133,17 +130,16 @@ describe('supervisor preflight', () => {
 
   it('fails on a tool whose version cannot be read', async () => {
     const loop = await makeLoop()
-    const replies = { ...GOOD, 'pr-shepherd': done('', 127, 'not found'), npx: done('', 1, 'E404') }
+    const replies = { ...GOOD, 'pr-shepherd': done('', 127, 'not found') }
     const result = await loop.cli(['preflight'], fake(replies).run)
     expect(result.code).toBe(1)
     expect(result.stdout).toContain('FAIL pr-shepherd: exited 127: not found\n')
-    expect(result.stdout).toContain('FAIL hook-harness: exited 1: E404\n')
     const spawnFails = { ...GOOD, 'pr-shepherd': new Error('spawn pr-shepherd ENOENT') }
     const gone = await loop.cli(['preflight'], fake(spawnFails).run)
     expect(gone.stdout).toContain('FAIL pr-shepherd: spawn pr-shepherd ENOENT\n')
-    const stderrOnly = { ...GOOD, npx: done('', 0, '0.4.1') }
+    const stderrOnly = { ...GOOD, 'pr-shepherd': done('', 0, 'pr-shepherd 1.2.3') }
     const old = await loop.cli(['preflight'], fake(stderrOnly).run)
-    expect(old.stdout).toContain('ok   hook-harness: 0.4.1\n')
+    expect(old.stdout).toContain('ok   pr-shepherd: pr-shepherd 1.2.3\n')
   })
 
   it('fails when the stop switch is set, saying since when and why', async () => {

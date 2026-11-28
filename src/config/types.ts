@@ -25,6 +25,7 @@ export interface ScheduledPrompts {
 }
 
 export interface EventWait {
+  /** @deprecated Ignored; supervisor reads relay events with its bundled hook-harness client. */
   hookHarness?: string
   timeout?: string
   advance?: boolean
@@ -76,5 +77,5 @@ export interface LoopConfig extends SupervisorConfig {
   layerCap: number
   scheduledPrompts?: ScheduledPrompts & { quota: number; history: number }
   staleRuns: false | Required<StaleRuns>
-  eventWait: Required<EventWait>
+  eventWait: Required<Omit<EventWait, 'hookHarness'>>
 }

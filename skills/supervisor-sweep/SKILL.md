@@ -87,8 +87,8 @@ Run `supervisor preflight --json` first. It reports the checks `supervisor`, `co
 ok and 1 otherwise. The `supervisor` check verifies that `supervisor --version` is 0.4.0 or newer;
 if it fails (or if an older CLI does not report it and `supervisor --version` is older than 0.4.0),
 stop and upgrade the CLI with `pnpm add -g @jongleberry/supervisor` before running any phase. It
-checks `hook-harness` only when `eventWait` is configured, as
-`npx -y hook-harness@<eventWait.hookHarness> --version`, which needs hook-harness 0.4.1 or newer;
+checks `hook-harness` only when `eventWait` is configured, verifying the saved or environment
+hook-harness relay URL (`https:`, or `http:` only for loopback) and token without spawning `npx`;
 hook-harness does not need to be on `PATH`. It does not check dispatch targets or the journal
 server. A failed check there covers `supervisor`, `gh`, `pr-shepherd`, and the event-wait tool.
 Then verify the rest:

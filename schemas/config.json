@@ -329,7 +329,8 @@
         "hookHarness": {
           "type": "string",
           "minLength": 1,
-          "default": "0.4.1"
+          "deprecated": true,
+          "description": "Ignored; supervisor reads relay events with its bundled hook-harness client."
         },
         "timeout": {
           "type": "string",

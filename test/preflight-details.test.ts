@@ -1,4 +1,5 @@
-import { writeFile } from 'node:fs/promises'
+import { mkdir, writeFile } from 'node:fs/promises'
+import { join } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
 import { INSTALL_COMMAND, MIN_CLI_VERSION } from '../src/cli/version.js'
 import type { RunProcess } from '../src/state/process.js'
@@ -10,12 +11,10 @@ describe('supervisor preflight details', () => {
 
   it('keeps every detail to one line, the first non-empty one of the output', async () => {
     const loop = await makeLoop()
-    const usage = '\n  error: unknown command "--version"\nUsage: hook-harness <command>\n  wait\n'
     const replies = {
       supervisor: done('', 127, 'supervisor: command not found\n'),
       gh: done('', 1, `\n\nbad credentials\nrun gh auth login\n`),
       'pr-shepherd': done('', 1),
-      npx: done(usage, 2),
     }
     const result = await loop.cli(['preflight'], fake(replies).run)
     expect(result.stdout).toContain(
@@ -23,14 +22,11 @@ describe('supervisor preflight details', () => {
     )
     expect(result.stdout).toContain('FAIL gh: exited 1: bad credentials\n')
     expect(result.stdout).toContain('FAIL pr-shepherd: exited 1: \n')
-    expect(result.stdout).toContain(
-      'FAIL hook-harness: exited 2: error: unknown command "--version"\n',
-    )
-    const thrown = { ...GOOD, npx: new Error('first\nsecond') }
+    const thrown = { ...GOOD, 'pr-shepherd': new Error('first\nsecond') }
     expect((await loop.cli(['preflight'], fake(thrown).run)).stdout).toContain(
-      'FAIL hook-harness: first\n',
+      'FAIL pr-shepherd: first\n',
     )
-    const long = { ...GOOD, npx: done('x'.repeat(500), 1) }
+    const long = { ...GOOD, 'pr-shepherd': done('x'.repeat(500), 1) }
     const capped = await loop.cli(['preflight'], fake(long).run)
     expect(capped.stdout).toContain(`exited 1: ${'x'.repeat(200)}\n`)
     const longVersion = { ...GOOD, supervisor: done('x'.repeat(500)) }
@@ -61,5 +57,35 @@ describe('supervisor preflight details', () => {
     expect(result.code).toBe(1)
     expect(result.stdout).toMatch(/\nFAIL hook-harness: [^\n]+\n/)
     expect(result.stdout).toContain('ok   config: ')
+  })
+
+  it('checks hook-harness credentials from client.json and validates the relay URL scheme', async () => {
+    const loop = await makeLoop()
+    delete loop.env.HOOK_HARNESS_URL
+    delete loop.env.HOOK_HARNESS_TOKEN
+    const missing = await loop.cli(['preflight'], fake(GOOD).run)
+    expect(missing.code).toBe(1)
+    expect(missing.stdout).toContain('FAIL hook-harness: not logged in;')
+
+    await mkdir(loop.env.HOOK_HARNESS_CONFIG_DIR!, { recursive: true })
+    await writeFile(
+      join(loop.env.HOOK_HARNESS_CONFIG_DIR!, 'client.json'),
+      JSON.stringify({ url: 'http://127.0.0.1:8787/prefix', token: 'hh_saved' }),
+    )
+    const loopback = await loop.cli(['preflight'], fake(GOOD).run)
+    expect(loopback.code).toBe(0)
+    expect(loopback.stdout).toContain('ok   hook-harness: http://127.0.0.1:8787\n')
+
+    loop.env.HOOK_HARNESS_URL = 'http://relay.example.test'
+    const insecure = await loop.cli(['preflight'], fake(GOOD).run)
+    expect(insecure.code).toBe(1)
+    expect(insecure.stdout).toContain(
+      'FAIL hook-harness: refusing to send the token to http://relay.example.test; use https\n',
+    )
+
+    loop.env.HOOK_HARNESS_URL = 'not-a-url'
+    const invalid = await loop.cli(['preflight'], fake(GOOD).run)
+    expect(invalid.code).toBe(1)
+    expect(invalid.stdout).toContain('FAIL hook-harness: Invalid URL\n')
   })
 })

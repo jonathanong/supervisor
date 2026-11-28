@@ -1,10 +1,9 @@
 import { recordEvents } from '../state/hook-harness.js'
-import { get } from '../state/json.js'
 import { refuseWhenStopped } from '../state/stop.js'
 import { loadState, saveState, withStateLock } from '../state/store.js'
 import { WaitError, type WaitContext } from './context.js'
 import { emit, pendingChecks } from './emit.js'
-import { checkHarnessVersion, hookHarnessWait, listRepositories } from './harness.js'
+import { hookHarnessWait, listRepositories } from './harness.js'
 import { sweep } from './merges.js'
 import { refuseUnadvanced } from './unadvanced.js'
 import { watchTriggers } from './watches.js'
@@ -49,11 +48,10 @@ export async function runWait(ctx: WaitContext, settings: WaitSettings): Promise
   const total = seconds(settings.timeout)
   const delay = seconds(settings.updateCheckDelay)
   const { advance } = settings
-  checkHarnessVersion(ctx)
   const started = ctx.now().getTime()
   const idle = { events: [], gap: false }
   let repos: string[] | undefined
-  let first = true
+  const failures = new Map<string, number>()
   await refuseWhenStopped(ctx.dir, 'supervisor wait')
   if (!advance) {
     await refuseUnadvanced(ctx)
@@ -76,11 +74,9 @@ export async function runWait(ctx: WaitContext, settings: WaitSettings): Promise
       return await emit(ctx, { data: idle, lines: [], triggers: [], advance, due: true })
     }
     repos ??= await listRepositories(ctx)
-    const limit = `${Math.max(Math.trunc(due ? until : remaining), 1)}s`
-    const data = await hookHarnessWait(ctx, repos, first && !due ? settings.timeout : limit)
-    first = false
-    const events = get(data, 'events')
-    const received = Array.isArray(events) ? events : []
+    const limitMs = Math.max(Math.trunc(due ? until : remaining), 1) * 1000
+    const data = await hookHarnessWait(ctx, repos, limitMs, failures)
+    const received = data.events
     const { lines, raw, triggers } = await sweep(received, ctx)
     data.events = raw
     const actionable = lines.length > 0 || triggers.length > 0
@@ -90,7 +86,7 @@ export async function runWait(ctx: WaitContext, settings: WaitSettings): Promise
     }
     await withStateLock(ctx.dir, async () => {
       const state = await loadState(ctx.dir)
-      recordEvents(state, [], get(data, 'cursor') ?? null)
+      recordEvents(state, [], data.cursor)
       await saveState(ctx.dir, state)
     })
   }

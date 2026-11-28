@@ -25,5 +25,4 @@ export const GOOD = {
   supervisor: done(`${MIN_CLI_VERSION}\n`),
   gh: done("Logged in\n  - Token scopes: 'repo', 'read:org'\n"),
   'pr-shepherd': done('pr-shepherd 1.2.3\n'),
-  npx: done('0.4.1\n'),
 }
