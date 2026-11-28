@@ -129,7 +129,7 @@ The format takes no new keys, so full versus light review is expressed with what
 
 ## What the evaluator tells an agent
 
-`supervisor policy check <owner>/<repo> <pr> --dir <policy dir>` reads the PR from GitHub through `gh api` and prints:
+`supervisor policy check <owner>/<repo> <pr>` reads the PR from GitHub through `gh api` and prints:
 
 - the head it read
 - the rules that apply
@@ -166,13 +166,25 @@ A GitHub App is written `bot:<app slug>`, so `dependabot[bot]` is `bot:dependabo
 - **An unmet bot seat** makes the next step `request_review` (at the review depth, or `standard`) when the verdict approves and every unmet seat names only bots (`bot:<app>` or `bots`). Only the final reviewer can fill it, so no person is needed: request a final review of the head. If any unmet seat can be filled by `humans`, a named person or a team, the next step is `escalate`. The reason counts each distinct seat once, as the seat lines print it. `request_review` wins over `shepherd`: a missing review and pending pr-shepherd work are independent, and the review request does not wait on CI.
 - **pr-shepherd not ready** makes the next step `shepherd`: the policy allows the merge, but pr-shepherd's read-only `status` does not answer `merge` for this head. That covers a pending or failing check, a missing review, a branch rule and any other reason pr-shepherd would not merge. The next step is to run pr-shepherd on the PR. A person is not needed, so it is not `escalate`. The result's `readiness` is `{ ready, action, summary? }`: pr-shepherd's action, whether it is `merge`, and its one-line reason when it gave one. An answer with no head, or a failed call, is never ready; a failed call exits 2. A head that moved while pr-shepherd read it exits 2.
 
-pr-shepherd reads its `.pr-shepherdrc.yml` from a checkout of the target repository. The command uses `--repo-dir` for that, and the current directory when `--repo-dir` is absent. Run it from a checkout of the target repository, or pass `--repo-dir`, so pr-shepherd applies that repository's config.
+When `--dir` is left out, `supervisor policy check` resolves the policy from the supervisor configuration (`$SUPERVISOR_CONFIG`, else `.supervisor.json` in the current directory) the same way the `policy_check` MCP tool does: `mergeAuthority.policy` resolved against the config file's real path (loaded as the supervisor policy), and—unless `--repo-dir` is given—`<checkoutRoot>/<repo>` from the matching scope when that directory exists. Passing `--dir` explicitly skips resolving the policy directory and checkout from the config (no implicit layering) in either PR mode or `--input` mode: it evaluates only `--dir` (plus `--repo-dir` when explicitly passed), while the config's `mergeAuthority.requiredAlwaysHuman` floor still applies when `--supervisor-policy` or `--repo-dir` is given. Explicit values always win.
 
-`--print-input` prints the collected input, with the head, `readiness` and the blockers, and evaluates nothing. `supervisor policy check --dir <policy dir> --input <json>` evaluates a written input file instead, for dry runs and the eval. A written input has no readiness and no blockers. An input that `--print-input` printed carries both, and they hold the merge on replay as they did live. An input with the old `checks` key is refused: print it again.
+pr-shepherd reads its `.pr-shepherdrc.yml` from a checkout of the target repository: `--repo-dir` when given, else the configured `<checkoutRoot>/<repo>` checkout when `--dir` was omitted and that directory exists, else the current directory.
 
-`--repo-dir <checkout>` adds the repository's own policy files below the supervisor policy, on either form of the command; without it, `--dir` alone is evaluated.
+`--print-input` prints the collected input, with the head, `readiness` and the blockers, and evaluates nothing. `supervisor policy check [--dir <policy dir>] --input <json>` evaluates a written input file instead, for dry runs and the eval. A written input has no readiness and no blockers. An input that `--print-input` printed carries both, and they hold the merge on replay as they did live. An input with the old `checks` key is refused: print it again.
+
+`--repo-dir <checkout>` layers the repository's own policy files below the supervisor policy (and sets where pr-shepherd reads its config). Keep both explicit `--repo-dir` checkouts and configured `<checkoutRoot>/<repo>` checkouts on the default branch, never on a PR's head. Without an explicit or configured checkout, the policy directory alone is evaluated.
 
 `supervisor policy explain <dir> [path] [--repo-dir <checkout>]` describes the policy without a PR. Under `policyEngine: "compare"` the check also reads the Claude Approvals check and reports any disagreement.
+
+### The `request_review` round trip
+
+When `nextStep.action` is `request_review`, the policy approves the PR once its bot seat (or `claude/code_review` classifier) is satisfied on the current head:
+
+1. **The request:** the supervisor requests a final review of that head at `nextStep.depth`, once per head (tracked in `escalations` as `final-review:<owner>/<repo>#<N>@<head>`), using `finalReview.request`: `session` sends a message to the standing final-reviewer session (such as the `code-reviewer` loop session) naming the PR, head SHA, and depth; `label` adds `finalReview.label` (removing and re-adding it if present from an older head); both runs both. The supervisor leaves the PR ready, reports `awaiting-final-review`, and does not block waiting.
+2. **The reviewer's review on the head:** the final reviewer inspects that exact head SHA and submits its review on GitHub (an approval that fills the `bot:<review app>` seat, and/or a review body carrying the `<!-- final-review ... -->` marker for `claude/code_review`).
+3. **The next policy check sees the seat filled:** when a later sweep runs or a review event wakes the loop, `supervisor policy check` (or `policy_check`) reads the updated reviews for that head from GitHub and sees the bot seat filled (and with `classify-collect`, maps the final review to `claude/code_review`).
+4. **pr-shepherd reports ready:** if `readiness.ready` is still false (for example `triage` or `wait`), `nextStep` becomes `shepherd` — the supervisor runs `pr-shepherd` on the PR until the head is ready. Any new commit pushed during triage starts a fresh round trip for the new head. Once `pr-shepherd` answers `merge` for the reviewed head, the next policy check returns `nextStep.action: "merge"`.
+5. **The merge:** the supervisor writes the merge record (`supervisor state merge-record`) from that check JSON (and verifies `finalReview.status` when configured) and merges through `pr-shepherd`.
 
 ### The `policy_check` MCP tool
 

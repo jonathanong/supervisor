@@ -2,12 +2,19 @@ import { readdir, realpath, stat } from 'node:fs/promises'
 import { dirname, isAbsolute, join, resolve } from 'node:path'
 import type { AlwaysHumanRequirement } from '../policy/always-human.js'
 import { expandHome } from './defaults.js'
-import { loadConfig } from './load.js'
+import { loadConfig, type LoadedConfig } from './load.js'
 import type { LoopConfig, Scope } from './types.js'
+
+export interface PolicyConfigOverrides {
+  dir?: string
+  repoDir?: string
+  supervisorPolicy?: boolean
+}
 
 export interface ResolvedPolicyConfig {
   dir: string
-  requiredAlwaysHuman: readonly AlwaysHumanRequirement[]
+  supervisorPolicy: boolean
+  requiredAlwaysHuman?: readonly AlwaysHumanRequirement[]
   repoDir?: string
 }
 
@@ -82,23 +89,44 @@ async function configuredRepoDir(
   return await findCheckoutDir(scope.checkoutRoot!, repo)
 }
 
+async function resolvePolicyDir(loaded: LoadedConfig): Promise<string> {
+  const expanded = expandHome(loaded.config.mergeAuthority.policy)
+  return isAbsolute(expanded) ? expanded : resolve(dirname(await realpath(loaded.path)), expanded)
+}
+
 /**
  * Resolves `mergeAuthority.policy`, `requiredAlwaysHuman`, and any configured local checkout for
- * `repository` from the supervisor config (`$SUPERVISOR_CONFIG`, else `.supervisor.json` in `cwd`).
- * A relative policy path resolves against the real path of the config file's directory.
+ * `repository` from the supervisor config (`$SUPERVISOR_CONFIG`, else `.supervisor.json` in `cwd`),
+ * letting explicit `overrides` win. A relative policy path resolves against the real path of the
+ * config file's directory. When `overrides.dir` is given, policy-directory and checkout resolution
+ * from config are skipped; only the explicit directory (and explicit `overrides.repoDir`, if
+ * given) is returned (loading a supervisor policy still reads `requiredAlwaysHuman` from config).
  */
 export async function resolvePolicyFromConfig(
   env: Record<string, string | undefined>,
   cwd: string,
-  repository: string,
+  repository?: string,
+  overrides: PolicyConfigOverrides = {},
 ): Promise<ResolvedPolicyConfig> {
-  const { path, config } = await loadConfig(env, cwd)
-  const expanded = expandHome(config.mergeAuthority.policy)
-  const dir = isAbsolute(expanded) ? expanded : resolve(dirname(await realpath(path)), expanded)
-  const repoDir = await configuredRepoDir(config.scopes, repository)
+  if (overrides.dir !== undefined) {
+    return {
+      dir: overrides.dir,
+      supervisorPolicy: overrides.supervisorPolicy === true,
+      ...(overrides.repoDir !== undefined ? { repoDir: overrides.repoDir } : {}),
+    }
+  }
+  const loaded = await loadConfig(env, cwd)
+  const dir = await resolvePolicyDir(loaded)
+  const repoDir =
+    overrides.repoDir !== undefined
+      ? overrides.repoDir
+      : repository !== undefined
+        ? await configuredRepoDir(loaded.config.scopes, repository)
+        : undefined
   return {
     dir,
-    requiredAlwaysHuman: config.mergeAuthority.requiredAlwaysHuman ?? [],
+    supervisorPolicy: true,
+    requiredAlwaysHuman: loaded.config.mergeAuthority.requiredAlwaysHuman ?? [],
     ...(repoDir !== undefined ? { repoDir } : {}),
   }
 }

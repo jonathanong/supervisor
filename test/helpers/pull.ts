@@ -106,13 +106,14 @@ export function fakeGh(gh: GhFixture): { run: RunProcess; calls: string[][] } {
 export async function check(
   gh: GhFixture,
   options: string[] = ['--dir', policyDir('pull-facts'), '--json'],
+  env: Record<string, string | undefined> = {},
 ): Promise<CliResult & { calls: string[][]; shepherdCalls: string[][] }> {
   const { run, calls } = fakeGh(gh)
   const shepherdCalls: string[][] = []
   const out: string[] = []
   const err: string[] = []
   const code = await runCli(['policy', 'check', REPO, '7', ...options], {
-    env: {},
+    env,
     stdout: (text) => out.push(text),
     stderr: (text) => err.push(text),
     startMcp: async () => undefined,
