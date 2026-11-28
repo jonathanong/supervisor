@@ -62,8 +62,11 @@ Requires `@jongleberry/supervisor` 0.4.0 or newer (`pnpm add -g @jongleberry/sup
   rolling window (such as `lateReviewDays` or Phase G2's 7-day window); for Phase G, derive this
   live without adding a state field by looking back past the 24-hour window to any failure that is
   still the latest run of its workflow on the default branch and is not in `handledFailures` (a
-  failure later superseded by a green run needs no fix and drops out). Held-back work, dispatches
-  and issues alike, is taken oldest first across all phases, before any new work. Report how many
+  failure later superseded by a green run needs no fix and drops out). A `/fix` command (or other
+  worker dispatch) skipped because `labels.automation` is missing in its repository counts as held
+  back in the same way: post no `eyes` reaction, leave `commandsThrough` behind it, and do not treat
+  it as handled when the wait returns it, so it runs once the label exists. Held-back work,
+  dispatches and issues alike, is taken oldest first across all phases, before any new work. Report how many
   new issues and how many dispatches were held back in the Phase H summary (and on `--dry-run`,
   report what would be held back).
 - **Repository:** pass `--repo <owner>/<repo>` on every `gh` command. Lists use `--limit 1000` with
@@ -272,8 +275,9 @@ while the supervisor was down.
 Set `commandsThrough` to the sweep start
 (`supervisor state set commandsThrough --json '"<ISO time>"'`) only after G2 succeeded for every
 selected repository, none of them is in `report` mode (it is one global value, so while any is,
-it stays put), and no `/fix` command was held back by `sweepCap.dispatches`; never on a skip, a
-failure, or `--dry-run`. The `eyes` reaction, not the cursor, tells
+it stays put), and no `/fix` command was held back (see
+[Per-sweep cap](#rules-for-every-phase)); never on a skip, a failure, or `--dry-run`. The `eyes`
+reaction, not the cursor, tells
 handled from missed, so the cursor only bounds the window. Never list from `lastSweepAt`: it
 advances even when preflight skipped G2, so commands posted in that gap would be missed.
 `lastSweepAt` stays the pacing timestamp only.

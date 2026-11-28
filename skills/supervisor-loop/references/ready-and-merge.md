@@ -25,7 +25,8 @@ In a scope in `report` mode, run step 1 only and report what the later steps wou
    does this itself: `pr-shepherd` marks ready only clean drafts with auto mark-ready on), then add
    the automation label with `gh pr edit <N> --repo <owner>/<repo> --add-label <automation-label>`.
    If `labels.automation` is missing in `--repo` (from preflight or a label check), skip adding the
-   label and report the repository and label name without creating it; if adding the label fails on
+   label, leave the PR ready, report the repository and label name without creating it, and escalate
+   so it does not drop out of triage; if adding the label fails on
    any ready PR (whether this run marked it ready or it was already ready), leave the PR ready,
    report the failure with the repository and label name, and escalate so it does not drop out of
    triage. Either way, a missing automation label never stops Steps 5–6 when `--merge` is set and the
