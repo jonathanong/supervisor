@@ -192,8 +192,8 @@ importers:
         specifier: ^8.20.0
         version: 8.20.0
       hook-harness:
-        specifier: ^0.5.0
-        version: 0.5.0
+        specifier: ^0.7.0
+        version: 0.7.0
       pr-shepherd:
         specifier: ^2.4.0
         version: 2.4.0
@@ -1006,8 +1006,8 @@ packages:
     resolution: {integrity: sha512-KmXvQAXwcAHV+muzbIwoJ23niEB5nMoDVr9WcRkU8mvjUECm/1+7v4Jgp7P7a+H6MLFrh+vXrGonGrGS+RQfkA==}
     engines: {node: '>=16.9.0'}
 
-  hook-harness@0.5.0:
-    resolution: {integrity: sha512-GeRPZGeRtvnn/YhpsS/Mas4cqbbLDgWGPdmSXecsNR0IPwT+RoN8my0eDS5QjP8UHa/AOnwoX6UFTHWygGJuVA==}
+  hook-harness@0.7.0:
+    resolution: {integrity: sha512-T0ppTslQJtReWre+5sgBq7Jmq/f7znt7doRQKWpgFumwajb8TdNKH0RlpLFz58cPVGehR6Ks1G0ftXiNj8PAKg==}
     engines: {node: '>=24'}
     hasBin: true
 
@@ -2044,7 +2044,7 @@ snapshots:
 
   hono@4.13.19: {}
 
-  hook-harness@0.5.0: {}
+  hook-harness@0.7.0: {}
 
   http-errors@2.0.1:
     dependencies:

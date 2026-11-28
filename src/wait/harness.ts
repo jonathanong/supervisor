@@ -82,11 +82,17 @@ function ownersIn(repos: string[]): string[] {
   return [...new Set(repos.map((repo) => repo.slice(0, repo.indexOf('/'))))]
 }
 
-function mapHarnessError(error: unknown): WaitError {
+/**
+ * `configuration` is true until the stream has yielded its first batch. hook-harness checks an
+ * unknown preset, a non-https URL, or a missing owner with a `TypeError` before any fetch; after
+ * that, `pollPages` reports fetch failures as `{error}` batches. A later `TypeError` is a bug in
+ * this code or the client, not a configuration problem, so it takes the generic mapping.
+ */
+function mapHarnessError(error: unknown, configuration: boolean): WaitError {
   if (error instanceof WaitError) {
     return error
   }
-  if (error instanceof NotLoggedInError || error instanceof TypeError) {
+  if (error instanceof NotLoggedInError || (configuration && error instanceof TypeError)) {
     return new WaitError(`hook-harness configuration error: ${error.message}`, { cause: error })
   }
   if (error instanceof UnauthorizedError) {
@@ -104,18 +110,21 @@ function mapHarnessError(error: unknown): WaitError {
 /**
  * Poll the hook-harness relay in-process over every owner from the stored cursor until a batch
  * returns events or a gap, or the timeout signal aborts. Main-branch failures come from
- * `workflow_run` only; pull-request checks are left to pr-shepherd.
+ * `workflow_run` only; pull-request checks are left to pr-shepherd. `failures` counts consecutive
+ * `{error}` batches per owner; the caller passes one map across rounds so a sustained outage still
+ * ends the wait, and an owner's count resets only when a page for that owner succeeds.
  */
 export async function hookHarnessWait(
   ctx: WaitContext,
   repos: string[],
   timeoutMs: number,
+  failures: Map<string, number> = new Map(),
 ): Promise<HarnessResult> {
   const harness = get(await loadState(ctx.dir), 'hookHarness')
   const stored = isObject(harness) ? get(harness, 'cursor') : undefined
   const after = typeof stored === 'string' ? stored : ''
-  const failures = new Map<string, number>()
   let cursor: string | undefined
+  let started = false
 
   try {
     const client = await resolveClient(ctx.env)
@@ -135,6 +144,7 @@ export async function hookHarnessWait(
       ...(ctx.sleep ? { sleep: ctx.sleep } : {}),
     })
     for await (const batch of stream) {
+      started = true
       if ('error' in batch) {
         const count = (failures.get(batch.owner) ?? 0) + 1
         failures.set(batch.owner, count)
@@ -157,7 +167,7 @@ export async function hookHarnessWait(
       }
     }
   } catch (error) {
-    throw mapHarnessError(error)
+    throw mapHarnessError(error, !started)
   }
 
   return {

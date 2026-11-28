@@ -6,6 +6,9 @@ updates:
       interval: daily
     cooldown:
       default-days: 7
+      exclude:
+        - hook-harness
+        - pr-shepherd
     open-pull-requests-limit: 5
     groups:
       oxc:

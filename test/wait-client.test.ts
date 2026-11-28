@@ -37,6 +37,17 @@ describe('supervisor wait: hook-harness client errors, gaps, and timeouts', () =
     }
   })
 
+  it('maps a TypeError after the first batch to a generic error, not a configuration error', async () => {
+    const loop = await makeLoop(ORG_ONLY)
+    const world = makeWorld({ replies: [{ events: [] }] })
+    const sleep = async (): Promise<void> => {
+      throw new TypeError('undefined is not a function')
+    }
+    const result = await loop.cli(WAIT, world.run, undefined, { ...world.io, sleep })
+    expect(result.code).toBe(1)
+    expect(result.stderr).toMatch(/^supervisor wait: hook-harness error: undefined is not/)
+  })
+
   it('allows http: only for loopback relay hosts', async () => {
     const loop = await makeLoop(ORG_ONLY)
     for (const url of ['http://localhost:8787', 'http://127.0.0.1:8787', 'http://[::1]:8787']) {

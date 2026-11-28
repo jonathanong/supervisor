@@ -51,6 +51,7 @@ export async function runWait(ctx: WaitContext, settings: WaitSettings): Promise
   const started = ctx.now().getTime()
   const idle = { events: [], gap: false }
   let repos: string[] | undefined
+  const failures = new Map<string, number>()
   await refuseWhenStopped(ctx.dir, 'supervisor wait')
   if (!advance) {
     await refuseUnadvanced(ctx)
@@ -74,7 +75,7 @@ export async function runWait(ctx: WaitContext, settings: WaitSettings): Promise
     }
     repos ??= await listRepositories(ctx)
     const limitMs = Math.max(Math.trunc(due ? until : remaining), 1) * 1000
-    const data = await hookHarnessWait(ctx, repos, limitMs)
+    const data = await hookHarnessWait(ctx, repos, limitMs, failures)
     const received = data.events
     const { lines, raw, triggers } = await sweep(received, ctx)
     data.events = raw
