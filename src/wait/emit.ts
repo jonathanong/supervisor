@@ -1,6 +1,8 @@
 import { randomUUID } from 'node:crypto'
 import { rename, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
+import { inReportMode } from '../config/repos.js'
+import type { LoadedConfig } from '../config/load.js'
 import { lastWaitPath, recordEvents } from '../state/hook-harness.js'
 import { dumps, get, isObject, type Json, type JsonObject } from '../state/json.js'
 import { expectArray, loadState, saveState, withStateLock } from '../state/store.js'
@@ -17,12 +19,19 @@ export interface WaitResult {
   due: boolean
 }
 
-/** The repositories that await a dependency update check, with the time each began. */
-export function pendingChecks(state: JsonObject): Array<{ repo: string; at: Json }> {
+/**
+ * The repositories that await a dependency update check, with the time each began. An entry for a
+ * repository in a report-mode scope is skipped: the loop cannot run the check there.
+ */
+export function pendingChecks(
+  state: JsonObject,
+  loaded: LoadedConfig,
+): Array<{ repo: string; at: Json }> {
   const pending = expectArray(get(state, 'pendingUpdateChecks') ?? [], 'pendingUpdateChecks')
   return pending
     .filter(isObject)
     .filter((entry) => typeof entry.repo === 'string')
+    .filter((entry) => !inReportMode(loaded, entry.repo as string))
     .map((entry) => ({ repo: entry.repo as string, at: entry.at ?? null }))
 }
 
@@ -44,7 +53,7 @@ export async function emit(ctx: WaitContext, result: WaitResult): Promise<void> 
       recordEvents(state, ids, get(data, 'cursor') ?? null)
     }
     await saveState(ctx.dir, state)
-    const repos = pendingChecks(state).map((entry) => entry.repo)
+    const repos = pendingChecks(state, ctx.loaded).map((entry) => entry.repo)
     return {
       quiet: log.filter((entry) => typeof entry === 'string'),
       pending: [...new Set(repos)].sort(),

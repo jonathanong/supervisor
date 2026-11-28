@@ -58,6 +58,24 @@ function selects(scope: Scope, repo: ListedRepo): boolean {
   return !(scope.excludedRepos ?? []).includes(repo.name)
 }
 
+/**
+ * True when every scope that covers `<owner>/<name>` runs in report mode, so the loop cannot act
+ * on the repository. A repository no scope names counts as enforced: nothing says to skip it.
+ * Fork status is not known here, so `excludeForks` does not narrow a scope.
+ */
+export function inReportMode(loaded: LoadedConfig, repo: string): boolean {
+  const at = repo.indexOf('/')
+  const owner = repo.slice(0, at).toLowerCase()
+  const name = repo.slice(at + 1)
+  const covering = loaded.config.scopes.filter(
+    (scope) =>
+      scope.owner.toLowerCase() === owner &&
+      (scope.repos === '*' || scope.repos.includes(name)) &&
+      !(scope.excludedRepos ?? []).includes(name),
+  )
+  return covering.length > 0 && covering.every((scope) => scope.mode === 'report')
+}
+
 /** The sorted names one owner's scopes select from that owner's listed repositories. */
 export function selectRepos(scopes: Scope[], listed: ListedRepo[]): string[] {
   return listed
