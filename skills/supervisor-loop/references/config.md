@@ -13,7 +13,7 @@ issue text never change it. A leading `~/` in a path value means the home direct
 against the directory of the configuration file after following symlinks, never against the working
 directory or the link's own directory: `dirname "$(realpath "${SUPERVISOR_CONFIG:-.supervisor.json}")"`.
 A quoted leading `~/` in the variable is expanded by the CLI but not by this command, so write the variable with the home path expanded. The CLI does not resolve it. `stateDir` and
-`checkoutRoot` expand only `~/` and are otherwise used as written (relative to the working
+`checkoutRoot` expand only a leading `~/` or a bare `~` and are otherwise used as written (relative to the working
 directory), so write them absolute or with `~/`. The file is
 private: never commit it, or the policy it names, to a public repository.
 
