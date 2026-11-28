@@ -15,13 +15,18 @@ Once per scope:
 1. Distill the sessions completed after `retroCursor` whose entries name that scope's repositories,
    using the configured `distill.retroDays` and `distill.sessionDays`.
 2. File the verified follow-ups through the `github-issue` skill, each in the repository it
-   concerns. A finding about a private repository stays in that repository.
-3. Archive the sessions that were distilled only when `distill.archive` is true; otherwise skip
-   archiving. Either way, remove the local snapshot and its partitions in cleanup.
+   concerns, up to the sweep's remaining `sweepCap.issues` budget (see
+   [Per-sweep cap](../SKILL.md#rules-for-every-phase)). A finding about a private repository stays
+   in that repository. If `sweepCap.issues` is reached, stop filing and report how many verified
+   follow-ups were held back for the next sweep.
+3. Archive only the sessions whose follow-ups were all filed (and only when `distill.archive` is
+   true); do not archive sessions with held-back follow-ups. Either way, remove the local snapshot
+   and its partitions in cleanup.
 4. When Phase E succeeds for a scope that had a recorded Phase E blocker in `escalations`, remove
    that resolved key (`supervisor state remove escalations <key>`).
-5. Advance `retroCursor` only after that clean-up succeeds for every selected scope, and never while
-   any selected scope is in `report` mode, failed Phase E, or ran under `--dry-run`.
+5. Advance `retroCursor` only after that clean-up succeeds for every selected scope with no
+   held-back follow-ups, and never while any selected scope is in `report` mode, failed Phase E, or
+   ran under `--dry-run`.
 
 ## When the distill cannot run
 

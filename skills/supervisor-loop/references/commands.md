@@ -52,7 +52,10 @@ The sweep backstop finds commands the events missed:
 
 In a scope in `report` mode, report what the command would have started; post no reaction and
 dispatch nothing. `commandsThrough` advances only when no selected repository is in `report` mode
-(see [report mode](../../supervisor-sweep/SKILL.md#rules-for-every-phase)).
+(see [report mode](../../supervisor-sweep/SKILL.md#rules-for-every-phase)). In `enforce` mode,
+each `/fix` dispatch counts toward `sweepCap.dispatches`; if a `/fix` command is held back by the
+cap, post no `eyes` reaction on it, leave `commandsThrough` unadvanced, and report it as held back
+so the next sweep handles it.
 
 ## Agent handoff
 

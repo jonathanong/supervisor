@@ -269,6 +269,22 @@
       "minimum": 0,
       "default": 10
     },
+    "sweepCap": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "issues": {
+          "type": "integer",
+          "minimum": 0,
+          "default": 10
+        },
+        "dispatches": {
+          "type": "integer",
+          "minimum": 0,
+          "default": 5
+        }
+      }
+    },
     "scheduledPrompts": {
       "type": "object",
       "additionalProperties": false,

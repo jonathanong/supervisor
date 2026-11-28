@@ -13,8 +13,12 @@ describe('supervisor preflight', () => {
     loop.env.SUPERVISOR_CONFIG = '/nonexistent/config.json'
     const help = await loop.cli(['preflight', '--help'])
     expect(help.code).toBe(0)
-    expect(help.stdout).toMatch(/^Usage: supervisor preflight \[--json\]\n/)
-    expect((await loop.cli(['--help'])).stdout).toContain('  preflight [--json] ')
+    expect(help.stdout).toMatch(
+      /^Usage: supervisor preflight \[--json\] \[--enforce-scope <owner>\.\.\.\]\n/,
+    )
+    expect((await loop.cli(['--help'])).stdout).toContain(
+      '  preflight [--json] [--enforce-scope <owner>...]',
+    )
   })
 
   it('rejects an unknown option', async () => {
@@ -37,8 +41,15 @@ describe('supervisor preflight', () => {
       'ok   pr-shepherd: pr-shepherd 1.2.3',
       `ok   hook-harness: ${TEST_RELAY_URL}`,
       'ok   stop: not stopped',
+      'ok   labels: 1 repo checked (automation, needs-human)',
     ])
-    expect(seen).toEqual(['supervisor --version', 'gh auth status', 'pr-shepherd --version'])
+    expect(seen.slice(0, 3)).toEqual([
+      'supervisor --version',
+      'gh auth status',
+      'pr-shepherd --version',
+    ])
+    expect(seen[3]).toContain('gh api --paginate orgs/example-org/repos?per_page=100')
+    expect(seen[4]).toContain('gh api graphql')
   })
 
   it('prints one JSON object with --json', async () => {
@@ -54,6 +65,7 @@ describe('supervisor preflight', () => {
       'pr-shepherd',
       'hook-harness',
       'stop',
+      'labels',
     ])
   })
 
@@ -65,7 +77,11 @@ describe('supervisor preflight', () => {
     const result = await loop.cli(['preflight'], run)
     expect(result.code).toBe(0)
     expect(result.stdout).toContain('ok   hook-harness: not configured\n')
-    expect(seen).toEqual(['supervisor --version', 'gh auth status', 'pr-shepherd --version'])
+    expect(seen.slice(0, 3)).toEqual([
+      'supervisor --version',
+      'gh auth status',
+      'pr-shepherd --version',
+    ])
   })
 
   it('fails when the supervisor CLI is older than the minimum and passes at or above it', async () => {
@@ -178,6 +194,7 @@ describe('supervisor preflight', () => {
     expect(lines[3]).toBe('ok   pr-shepherd: pr-shepherd 1.2.3')
     expect(lines[4]).toBe('FAIL hook-harness: skipped: the config did not load')
     expect(lines[5]).toBe('FAIL stop: unknown: the config did not load')
+    expect(lines[6]).toBe('FAIL labels: skipped: the config did not load')
     expect(seen).toEqual(['supervisor --version', 'gh auth status', 'pr-shepherd --version'])
   })
 })

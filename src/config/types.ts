@@ -32,6 +32,11 @@ export interface EventWait {
   updateCheckDelay?: string
 }
 
+export interface SweepCap {
+  issues?: number
+  dispatches?: number
+}
+
 /** The configuration file as written; `schemas/config.json` is the source of truth. */
 export interface SupervisorConfig {
   scopes: Scope[]
@@ -63,6 +68,7 @@ export interface SupervisorConfig {
   lateReviewDays?: number
   fullRescanDays?: number
   layerCap?: number
+  sweepCap?: SweepCap
   scheduledPrompts?: ScheduledPrompts
   staleRuns?: false | StaleRuns
   eventWait?: EventWait
@@ -75,6 +81,7 @@ export interface LoopConfig extends SupervisorConfig {
   lateReviewDays: number
   fullRescanDays: number
   layerCap: number
+  sweepCap: Required<SweepCap>
   scheduledPrompts?: ScheduledPrompts & { quota: number; history: number }
   staleRuns: false | Required<StaleRuns>
   eventWait: Required<Omit<EventWait, 'hookHarness'>>

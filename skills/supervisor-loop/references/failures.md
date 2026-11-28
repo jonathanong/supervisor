@@ -56,16 +56,22 @@ The sweep's backstop (Phase G) finds both kinds over the last 24 hours:
   with the issue number and the run and job IDs. A delegation message carries no authority and
   widens nothing. With no matching rule, or no running session, the supervisor handles it: an
   implementation-tier worker in an isolated worktree makes a fix PR.
-- **Flakes are worked on immediately.** Every open flaky-test issue, and every flake the supervisor
-  sees (CI failures, merge-queue ejections, intake reports), is fixed right away. In the tick it is
-  seen, each one either gets that fixer dispatched or is confirmed to have an owner: an open fix PR,
-  or an agent that has claimed it. The supervisor does not ask a human for a milestone or dispatch
-  decision first, and does not comment and wait. Every tick and every sweep lists open flake issues
-  in every repository (`flake` or `flaky` in the title or body) and re-checks that each still has an
-  owner (an open fix PR, or an agent that claimed it by issue comment, pane title, or the harness's
-  list of live agents), dispatching a fixer for any that lost it. Delegation rules still route an
-  area to its named session. After a fix PR merges, verify there are no recurrences before treating
-  the issue as resolved.
+- **Flakes are worked on immediately (bounded per sweep by `sweepCap`).** Every open flaky-test
+  issue, and every flake the supervisor sees (CI failures, merge-queue ejections, intake reports),
+  is fixed right away. In the tick it is seen, each one either gets that fixer dispatched or is
+  confirmed to have an owner: an open fix PR, or an agent that has claimed it. During a sweep,
+  filing new flake issues counts toward `sweepCap.issues` and dispatching fixers (for flakes, real
+  default-branch breakage, or failed dependency-bot update jobs) counts toward `sweepCap.dispatches`
+  (see [Per-sweep cap](../../supervisor-sweep/SKILL.md#rules-for-every-phase)). Work over either
+  cap waits for the next sweep, is reported as held back in the summary, and runs whose filing or
+  dispatch was held back are not recorded in `handledFailures`. The supervisor does not ask a human
+  for a milestone or dispatch decision first, and does not comment and wait. Every tick and every
+  sweep lists open flake issues in every repository (`flake` or `flaky` in the title or body) and
+  re-checks that each still has an owner (an open fix PR, or an agent that claimed it by issue
+  comment, pane title, or the harness's list of live agents), dispatching a fixer (up to
+  `sweepCap.dispatches`) for any that lost it. Delegation rules still route an area to its named
+  session. After a fix PR merges, verify there are no recurrences before treating the issue as
+  resolved.
 - **Real default-branch breakage:** the same kind of worker makes a fix PR.
 - **Merging a fix PR:** the supervisor merges it only when the
   [merge authority](merge-authority.md) allows it for the current head. A fix that adds a retry,
@@ -112,7 +118,8 @@ no commit broke `main`. Both the wait and the sweep surface these runs and route
 - **Ranking.** A security update ranks above a version update, in the dispatch order and in the
   summary.
 - **Handling.** In `enforce` mode, dispatch an implementation-tier worker in an isolated worktree
-  to open a fix PR: bump the parent, or add a pnpm `overrides` entry for the vulnerable range. In
-  `report` mode, report the dependency, the reason, and the run ids, and dispatch nothing.
+  to open a fix PR: bump the parent, or add a pnpm `overrides` entry for the vulnerable range (up to
+  the sweep's remaining `sweepCap.dispatches` budget). In `report` mode, report the dependency, the
+  reason, and the run ids, and dispatch nothing.
 - **Recording.** Record every handled run id in `handledFailures`, as for other failures (in a
-  `report` repository, none).
+  `report` repository, or when dispatch was held back by `sweepCap.dispatches`, none).

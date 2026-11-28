@@ -26,7 +26,8 @@ procedure.
 - **Scopes:** each entry of `scopes` is one owner (`org` or `user`), its repositories, its checkout
   root, and its mode. Every step below runs per scope. A scope in `report` mode is triaged and
   reported on, with no worker PRs and no merges (see
-  [report mode](../supervisor-sweep/SKILL.md#rules-for-every-phase)).
+  [report mode](../supervisor-sweep/SKILL.md#rules-for-every-phase)). When moving a scope from
+  `report` to `enforce`, follow [staged rollout](references/rollout.md) one scope at a time.
 - **Model tiers:** the mechanical tier lists, classifies, and harvests comments, one subagent per
   owner rather than per repository; the implementation
   tier fixes, judges changelogs and migrations, and verifies; the review tier reviews work it did
@@ -126,7 +127,9 @@ implementation-tier worker, never the supervisor session.
    - `mergeRecords` (see [merge record](references/merge-authority.md#merge-record))
 4. Run the sweep [Preflight](../supervisor-sweep/SKILL.md#preflight) once, starting with
    `supervisor preflight --json`; it holds the full rules. Check `hook-harness` only when
-   `eventWait` is configured; if it fails, continue and use the fallback pacing in Step 2.
+   `eventWait` is configured; if it fails, continue and use the fallback pacing in Step 2. If
+   `labels` reports missing labels in `enforce` scopes, report them and continue without creating
+   labels (escalation still proceeds without `labels.needsHuman`).
 
 ## Step 2 - Schedule and event waits
 

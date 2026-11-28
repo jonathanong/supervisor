@@ -11,10 +11,11 @@ import {
   firstLine,
   type Check,
 } from './preflight-checks.js'
+import { checkLabels } from './preflight-labels.js'
 import type { CliIo } from './run.js'
 import { MIN_CLI_VERSION } from './version.js'
 
-const PREFLIGHT_HELP = `Usage: supervisor preflight [--json]
+const PREFLIGHT_HELP = `Usage: supervisor preflight [--json] [--enforce-scope <owner>...]
 
 Checks, in one command, what a supervisor loop needs before it starts. Each check is reported as
 name, ok, and detail:
@@ -32,16 +33,22 @@ name, ok, and detail:
                 with wake-ups)
   stop          The stop switch is not set (see: supervisor stop --help); when it is set, the
                 detail says since when and why, and the check is not ok
+  labels        labels.automation and labels.needsHuman exist in every repository selected by
+                scopes in enforce mode (and any owner passed via --enforce-scope). Reported ok,
+                with the detail "skipped: no scopes in enforce mode", when every scope is in report
+                mode. Missing labels are reported and never created automatically
 
-When the config does not load, config fails, hook-harness and stop are not ok (they need it), and
-supervisor, gh, and pr-shepherd still run. Exit 0 when every check is ok, 1 otherwise.
+When the config does not load, config fails, hook-harness, stop, and labels are not ok (they need
+it), and supervisor, gh, and pr-shepherd still run. Exit 0 when every check is ok, 1 otherwise.
 
 Output is one line per check, "ok" or "FAIL", the name, and the detail. With --json it is one JSON
 object, {"ok": <bool>, "checks": [{"name", "ok", "detail"}]}.
 
 Options:
-  --json            Print the JSON object instead of lines
-  -h, --help        Show help
+  --json                   Print the JSON object instead of lines
+  --enforce-scope <owner>  Treat this configured scope owner as enforce for the labels check
+                           (repeatable, for pre-switch rollout checks)
+  -h, --help               Show help
 `
 
 async function checkConfig(io: CliIo): Promise<{ check: Check; loaded?: LoadedConfig }> {
@@ -59,20 +66,32 @@ export async function runPreflightCommand(args: string[], io: CliIo): Promise<nu
     return 0
   }
   let json: boolean
+  let enforceScopes: string[]
   try {
-    json = parseArgs({ args, options: { json: FLAG } }).values.json === true
+    const parsed = parseArgs({
+      args,
+      options: {
+        json: FLAG,
+        'enforce-scope': { type: 'string', multiple: true },
+      },
+    })
+    json = parsed.values.json === true
+    enforceScopes = parsed.values['enforce-scope'] ?? []
   } catch (error) {
     io.stderr(`supervisor preflight: ${(error as Error).message}\n${PREFLIGHT_HELP}`)
     return 2
   }
   const { check, loaded } = await checkConfig(io)
+  const supervisor = await checkSupervisor(io.runProcess)
+  const gh = await checkGh(io.runProcess)
   const checks = [
-    await checkSupervisor(io.runProcess),
+    supervisor,
     check,
-    await checkGh(io.runProcess),
+    gh,
     await checkShepherd(io.runProcess),
     await checkHarness(io.env, loaded),
     await checkStop(loaded),
+    await checkLabels(io.runProcess, loaded, gh.ok, enforceScopes),
   ]
   const ok = checks.every((entry) => entry.ok)
   if (json) {

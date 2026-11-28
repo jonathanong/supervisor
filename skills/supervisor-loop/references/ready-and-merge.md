@@ -92,5 +92,7 @@ supervisor's own:
 - **Layer cap.** An agent building a stack keeps at most `layerCap` open layers (default 10),
   counting every locally tracked layer not yet submitted. Beyond the cap, independent work opens as
   its own PR on the default branch and dependent work waits for the bottom layers to merge.
-- **Escalate per layer.** A layer that needs a human gets the `labels.needsHuman` label and one
-  comment per escalation event, with its position in the stack and what it needs.
+- **Escalate per layer.** A layer that needs a human gets the `labels.needsHuman` label (skipping
+  the label without creating it and noting it missing in the summary when `labels.needsHuman` does
+  not exist in that repository) and one comment per escalation event, with its position in the stack
+  and what it needs.

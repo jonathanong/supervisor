@@ -62,7 +62,8 @@ Commands:
   stop [--reason <text>]               Set the stop switch: the supervisor takes no action
   stop --status                        Report the stop switch (exit 3 when it is set)
   resume                               Clear the stop switch
-  preflight [--json]                   Check supervisor, config, gh, pr-shepherd, hook-harness, and stop
+  preflight [--json] [--enforce-scope <owner>...]
+                                       Check supervisor, config, gh, pr-shepherd, hook-harness, stop, and labels
   mcp                                  Start the stdio MCP server
 
 Options:

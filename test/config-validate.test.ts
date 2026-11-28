@@ -65,7 +65,14 @@ describe('config validation', () => {
 
   it('accepts a config without any loop key, and staleRuns as false or an object', () => {
     const config = loadExampleConfig()
-    for (const key of ['stateDir', 'trustedLogins', 'eventWait', 'distill', 'staleRuns']) {
+    for (const key of [
+      'stateDir',
+      'trustedLogins',
+      'eventWait',
+      'distill',
+      'staleRuns',
+      'sweepCap',
+    ]) {
       delete config[key]
     }
     expect(validateConfigData(config)).toEqual({ valid: true })
@@ -76,6 +83,8 @@ describe('config validation', () => {
     expect(
       validateConfigData({ ...config, eventWait: { hookHarness: '0.3.5', timeout: '90s' } }),
     ).toEqual({ valid: true })
+    expect(validateConfigData({ ...config, sweepCap: { issues: 0 } })).toEqual({ valid: true })
+    expect(validateConfigData({ ...config, sweepCap: { dispatches: 3 } })).toEqual({ valid: true })
   })
 
   it('rejects loop keys of the wrong type or with unknown members', () => {
@@ -90,6 +99,7 @@ describe('config validation', () => {
     config.modelTiers = { mechanical: 'fast', extra: 'no' }
     config.scheduledPrompts = { history: 1.5 }
     config.lateReviewDays = '14'
+    config.sweepCap = { issues: -1, dispatches: 1.5, extra: 2 }
 
     const result = validateConfigData(config)
     expect(result.valid).toBe(false)
@@ -107,6 +117,9 @@ describe('config validation', () => {
       '/modelTiers',
       '/scheduledPrompts/history',
       '/lateReviewDays',
+      '/sweepCap',
+      '/sweepCap/issues',
+      '/sweepCap/dispatches',
     ]) {
       expect(paths).toContain(path)
     }
