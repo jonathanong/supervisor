@@ -86,7 +86,7 @@ describe('supervisor preflight', () => {
 
   it('fails when the supervisor CLI is older than the minimum and passes at or above it', async () => {
     const loop = await makeLoop()
-    for (const older of ['0.3.0', '0.3.9', '0.4.0-rc.1']) {
+    for (const older of ['0.3.0', '0.4.0', '0.4.9', '0.5.0-rc.1']) {
       const result = await loop.cli(
         ['preflight', '--json'],
         fake({ ...GOOD, supervisor: done(`${older}\n`) }).run,
@@ -100,7 +100,7 @@ describe('supervisor preflight', () => {
         detail: `${older} is older than ${MIN_CLI_VERSION}; run: ${INSTALL_COMMAND}`,
       })
     }
-    for (const newer of ['0.4.0', '0.4.1', '0.5.0', '1.0.0', 'v0.4.0', '0.4.0+build.1']) {
+    for (const newer of ['0.5.0', '0.5.1', '1.0.0', 'v0.5.0', '0.5.0+build.1']) {
       const result = await loop.cli(
         ['preflight'],
         fake({ ...GOOD, supervisor: done(`${newer}\n`) }).run,

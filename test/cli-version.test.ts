@@ -64,8 +64,8 @@ describe('CLI semver helpers', () => {
 describe('minimum CLI version consistency', () => {
   afterEach(cleanupLoops)
 
-  it('uses a valid semver minimum of 0.4.0', () => {
-    expect(MIN_CLI_VERSION).toBe('0.4.0')
+  it('uses a valid semver minimum of 0.5.0', () => {
+    expect(MIN_CLI_VERSION).toBe('0.5.0')
     expect(parseVersion(MIN_CLI_VERSION)).toBeDefined()
   })
 

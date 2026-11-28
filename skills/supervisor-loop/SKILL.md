@@ -13,7 +13,7 @@ Starts the supervisor: a long-lived session that reacts to repository events fro
 demand. It runs from a parent directory (for example `~`), not inside one repository, and covers
 every repository its configuration selects, across every configured owner.
 
-Requires `@jongleberry/supervisor` 0.4.0 or newer (`pnpm add -g @jongleberry/supervisor`).
+Requires `@jongleberry/supervisor` 0.5.0 or newer (`pnpm add -g @jongleberry/supervisor`).
 
 ## Configuration
 

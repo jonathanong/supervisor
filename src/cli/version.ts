@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs'
 const packageJsonUrl = new URL('../../package.json', import.meta.url)
 
 /** Minimum `@jongleberry/supervisor` CLI version required by the bundled skills. */
-export const MIN_CLI_VERSION = '0.4.0'
+export const MIN_CLI_VERSION = '0.5.0'
 
 export const INSTALL_COMMAND = 'pnpm add -g @jongleberry/supervisor'
 
