@@ -32,10 +32,11 @@ summary, and do not call `sp-record` or advance `scheduledPrompts.next`. Reposit
    return findings only.
 5. **Decide:** the supervisor marks a passing PR ready so Phase B handles it. A failure goes back to
    the author worker or is escalated. Closing is not something the merge policy covers.
-6. **Record:** the rotation advances one completed run at a time, even on `incomplete`. After each
-   run finishes, append it to `scheduledPrompts.runs` (prompt, run id, time, outcome, PR), bounded
-   to `history` (default 20), with
+6. **Record:** the rotation advances only past the leading contiguous run of completed prompts, even
+   on `incomplete`. Append each finished run to `scheduledPrompts.runs` (prompt, run id, time,
+   outcome, PR), bounded to `history` (default 20), with
    `supervisor state sp-record --prompt <owner>/<repo>:<path> --run-id <id> --outcome <outcome> --next <owner>/<repo>:<path> [--pr <owner>/<repo>#<N>]`,
-   setting `--next` to the entry immediately after that run's prompt so an interrupted sweep never
-   skips unfinished prompts (and the final selected run leaves `next` after the last selected
-   prompt). List every run in the summary as `scheduled run`.
+   setting `--next` to the entry immediately after the leading completed run (so a later prompt that
+   finished early never moves `next` past an unfinished earlier one, and once all selected prompts
+   complete `next` points after the last selected prompt). List every run in the summary as
+   `scheduled run`.

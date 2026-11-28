@@ -17,19 +17,19 @@ In a scope in `report` mode, run step 1 only and report what the later steps wou
    tool, never shell interpolation, and read it back in full.
 2. **Preflight.** Before every mutation below, run `supervisor stop --status` and go no further on
    any exit but 0 (see the [stop switch](stop-switch.md)), then re-read `headRefOid`; if it moved,
-   return for re-review. Confirm `labels.automation` exists in `--repo` (from preflight or a
-   read-only label check) before invoking `pr-shepherd` or marking a draft ready; if it is missing,
-   stop here and report the repository and label name (never create the label). Then run
-   `pr-shepherd`; exit 17 (`WATCHED`) means another live `pr-shepherd` already watches the PR, so
-   leave it.
+   return for re-review. Run `pr-shepherd`; exit 17 (`WATCHED`) means another live `pr-shepherd`
+   already watches the PR, so leave it.
 3. **Steer (optional).** Post the reviewed steering file as an ordinary comment with
    `gh pr comment <N> --repo <owner>/<repo> --body-file <path>`. Reject an empty file.
 4. **Mark ready and label.** Run `gh pr ready <N> --repo <owner>/<repo>` for a draft (the supervisor
-   does this itself: `pr-shepherd` marks ready only clean drafts with auto mark-ready on), then
-   `gh pr edit <N> --repo <owner>/<repo> --add-label <automation-label>`. If adding the label fails
-   after `gh pr ready` succeeds (for example, the label was removed concurrently), leave the PR
-   ready, report the failure with the repository and label name, and escalate so it does not drop
-   out of triage.
+   does this itself: `pr-shepherd` marks ready only clean drafts with auto mark-ready on), then add
+   the automation label with `gh pr edit <N> --repo <owner>/<repo> --add-label <automation-label>`.
+   If `labels.automation` is missing in `--repo` (from preflight or a label check), skip adding the
+   label and report the repository and label name without creating it; if adding the label fails on
+   any ready PR (whether this run marked it ready or it was already ready), leave the PR ready,
+   report the failure with the repository and label name, and escalate so it does not drop out of
+   triage. Either way, a missing automation label never stops Steps 5–6 when `--merge` is set and the
+   merge authority allows the merge.
 5. **Check the merge authority (only with `--merge`).** Run every step of
    [before any merge](merge-authority.md#before-any-merge) for the current head, and again after new
    commits. A printed enqueue or requeue command counts as a merge. The policy check is

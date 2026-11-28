@@ -7,9 +7,9 @@ infra, or real failure.
 
 ## Finding failures
 
-The sweep's backstop (Phase G) finds both kinds over the last 24 hours (or from the earliest
-held-back failure's timestamp when `sweepCap.dispatches` held a failure back on an earlier sweep,
-since held-back work never expires per
+The sweep's backstop (Phase G) finds both kinds over the last 24 hours, plus any older failure that
+is still the latest run of its workflow on the default branch and is not in `handledFailures` (a
+failure later superseded by a green run needs no fix and drops out; see
 [Per-sweep cap](../../supervisor-sweep/SKILL.md#rules-for-every-phase)):
 
 - **Ejections:** per repository, query GraphQL

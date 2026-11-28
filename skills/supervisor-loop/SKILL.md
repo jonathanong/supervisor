@@ -130,8 +130,7 @@ implementation-tier worker, never the supervisor session.
    `eventWait` is configured; if it fails, continue and use the fallback pacing in Step 2. If
    `labels` reports missing labels in `enforce` scopes (`detail` starts with `missing:`), report
    them and continue without creating labels: escalation still proceeds without `labels.needsHuman`,
-   and do not dispatch workers to (or mark PRs ready for automation triage in) a repository missing
-   `labels.automation`.
+   and do not dispatch workers to a repository missing `labels.automation`.
 
 ## Step 2 - Schedule and event waits
 
