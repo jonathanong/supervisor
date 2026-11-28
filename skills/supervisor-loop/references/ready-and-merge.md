@@ -27,8 +27,9 @@ In a scope in `report` mode, run step 1 only and report what the later steps wou
 5. **Check the merge authority (only with `--merge`).** Run every step of
    [before any merge](merge-authority.md#before-any-merge) for the current head, and again after new
    commits. A printed enqueue or requeue command counts as a merge. The policy check is
-   `supervisor policy check <owner>/<repo> <N> --dir <policy dir> --supervisor-policy --json`; keep
-   its output in a file, and merge only the head in its `pull.head`.
+   `supervisor policy check <owner>/<repo> <N> --json` (it resolves `--dir` and `--repo-dir` from
+   the configuration when omitted; pass them explicitly to override); keep its output in a file,
+   and merge only the head in its `pull.head`.
    - When the policy check's next step is `request_review`, request a final review of the current
      head at the depth it names, as `finalReview.request` says, at most once per head. The record,
      in both modes, is the `escalations` key `final-review:<owner>/<repo>#<N>@<head>`: read it with

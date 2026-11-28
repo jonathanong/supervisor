@@ -128,20 +128,6 @@ export async function runConfiguredPullCheck(
   deps: PullCheckDeps,
 ): Promise<PullCheckResult> {
   assertPullTarget(repository, pr)
-  const { dir, requiredAlwaysHuman, repoDir } = await resolvePolicyFromConfig(
-    deps.env,
-    deps.cwd,
-    repository,
-  )
-  return await runPullCheck(
-    {
-      repository,
-      pr,
-      dir,
-      supervisorPolicy: true,
-      requiredAlwaysHuman,
-      ...(repoDir !== undefined ? { repoDir } : {}),
-    },
-    deps,
-  )
+  const source = await resolvePolicyFromConfig(deps.env, deps.cwd, repository)
+  return await runPullCheck({ repository, pr, ...source }, deps)
 }

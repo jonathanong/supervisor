@@ -1,10 +1,12 @@
 import { readFile } from 'node:fs/promises'
+import { resolvePolicyFromConfig } from '../config/policy.js'
 import { evaluatePolicies } from '../policy/evaluate.js'
 import { FactsError, PULL_NUMBER, REPOSITORY } from '../policy/facts-gh.js'
 import type { PullFacts } from '../policy/facts.js'
 import { checkPull, type PullCheckResult } from '../policy/pull-check.js'
 import {
   collectPullCheckFacts,
+  loadPolicySet,
   parseClassifiersData,
   runPullCheck,
   type ClassifiersInput,
@@ -14,7 +16,6 @@ import {
 import type { EvaluationInput } from '../policy/types.js'
 import { isObject } from '../state/json.js'
 import { formatHumanCheck, formatPullCheck } from './policy-format.js'
-import { loadPolicies } from './policy-load.js'
 import type { CliIo } from './run.js'
 
 interface CheckArgs {
@@ -59,7 +60,7 @@ function parseArgs(args: string[]): CheckArgs | string {
   }
   const [repository, number, ...extra] = parsed.positionals
   if (repository === undefined) {
-    if (!parsed.dir || !parsed.input) return 'Both --dir and --input are required.'
+    if (!parsed.input) return 'Expected <owner>/<repo> <pr>, or --input <json>.'
     if (parsed.classifiers || parsed.printInput) {
       return '--classifiers and --print-input need <owner>/<repo> <pr>.'
     }
@@ -68,7 +69,6 @@ function parseArgs(args: string[]): CheckArgs | string {
   if (number === undefined || extra.length > 0) return 'Expected <owner>/<repo> <pr>.'
   if (!REPOSITORY.test(repository)) return `'${repository}' must look like <owner>/<repo>.`
   if (!PULL_NUMBER.test(number)) return `'${number}' must be a pull request number.`
-  if (!parsed.dir) return '--dir is required.'
   if (parsed.input) return '--input cannot be combined with <owner>/<repo> <pr>.'
   return parsed
 }
@@ -112,22 +112,39 @@ async function readClassifiers(path: string): Promise<ClassifiersInput> {
   return parseClassifiersData(await readJson(path, 'classifiers'))
 }
 
+function policyOverrides(args: CheckArgs) {
+  return {
+    ...(args.dir !== undefined ? { dir: args.dir } : {}),
+    ...(args.repoDir !== undefined ? { repoDir: args.repoDir } : {}),
+    supervisorPolicy: args.supervisorPolicy,
+  }
+}
+
+function inputRepository(input: EvaluationInput | PullFacts): string | undefined {
+  const candidate = input.facts?.repository
+  return typeof candidate === 'string' && REPOSITORY.test(candidate) ? candidate : undefined
+}
+
 async function checkPullRequest(args: CheckArgs, io: CliIo): Promise<number> {
   const [repository, number] = args.positionals as [string, string]
   const classifiers = args.classifiers ? await readClassifiers(args.classifiers) : undefined
-  const request: PullCheckRequest = {
-    repository,
-    pr: Number(number),
-    dir: args.dir!,
-    supervisorPolicy: args.supervisorPolicy,
-    ...(args.repoDir ? { repoDir: args.repoDir } : {}),
-    ...(classifiers ? { classifiers } : {}),
-  }
   const deps: PullCheckDeps = {
     env: io.env,
     cwd: process.cwd(),
     runProcess: io.runProcess,
     shepherdStatus: io.shepherdStatus,
+  }
+  const source = await resolvePolicyFromConfig(
+    deps.env,
+    deps.cwd,
+    repository,
+    policyOverrides(args),
+  )
+  const request: PullCheckRequest = {
+    repository,
+    pr: Number(number),
+    ...source,
+    ...(classifiers ? { classifiers } : {}),
   }
   if (args.printInput) {
     const { facts } = await collectPullCheckFacts(request, deps)
@@ -147,8 +164,15 @@ export async function runCheck(argv: string[], io: CliIo, help: string): Promise
   }
   try {
     if (args.positionals.length > 0) return await checkPullRequest(args, io)
-    const policies = await loadPolicies(args, io)
     const input = await readInput(args.input!)
+    const cwd = process.cwd()
+    const source = await resolvePolicyFromConfig(
+      io.env,
+      cwd,
+      args.dir === undefined ? inputRepository(input) : undefined,
+      policyOverrides(args),
+    )
+    const policies = await loadPolicySet(source, io.env, cwd)
     const collected = 'blockers' in input
     const result = collected ? checkPull(policies, input) : evaluatePolicies(policies, input)
     const text = collected ? formatPullCheck(result as PullCheckResult) : formatHumanCheck(result)
