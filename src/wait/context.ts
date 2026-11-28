@@ -6,24 +6,18 @@ export interface WaitContext {
   /** The state directory. */
   dir: string
   loaded: LoadedConfig
+  env: Record<string, string | undefined>
   run: RunProcess
   now: () => Date
   write: (text: string) => void
+  fetch?: typeof fetch
+  sleep?: (ms: number, signal: AbortSignal) => Promise<void>
+  timeoutSignal?: (ms: number) => AbortSignal
 }
 
 /** A wait that cannot continue; the message is printed and the command exits 1. */
 export class WaitError extends Error {
-  constructor(message: string) {
-    super(`supervisor wait: ${message}`)
-  }
-}
-
-/** `hook-harness` exited non-zero; the wait exits with the same code. */
-export class HarnessExit extends Error {
-  readonly code: number
-
-  constructor(code: number) {
-    super(`hook-harness exited ${code}`)
-    this.code = code
+  constructor(message: string, options?: ErrorOptions) {
+    super(`supervisor wait: ${message}`, options)
   }
 }

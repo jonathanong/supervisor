@@ -25,9 +25,11 @@ name, ok, and detail:
                 in the current directory)
   gh            "gh auth status" succeeds; the detail lists the token scopes when gh prints them
   pr-shepherd   "pr-shepherd --version" succeeds; the detail is the version
-  hook-harness  "npx -y hook-harness@<eventWait.hookHarness> --version" succeeds; the detail is
-                the version. Reported ok, with the detail "not configured", when the config file
-                does not set eventWait (the loop then paces with wake-ups)
+  hook-harness  The hook-harness relay URL (https:, or http: only for localhost, 127.0.0.1, or
+                [::1]) and token are configured via HOOK_HARNESS_URL/HOOK_HARNESS_TOKEN or
+                hook-harness login; the detail is the relay origin. Reported ok, with the detail
+                "not configured", when the config file does not set eventWait (the loop then paces
+                with wake-ups)
   stop          The stop switch is not set (see: supervisor stop --help); when it is set, the
                 detail says since when and why, and the check is not ok
 
@@ -69,7 +71,7 @@ export async function runPreflightCommand(args: string[], io: CliIo): Promise<nu
     check,
     await checkGh(io.runProcess),
     await checkShepherd(io.runProcess),
-    await checkHarness(io.runProcess, loaded),
+    await checkHarness(io.env, loaded),
     await checkStop(loaded),
   ]
   const ok = checks.every((entry) => entry.ok)

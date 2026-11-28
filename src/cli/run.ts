@@ -21,6 +21,12 @@ export interface CliIo {
   /** pr-shepherd's read-only status; tests replace it so nothing is read from GitHub. */
   shepherdStatus: ShepherdStatus
   now: () => Date
+  /** HTTP transport for in-process relay polling; defaults to global `fetch`. */
+  fetch?: typeof fetch
+  /** Sleep between relay polls; defaults to hook-harness's timer. */
+  sleep?: (ms: number, signal: AbortSignal) => Promise<void>
+  /** Timeout signal factory for relay polling; defaults to `AbortSignal.timeout`. */
+  timeoutSignal?: (ms: number) => AbortSignal
 }
 
 export const defaultCliIo: CliIo = {

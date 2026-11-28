@@ -56,7 +56,7 @@ describe('loop config loading', () => {
       layerCap: 10,
       scheduledPrompts: { glob: 'prompts/*.md', quota: 1, history: 5 },
       staleRuns: false,
-      eventWait: { hookHarness: '0.4.1', timeout: '90s', advance: false, updateCheckDelay: '10m' },
+      eventWait: { timeout: '90s', advance: false, updateCheckDelay: '10m' },
     })
     expect(loaded.config.scopes[0]!.checkoutRoot).toBe(homedir())
     expect(loaded.config.stateDir).toBeUndefined()
@@ -66,9 +66,18 @@ describe('loop config loading', () => {
   it('leaves scheduledPrompts absent, turns staleRuns on, and returns a set stateDir', async () => {
     const loaded = await loadConfig({ SUPERVISOR_CONFIG: examplePath }, '/unused')
     const { scheduledPrompts: _prompts, staleRuns: _stale, ...rest } = loaded.config
-    const config = applyDefaults({ ...rest, stateDir: '/var/state' })
+    const config = applyDefaults({
+      ...rest,
+      stateDir: '/var/state',
+      eventWait: { hookHarness: '0.3.5', timeout: '30m' },
+    })
     expect(config.scheduledPrompts).toBeUndefined()
     expect(config.staleRuns).toEqual({ olderThan: '6h', cancelAfter: '24h' })
+    expect(config.eventWait).toEqual({
+      timeout: '30m',
+      advance: false,
+      updateCheckDelay: '10m',
+    })
     expect(requireStateDir({ path: examplePath, config })).toBe('/var/state')
   })
 

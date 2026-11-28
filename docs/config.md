@@ -39,3 +39,12 @@ A scope is one GitHub owner and the repositories the supervisor covers there.
 `finalReview` says how to ask the final reviewer for a review of a head: a message to its session, a label on the PR, or both. `label` names that label. Optional `reviewer` names the reviewer's GitHub account (`bot:<app slug>` or `<login>`) whose final review `classify-collect` maps to `claude/code_review`. The supervisor requests a review of each head once; for a head that follows an earlier request it removes the label and adds it again.
 
 Whether a review is required is a rule in the merge policy, not a setting here.
+
+## Event wait
+
+`eventWait` (optional) enables `supervisor wait`, which polls the hook-harness relay in-process through supervisor's bundled `hook-harness` client using credentials from `HOOK_HARNESS_URL` and `HOOK_HARNESS_TOKEN` or `hook-harness login`. The relay URL must use `https:` (`http:` is allowed only for `localhost`, `127.0.0.1`, and `[::1]`).
+
+- **`timeout`** (default `"2h"`) is how long one wait runs before returning `timedOut: true`.
+- **`advance`** (default `false`) advances the stored cursor and marks returned event ids seen at return instead of waiting for `supervisor state advance-hh`.
+- **`updateCheckDelay`** (default `"10m"`) bounds how long the wait stays idle after a dependency-bot pull request merges cleanly.
+- **`hookHarness`** (deprecated) is accepted for compatibility with older configuration files and ignored, because `supervisor` now uses its bundled `hook-harness` dependency directly.

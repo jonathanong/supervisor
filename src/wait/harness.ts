@@ -1,4 +1,12 @@
-import { tmpdir } from 'node:os'
+import {
+  BadRequestError,
+  NotLoggedInError,
+  OutOfScopeError,
+  pollEvents,
+  resolveClient,
+  UnauthorizedError,
+  type EventFilter,
+} from 'hook-harness/client'
 import {
   ownersOf,
   parseRepoList,
@@ -7,12 +15,23 @@ import {
   scopesForOwner,
   selectRepos,
 } from '../config/repos.js'
-import { get, isObject, type JsonObject } from '../state/json.js'
-import { loadState, parseJson } from '../state/store.js'
-import { HarnessExit, WaitError, type WaitContext } from './context.js'
+import { get, isObject, type Json, type JsonObject } from '../state/json.js'
+import { loadState } from '../state/store.js'
+import { WaitError, type WaitContext } from './context.js'
 
-const PRESETS = 'ejection,dependabot-pr,/shepherd,/plan,/fix'
-const CLOSED_PRS = '{"event": "pull_request", "action": "closed"}'
+const ON_PRESETS = ['ejection', 'dependabot-pr', '/shepherd', '/plan', '/fix']
+const FILTERS: EventFilter[] = [
+  { event: 'workflow_run', action: 'completed', conclusion: 'failure', branch: 'main' },
+  { event: 'pull_request', action: 'closed' },
+]
+const SINCE_MS = 10 * 60 * 1000
+const POLL_INTERVAL_MS = 15_000
+const MAX_CONSECUTIVE_ERRORS = 5
+const MAX_TIMEOUT_MS = 2_147_483_647
+
+export type HarnessResult =
+  | (JsonObject & { events: Json[]; gap: boolean; cursor: string; timedOut?: undefined })
+  | (JsonObject & { events: Json[]; gap: false; timedOut: true; cursor?: string })
 
 async function gh(ctx: WaitContext, args: string[], what: string): Promise<string> {
   const result = await ctx.run('gh', args)
@@ -20,26 +39,6 @@ async function gh(ctx: WaitContext, args: string[], what: string): Promise<strin
     throw new WaitError(`${what} exited ${result.code}: ${result.stderr.trim().slice(0, 200)}`)
   }
   return result.stdout
-}
-
-/**
- * Fail up front when several owners are configured and `eventWait.hookHarness` is an exact version
- * older than 0.4.0, which waits for one owner only. A range or a tag is passed through unchecked.
- */
-export function checkHarnessVersion(ctx: WaitContext): void {
-  const version = ctx.loaded.config.eventWait.hookHarness
-  const match = /^(\d+)\.(\d+)\.\d+$/.exec(version)
-  if (
-    match !== null &&
-    ownersOf(ctx.loaded).length > 1 &&
-    match[1] === '0' &&
-    Number(match[2]) < 4
-  ) {
-    throw new WaitError(
-      `eventWait.hookHarness ${version} waits for one owner and the config has several; ` +
-        'use hook-harness 0.4.0 or newer',
-    )
-  }
 }
 
 /**
@@ -83,32 +82,88 @@ function ownersIn(repos: string[]): string[] {
   return [...new Set(repos.map((repo) => repo.slice(0, repo.indexOf('/'))))]
 }
 
+function mapHarnessError(error: unknown): WaitError {
+  if (error instanceof WaitError) {
+    return error
+  }
+  if (error instanceof NotLoggedInError || error instanceof TypeError) {
+    return new WaitError(`hook-harness configuration error: ${error.message}`, { cause: error })
+  }
+  if (error instanceof UnauthorizedError) {
+    return new WaitError(`hook-harness token rejected: ${error.message}`, { cause: error })
+  }
+  if (error instanceof OutOfScopeError) {
+    return new WaitError(`hook-harness token out of scope: ${error.message}`, { cause: error })
+  }
+  if (error instanceof BadRequestError) {
+    return new WaitError(`hook-harness bad request: ${error.message}`, { cause: error })
+  }
+  return new WaitError(`hook-harness error: ${(error as Error).message}`, { cause: error })
+}
+
 /**
- * Run one `hook-harness wait` over every owner from the stored cursor and return the parsed
- * result. Main-branch failures come from `workflow_run` only; pull-request checks are left to
- * pr-shepherd.
+ * Poll the hook-harness relay in-process over every owner from the stored cursor until a batch
+ * returns events or a gap, or the timeout signal aborts. Main-branch failures come from
+ * `workflow_run` only; pull-request checks are left to pr-shepherd.
  */
 export async function hookHarnessWait(
   ctx: WaitContext,
   repos: string[],
-  timeout: string,
-): Promise<JsonObject> {
+  timeoutMs: number,
+): Promise<HarnessResult> {
   const harness = get(await loadState(ctx.dir), 'hookHarness')
-  const cursor = isObject(harness) ? get(harness, 'cursor') : undefined
-  const after = typeof cursor === 'string' ? cursor : ''
-  const version = ctx.loaded.config.eventWait.hookHarness
-  const args = ['-y', `hook-harness@${version}`, 'wait', '--owner', ownersIn(repos).join(',')]
-  args.push(...(after ? ['--after', after] : ['--since', '10m']))
-  args.push('--repo', repos.join(','), '--on', PRESETS)
-  args.push('--event', 'workflow_run', '--action', 'completed', '--conclusion', 'failure')
-  args.push('--branch', 'main', '--filter', CLOSED_PRS, '--timeout', timeout)
-  const result = await ctx.run('npx', args, { cwd: tmpdir(), inheritStderr: true })
-  if (result.code !== 0) {
-    throw new HarnessExit(result.code)
+  const stored = isObject(harness) ? get(harness, 'cursor') : undefined
+  const after = typeof stored === 'string' ? stored : ''
+  const failures = new Map<string, number>()
+  let cursor: string | undefined
+
+  try {
+    const client = await resolveClient(ctx.env)
+    const boundedMs = Math.min(Math.max(Math.trunc(timeoutMs), 1), MAX_TIMEOUT_MS)
+    const signal = (ctx.timeoutSignal ?? AbortSignal.timeout)(boundedMs)
+    const stream = pollEvents({
+      ...client,
+      owner: ownersIn(repos),
+      repos,
+      on: ON_PRESETS,
+      filters: FILTERS,
+      ...(after ? { after } : {}),
+      since: new Date(ctx.now().getTime() - SINCE_MS),
+      intervalMs: POLL_INTERVAL_MS,
+      signal,
+      ...(ctx.fetch ? { fetch: ctx.fetch } : {}),
+      ...(ctx.sleep ? { sleep: ctx.sleep } : {}),
+    })
+    for await (const batch of stream) {
+      if ('error' in batch) {
+        const count = (failures.get(batch.owner) ?? 0) + 1
+        failures.set(batch.owner, count)
+        if (count >= MAX_CONSECUTIVE_ERRORS) {
+          throw new WaitError(
+            `hook-harness relay unreachable (${count} consecutive errors for ${batch.owner}): ${batch.error.message}`,
+            { cause: batch.error },
+          )
+        }
+        continue
+      }
+      failures.delete(batch.owner)
+      cursor = batch.cursor
+      if (batch.gap || batch.events.length > 0) {
+        return {
+          events: batch.events as unknown as Json[],
+          gap: batch.gap,
+          cursor: batch.cursor,
+        }
+      }
+    }
+  } catch (error) {
+    throw mapHarnessError(error)
   }
-  const data = parseJson(result.stdout, 'supervisor wait: hook-harness output')
-  if (!isObject(data)) {
-    throw new WaitError('hook-harness output is not a JSON object')
+
+  return {
+    events: [],
+    gap: false,
+    timedOut: true,
+    ...(cursor === undefined ? {} : { cursor }),
   }
-  return data
 }

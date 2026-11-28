@@ -1,7 +1,14 @@
-import { tmpdir } from 'node:os'
 import { afterEach, describe, expect, it } from 'vitest'
-import { cleanupLoops, makeLoop } from './helpers/loop.js'
-import { lines, makeWorld, mergeEvent } from './helpers/wait.js'
+import { cleanupLoops, makeLoop, NOW } from './helpers/loop.js'
+import {
+  decodeCursor,
+  envelope,
+  lines,
+  makeWorld,
+  mergeEvent,
+  type RelayReply,
+  type RelayRequest,
+} from './helpers/wait.js'
 
 const SCOPES = [
   { owner: 'example-org', kind: 'org', repos: '*', excludedRepos: ['skip-me'], mode: 'enforce' },
@@ -12,10 +19,10 @@ const SCOPES = [
 
 /** One `gh` listing per owner, answered by the endpoint it was asked for. */
 function listingWorld(
-  results: Array<Record<string, unknown> | number | string>,
+  replies: RelayReply[] | ((req: RelayRequest) => RelayReply),
   overrides: Record<string, string> = {},
 ) {
-  const world = makeWorld({ results, login: 'example-user' })
+  const world = makeWorld({ replies, login: 'example-user' })
   const run = world.run
   world.run = async (command, args, options) => {
     if (command === 'gh' && args[1] === '--paginate') {
@@ -37,81 +44,97 @@ function listingWorld(
 describe('supervisor wait over every owner', () => {
   afterEach(cleanupLoops)
 
-  it('runs one hook-harness wait with the owner list and the union of selected repositories', async () => {
+  it('polls every distinct owner with the union of selected repositories in one wait', async () => {
     const loop = await makeLoop({ scopes: SCOPES })
-    const world = listingWorld([{ events: [], cursor: 'c1', timedOut: true }])
-    expect((await loop.cli(['wait'], world.run)).code).toBe(0)
+    const seenOwners = new Set<string>()
+    const world = listingWorld((req) => {
+      seenOwners.add(req.owner!)
+      return { events: [], timedOut: seenOwners.size === 3 }
+    })
+    expect((await loop.cli(['wait'], world.run, undefined, world.io)).code).toBe(0)
     const repos =
       'example-org/alpha,example-org/extra-repo,example-user/demo-repo,example-team/team-repo'
-    expect(world.waits()).toEqual([
-      [
-        '-y',
-        'hook-harness@0.4.1',
-        'wait',
-        '--owner',
-        'example-org,example-user,example-team',
-        '--since',
-        '10m',
-        '--repo',
-        repos,
-        '--on',
-        'ejection,dependabot-pr,/shepherd,/plan,/fix',
-        '--event',
-        'workflow_run',
-        '--action',
-        'completed',
-        '--conclusion',
-        'failure',
-        '--branch',
-        'main',
-        '--filter',
-        '{"event": "pull_request", "action": "closed"}',
-        '--timeout',
-        '2h',
-      ],
-    ])
-    expect(world.calls.filter((call) => call.command === 'npx')).toHaveLength(1)
-    expect(world.calls.find((call) => call.command === 'npx')!.options).toEqual({
-      cwd: tmpdir(),
-      inheritStderr: true,
-    })
+    expect([...seenOwners].sort()).toEqual(['example-org', 'example-team', 'example-user'])
+    for (const req of world.requests) {
+      expect(req.repos).toBe(repos)
+      expect(req.after).toBe(String(Date.parse(NOW) - 10 * 60 * 1000))
+    }
     // gh asks who is signed in once, however many user scopes there are.
     expect(world.calls.filter((call) => call.args[1] === 'user')).toHaveLength(1)
     expect((await loop.state()).hookHarness).toEqual({ seen: [] })
   })
 
-  it('reports each event and merge under its own owner, from one cursor', async () => {
+  it('reports each event and merge under its own owner and round-trips a multi-owner cursor', async () => {
     const loop = await makeLoop({ scopes: SCOPES })
-    const events = [
-      mergeEvent('m1', 'alpha', 4),
-      mergeEvent('m2', 'example-user/demo-repo', 5),
-      { id: 'f1', owner: 'example-team', repo: 'team-repo', event: 'workflow_run' },
-    ]
-    const world = listingWorld([{ events, cursor: 'c9', timedOut: true }])
-    const out = lines((await loop.cli(['wait', '--advance'], world.run)).stdout)
+    const byOwner: Record<string, RelayReply[]> = {
+      'example-org': [
+        { events: [mergeEvent('m1', 'alpha', 4)], cursor: '1767323045010#org' },
+        { events: [], cursor: '1767323045020#org', timedOut: true },
+      ],
+      'example-user': [
+        { events: [], cursor: '1767323045011#user' },
+        {
+          events: [
+            envelope({
+              id: 'f1',
+              owner: 'example-user',
+              repo: 'demo-repo',
+              event: 'workflow_run',
+              action: 'completed',
+              conclusion: 'failure',
+              headRef: 'main',
+              workflow: 'ci',
+              runId: 9,
+              sender: null,
+            }),
+          ],
+          cursor: '1767323045021#user',
+        },
+      ],
+      'example-team': [
+        { events: [], cursor: '1767323045012#team' },
+        { events: [], cursor: '1767323045022#team' },
+      ],
+    }
+    const world = listingWorld((req) => byOwner[req.owner!]!.shift() ?? { events: [] })
+    const out = lines(
+      (await loop.cli(['wait', '--advance'], world.run, undefined, world.io)).stdout,
+    )
     expect(out[0]).toMatchObject({
+      gap: false,
       events: 1,
-      quiet: { count: 2, merges: ['example-org/alpha#4', 'example-user/demo-repo#5'] },
+      advanced: true,
+      quiet: { count: 1, merges: ['example-org/alpha#4'] },
     })
     expect(out[1]).toEqual({
       id: 'f1',
-      repo: 'example-team/team-repo',
+      repo: 'example-user/demo-repo',
       event: 'workflow_run',
+      action: 'completed',
+      conclusion: 'failure',
+      workflow: 'ci',
+      runId: 9,
     })
-    expect((await loop.state()).hookHarness).toEqual({ seen: ['m1', 'm2', 'f1'], cursor: 'c9' })
+    const state = await loop.state()
+    expect(state.hookHarness.seen).toEqual(['m1', 'f1'])
+    const decoded = decodeCursor(state.hookHarness.cursor)
+    expect(decoded.v).toBe(2)
+    expect(decoded.owners['example-org'].sk).toBe('1767323045020#org')
+    expect(decoded.owners['example-user'].sk).toBe('1767323045021#user')
+
+    // A second wait resumes every owner from its own position in the stored v2 cursor.
+    const nextWorld = listingWorld((req) => ({
+      events: [],
+      cursor: req.after!,
+      timedOut: true,
+    }))
+    expect((await loop.cli(['wait'], nextWorld.run, undefined, nextWorld.io)).code).toBe(0)
+    const resumed = Object.fromEntries(nextWorld.requests.map((req) => [req.owner, req.after]))
+    expect(resumed['example-org']).toBe('1767323045020#org')
+    expect(resumed['example-user']).toBe('1767323045021#user')
   })
 
-  it('starts the second round from the one stored cursor', async () => {
-    const loop = await makeLoop({ scopes: SCOPES })
-    const world = listingWorld([
-      { events: [mergeEvent('m1', 'alpha', 4)], cursor: 'c1' },
-      { events: [], cursor: 'c2', timedOut: true },
-    ])
-    await loop.cli(['wait'], world.run)
-    expect(world.waits()[1]!.slice(5, 7)).toEqual(['--after', 'c1'])
-  })
-
-  it('upgrades a 0.3.0 state: per-owner entries dropped, seen ids kept, first wait from --since', async () => {
+  it('upgrades a 0.3.0 state: per-owner entries dropped, seen ids kept, first wait from 10m ago', async () => {
     const loop = await makeLoop({ scopes: SCOPES })
     await loop.seed({
       hookHarness: {
@@ -119,59 +142,46 @@ describe('supervisor wait over every owner', () => {
         'example-user': { cursor: 'u1', seen: ['y'] },
       },
     })
-    const world = listingWorld([
-      { events: [mergeEvent('m1', 'alpha', 4), mergeEvent('m2', 'alpha', 5)], cursor: 'c1' },
-      { events: [], cursor: 'c2', timedOut: true },
-    ])
-    expect((await loop.cli(['wait'], world.run)).code).toBe(0)
-    expect(world.waits()[0]!.slice(5, 7)).toEqual(['--since', '10m'])
-    expect(world.waits()[1]!.slice(5, 7)).toEqual(['--after', 'c1'])
-    expect((await loop.state()).hookHarness).toEqual({
-      seen: ['m1', 'x', 'y', 'm2'],
-      cursor: 'c1',
+    let round = 0
+    const world = listingWorld((req) => {
+      if (req.owner === 'example-org' && round === 0) {
+        round = 1
+        return {
+          events: [mergeEvent('m1', 'alpha', 4), mergeEvent('m2', 'alpha', 5)],
+          cursor: '1767323045010#org',
+        }
+      }
+      return { events: [], cursor: '1767323045099#end', timedOut: round === 1 }
     })
-  })
-
-  it('refuses an exact hook-harness older than 0.4.0 for several owners, and not for one or a range', async () => {
-    const old = await makeLoop({ scopes: SCOPES, eventWait: { hookHarness: '0.3.5' } })
-    const refused = await old.cli(['wait'], makeWorld().run)
-    expect(refused).toEqual({
-      code: 1,
-      stdout: '',
-      stderr:
-        'supervisor wait: eventWait.hookHarness 0.3.5 waits for one owner and the config has ' +
-        'several; use hook-harness 0.4.0 or newer\n',
-    })
-
-    const single = await makeLoop({
-      scopes: SCOPES.slice(0, 1),
-      eventWait: { hookHarness: '0.3.5' },
-    })
-    const one = makeWorld({ results: [{ events: [], timedOut: true }] })
-    expect((await single.cli(['wait'], one.run)).code).toBe(0)
-    expect(one.waits()[0]![1]).toBe('hook-harness@0.3.5')
-
-    for (const hookHarness of ['^0.3.0', 'latest', '0.4.0', '1.0.0', '0.10.2']) {
-      const loop = await makeLoop({ scopes: SCOPES, eventWait: { hookHarness } })
-      const world = listingWorld([{ events: [], timedOut: true }])
-      expect((await loop.cli(['wait'], world.run)).code).toBe(0)
-      expect(world.waits()[0]![1]).toBe(`hook-harness@${hookHarness}`)
-    }
+    expect((await loop.cli(['wait'], world.run, undefined, world.io)).code).toBe(0)
+    const orgPolls = world.requests.filter((req) => req.owner === 'example-org')
+    expect(orgPolls[0]!.after).toBe(String(Date.parse(NOW) - 10 * 60 * 1000))
+    expect(orgPolls[1]!.after).toBe('1767323045010#org')
+    const state = await loop.state()
+    expect(state.hookHarness.seen).toEqual(['m1', 'x', 'y', 'm2'])
+    expect(decodeCursor(state.hookHarness.cursor).owners['example-org'].sk).toBe(
+      '1767323045010#org',
+    )
   })
 
   it('skips, with a warning, an owner whose scopes select no repository', async () => {
     const loop = await makeLoop({ scopes: SCOPES })
-    const world = listingWorld([{ events: [], timedOut: true }], {
-      'orgs/example-team': 'forked\ttrue\n',
-    })
-    const result = await loop.cli(['wait'], world.run)
+    const world = listingWorld(
+      [
+        { events: [], timedOut: true },
+        { events: [], timedOut: true },
+      ],
+      {
+        'orgs/example-team': 'forked\ttrue\n',
+      },
+    )
+    const result = await loop.cli(['wait'], world.run, undefined, world.io)
     expect(result.code).toBe(0)
     expect(result.stdout).toContain(
       'supervisor wait: skipping example-team: no repositories match its configuration\n',
     )
-    const args = world.waits()[0]!
-    expect(args[args.indexOf('--owner') + 1]).toBe('example-org,example-user')
-    expect(args[args.indexOf('--repo') + 1]).toBe(
+    expect(world.requests.every((req) => req.owner !== 'example-team')).toBe(true)
+    expect(world.requests[0]!.repos).toBe(
       'example-org/alpha,example-org/extra-repo,example-user/demo-repo',
     )
   })
@@ -179,10 +189,10 @@ describe('supervisor wait over every owner', () => {
   it('fails when no owner selects any repository', async () => {
     const loop = await makeLoop({ scopes: SCOPES })
     const world = makeWorld({ listing: 'skip-me\tfalse\n', login: 'example-user' })
-    const result = await loop.cli(['wait'], world.run)
+    const result = await loop.cli(['wait'], world.run, undefined, world.io)
     expect(result.code).toBe(1)
     expect(result.stderr).toBe('supervisor wait: no repositories match the configuration\n')
     expect(result.stdout).toContain('skipping example-org')
-    expect(world.waits()).toEqual([])
+    expect(world.requests).toEqual([])
   })
 })

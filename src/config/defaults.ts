@@ -15,7 +15,8 @@ export function expandHome(value: string): string {
 
 /** Expand `~/` in the path values and fill in every documented default. */
 export function applyDefaults(raw: SupervisorConfig): LoopConfig {
-  const { scheduledPrompts, staleRuns, stateDir, ...rest } = raw
+  const { scheduledPrompts, staleRuns, stateDir, eventWait, ...rest } = raw
+  const { hookHarness: _ignored, ...wait } = eventWait ?? {}
   return {
     ...rest,
     scopes: raw.scopes.map((scope) =>
@@ -35,11 +36,10 @@ export function applyDefaults(raw: SupervisorConfig): LoopConfig {
         }),
     staleRuns: staleRuns === false ? false : { olderThan: '6h', cancelAfter: '24h', ...staleRuns },
     eventWait: {
-      hookHarness: '0.4.1',
       timeout: '2h',
       advance: false,
       updateCheckDelay: '10m',
-      ...raw.eventWait,
+      ...wait,
     },
   }
 }

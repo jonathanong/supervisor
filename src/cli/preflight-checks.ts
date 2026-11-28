@@ -1,11 +1,12 @@
 import { readFile } from 'node:fs/promises'
-import { tmpdir } from 'node:os'
+import { resolveClient } from 'hook-harness/client'
 import { requireStateDir, type LoadedConfig } from '../config/load.js'
 import type { RunProcess } from '../state/process.js'
 import { readStop } from '../state/stop.js'
 import { compareVersion, INSTALL_COMMAND, MIN_CLI_VERSION, parseVersion } from './version.js'
 
 const MIN_PARSED = parseVersion(MIN_CLI_VERSION)!
+const LOOPBACK = new Set(['localhost', '127.0.0.1', '[::1]'])
 
 export interface Check {
   name: string
@@ -31,10 +32,9 @@ async function probe(
   name: string,
   command: string,
   args: string[],
-  cwd?: string,
 ): Promise<Check> {
   try {
-    const result = await run(command, args, { ...(cwd ? { cwd } : {}), timeoutMs: TIMEOUT_MS })
+    const result = await run(command, args, { timeoutMs: TIMEOUT_MS })
     const output = (result.stdout || result.stderr).trim()
     if (result.code !== 0) {
       return { name, ok: false, detail: `exited ${result.code}: ${firstLine(output)}` }
@@ -98,8 +98,21 @@ async function eventWaitSet(path: string): Promise<boolean> {
   return (data as { eventWait?: unknown }).eventWait !== undefined
 }
 
+function checkRelayUrl(url: string): string {
+  const parsed = new URL(url)
+  if (
+    parsed.protocol !== 'https:' &&
+    !(parsed.protocol === 'http:' && LOOPBACK.has(parsed.hostname))
+  ) {
+    throw new TypeError(
+      `refusing to send the token to ${parsed.protocol}//${parsed.host}; use https`,
+    )
+  }
+  return parsed.origin
+}
+
 export async function checkHarness(
-  run: RunProcess,
+  env: Record<string, string | undefined>,
   loaded: LoadedConfig | undefined,
 ): Promise<Check> {
   if (loaded === undefined) {
@@ -109,12 +122,11 @@ export async function checkHarness(
     if (!(await eventWaitSet(loaded.path))) {
       return { name: 'hook-harness', ok: true, detail: 'not configured' }
     }
+    const client = await resolveClient(env)
+    return { name: 'hook-harness', ok: true, detail: checkRelayUrl(client.url) }
   } catch (error) {
     return { name: 'hook-harness', ok: false, detail: firstLine(message(error)) }
   }
-  const version = loaded.config.eventWait.hookHarness
-  const args = ['-y', `hook-harness@${version}`, '--version']
-  return probe(run, 'hook-harness', 'npx', args, tmpdir())
 }
 
 export async function checkStop(loaded: LoadedConfig | undefined): Promise<Check> {

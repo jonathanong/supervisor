@@ -1,6 +1,13 @@
 import { afterEach, describe, expect, it } from 'vitest'
 import { cleanupLoops, makeLoop } from './helpers/loop.js'
-import { lines, makeWorld, mergeEvent, ORG_ONLY } from './helpers/wait.js'
+import {
+  decodeCursor,
+  encodeCursor,
+  lines,
+  makeWorld,
+  mergeEvent,
+  ORG_ONLY,
+} from './helpers/wait.js'
 
 const WAIT = ['wait']
 const resolved = Array.from({ length: 6 }, () => [true])
@@ -12,7 +19,7 @@ describe('supervisor wait: merged pull requests', () => {
     const loop = await makeLoop(ORG_ONLY)
     const late = { body: 'Please fix', submittedAt: '2026-01-01T00:00:01Z' }
     const world = makeWorld({
-      results: [
+      replies: [
         {
           events: [
             mergeEvent('m1', 'example-repo', 4),
@@ -26,7 +33,7 @@ describe('supervisor wait: merged pull requests', () => {
         'example-org/example-repo#5': { threads: resolved },
       },
     })
-    const result = await loop.cli(WAIT, world.run)
+    const result = await loop.cli(WAIT, world.run, undefined, world.io)
     const merge = {
       repo: 'example-org/example-repo',
       event: 'pull_request',
@@ -34,7 +41,7 @@ describe('supervisor wait: merged pull requests', () => {
       merged: true,
     }
     expect(lines(result.stdout)).toEqual([
-      { events: 2, quiet: { count: 1, merges: ['example-org/example-repo#6'] } },
+      { gap: false, events: 2, quiet: { count: 1, merges: ['example-org/example-repo#6'] } },
       { id: 'm1', ...merge, prs: [4], unresolved: 1, late: 1 },
       { id: 'm2', ...merge, prs: [5], unresolved: 0, late: 0, truncated: true },
     ])
@@ -45,13 +52,18 @@ describe('supervisor wait: merged pull requests', () => {
     const loop = await makeLoop(ORG_ONLY)
     const name = `bad repo ${'x'.repeat(300)}`
     const unnumbered = {
-      event: 'pull_request',
-      action: 'closed',
+      ...mergeEvent('', '', 0),
+      id: undefined,
+      owner: undefined,
+      repo: null,
+      prs: undefined,
       payload: { pull_request: { merged: true } },
     }
-    const world = makeWorld({ results: [{ events: [mergeEvent('m1', name, 8), unnumbered] }] })
-    const [summary, first, second] = lines((await loop.cli(WAIT, world.run)).stdout)
-    expect(summary).toEqual({ events: 2 })
+    const world = makeWorld({ replies: [{ events: [mergeEvent('m1', name, 8), unnumbered] }] })
+    const [summary, first, second] = lines(
+      (await loop.cli(WAIT, world.run, undefined, world.io)).stdout,
+    )
+    expect(summary).toEqual({ gap: false, events: 2 })
     expect(first!.lateReviewError).toHaveLength(200)
     expect(first!.lateReviewError).toMatch(/^'example-org\/bad repo x+/)
     expect(second).toEqual({
@@ -68,11 +80,11 @@ describe('supervisor wait: merged pull requests', () => {
     await loop.seed({
       escalations: { 'example-org/example-repo#61': {} },
       routed: [{ what: 'see Example-Repo#6, then example-repo#71' }],
-      hookHarness: { cursor: 'c0' },
+      hookHarness: { cursor: encodeCursor({ v: 1, sk: '1767323000000#0', seen: [] }) },
     })
     const events = [mergeEvent('m1', 'example-repo', 6), mergeEvent('m2', 'example-repo', 7)]
-    const world = makeWorld({ results: [{ events }] })
-    const [summary, tracked] = lines((await loop.cli(WAIT, world.run)).stdout)
+    const world = makeWorld({ replies: [{ events }] })
+    const [summary, tracked] = lines((await loop.cli(WAIT, world.run, undefined, world.io)).stdout)
     expect(summary!.quiet.merges).toEqual(['example-org/example-repo#7'])
     expect(tracked).toMatchObject({ id: 'm1', tracked: true })
   })
@@ -84,8 +96,9 @@ describe('supervisor wait: merged pull requests', () => {
       eventWait: {},
     })
     const at = '2026-01-02T03:00:00Z'
+    const c0 = encodeCursor({ v: 1, sk: '1767323000000#0', seen: [] })
     await loop.seed({
-      hookHarness: { seen: ['m1'], cursor: 'c0' },
+      hookHarness: { seen: ['m1'], cursor: c0 },
       pendingUpdateChecks: [{ repo: 'example-org/example-repo', at }, 'junk'],
       quietMerges: [7, 'example-org/example-repo#1'],
     })
@@ -95,8 +108,8 @@ describe('supervisor wait: merged pull requests', () => {
       mergeEvent('m3', 'other-repo', 6, 'Renovate'),
       { ...mergeEvent('', 'other-repo', 7, 'dependabot[bot]'), id: undefined },
     ]
-    const world = makeWorld({ results: [{ events, gap: true, cursor: 'c1' }] })
-    const [summary] = lines((await loop.cli(WAIT, world.run)).stdout)
+    const world = makeWorld({ replies: [{ events, gap: true, cursor: '1767323045001#1' }] })
+    const [summary] = lines((await loop.cli(WAIT, world.run, undefined, world.io)).stdout)
     expect(summary).toEqual({
       gap: true,
       events: 0,
@@ -113,7 +126,7 @@ describe('supervisor wait: merged pull requests', () => {
     })
     const state = await loop.state()
     expect(state.quietMerges).toEqual([7])
-    expect(state.hookHarness).toEqual({ seen: ['m1', 'm2', 'm3'], cursor: 'c0' })
+    expect(state.hookHarness).toEqual({ seen: ['m1', 'm2', 'm3'], cursor: c0 })
     expect(state.pendingUpdateChecks).toEqual([
       { repo: 'example-org/example-repo', at },
       'junk',
@@ -124,8 +137,8 @@ describe('supervisor wait: merged pull requests', () => {
   it('uses dependabot as the dependency bot when none is configured', async () => {
     const loop = await makeLoop({ ...ORG_ONLY, dependencyBot: undefined })
     const events = [mergeEvent('m1', 'example-repo', 4, 'app/dependabot')]
-    const world = makeWorld({ results: [{ events, timedOut: true }] })
-    const [summary] = lines((await loop.cli(WAIT, world.run)).stdout)
+    const world = makeWorld({ replies: [{ events }, { events: [], timedOut: true }] })
+    const [summary] = lines((await loop.cli(WAIT, world.run, undefined, world.io)).stdout)
     expect(summary!.pendingUpdateChecks).toEqual(['example-org/example-repo'])
   })
 
@@ -133,33 +146,33 @@ describe('supervisor wait: merged pull requests', () => {
     const loop = await makeLoop(ORG_ONLY)
     const merged = mergeEvent('m1', 'example-repo', 4)
     const world = makeWorld({
-      results: [
-        { events: [{ ...merged, payload: { pull_request: { merged: true } } }] },
-        { events: [] },
+      replies: [
+        {
+          events: [{ ...merged, payload: { pull_request: { merged: true } } }],
+          cursor: '1767323045001#1',
+        },
+        { events: [], timedOut: true },
       ],
     })
-    const [summary] = lines((await loop.cli(WAIT, world.run)).stdout)
+    const [summary] = lines((await loop.cli(WAIT, world.run, undefined, world.io)).stdout)
     expect(summary).toEqual({
+      gap: false,
+      timedOut: true,
       events: 0,
       quiet: { count: 1, merges: ['example-org/example-repo#4'] },
     })
-    expect(world.waits().map((args) => [args[5], args.at(-1)])).toEqual([
-      ['--since', '2h'],
-      ['--since', '7200s'],
-    ])
+    expect(world.timeouts).toEqual([7_200_000, 7_200_000])
+    expect(world.requests[1]!.after).toBe('1767323045001#1')
     expect(world.calls.filter((call) => call.args[1] === '--paginate')).toHaveLength(1)
+    expect(decodeCursor((await loop.state()).hookHarness.cursor).sk).toBe('1767323045001#1')
   })
 
   it('reports a watch when its last pull request merges, until it is acknowledged', async () => {
     const loop = await makeLoop(ORG_ONLY)
+    const prs = ['Example-Org/example-repo#4', 'example-org/other-repo#5']
     await loop.seed({
       watches: [
-        {
-          id: 'w1',
-          notify: 's1',
-          prs: ['Example-Org/example-repo#4', 'example-org/other-repo#5'],
-          merged: ['example-org/other-repo#5'],
-        },
+        { id: 'w1', notify: 's1', prs, merged: ['example-org/other-repo#5'] },
         {
           id: 'w2',
           notify: 's2',
@@ -170,20 +183,16 @@ describe('supervisor wait: merged pull requests', () => {
         'junk',
       ],
     })
-    const world = makeWorld({ results: [{ events: [mergeEvent('m1', 'example-repo', 4)] }] })
-    const [summary, trigger] = lines((await loop.cli(WAIT, world.run)).stdout)
+    const world = makeWorld({ replies: [{ events: [mergeEvent('m1', 'example-repo', 4)] }] })
+    const [summary, trigger] = lines((await loop.cli(WAIT, world.run, undefined, world.io)).stdout)
     expect(summary!.events).toBe(1)
-    expect(trigger).toEqual({
-      event: 'watch',
-      id: 'w1',
-      notify: 's1',
-      note: '',
-      prs: ['Example-Org/example-repo#4', 'example-org/other-repo#5'],
-    })
+    expect(trigger).toEqual({ event: 'watch', id: 'w1', notify: 's1', note: '', prs })
     const { watches } = await loop.state()
     expect(watches[0].merged).toEqual(['example-org/example-repo#4', 'example-org/other-repo#5'])
     expect(watches[1].merged).toEqual(['example-org/example-repo#4'])
-    const again = lines((await loop.cli(WAIT, makeWorld().run)).stdout)
-    expect(again).toEqual([{ gap: false, events: 1 }, trigger])
+    expect(lines((await loop.cli(WAIT, makeWorld().run)).stdout)).toEqual([
+      { gap: false, events: 1 },
+      trigger,
+    ])
   })
 })

@@ -3,18 +3,16 @@ import { parseArgs } from 'node:util'
 import { loadConfig, requireStateDir } from '../config/load.js'
 import { FLAG } from '../state/context.js'
 import { StoppedError, STOPPED_EXIT } from '../state/stop.js'
-import { HarnessExit } from '../wait/context.js'
 import { runWait } from '../wait/loop.js'
 import { UNADVANCED_EXIT, UnadvancedError } from '../wait/unadvanced.js'
 import type { CliIo } from './run.js'
 
 const WAIT_HELP = `Usage: supervisor wait [--advance]
 
-Runs one hook-harness wait over every owner in the config's scopes (one --owner a,b,c) and the
+Polls the hook-harness relay in-process over every owner in the config's scopes and the
 repositories each owner's scopes select, and returns only when something needs action. The config
 file is $SUPERVISOR_CONFIG, else .supervisor.json in the current directory. Run one wait for the
-whole supervisor. The command has no --owner option. More than one owner needs hook-harness 0.4.0
-or newer: an exact older eventWait.hookHarness fails the wait with one line (exit 1).
+whole supervisor. The command has no --owner option.
 
 Archived and disabled repositories are left out. A scope of kind "user" whose owner is the
 signed-in user ("gh api user") includes that user's private repositories; another user's scope
@@ -37,13 +35,13 @@ cursor moves only past quiet merges. Run "supervisor state advance-hh" after han
 events, or pass --advance (or set eventWait.advance) to move it, and mark the returned ids seen, at
 return. A returned event whose id is already seen is dropped. A state written by 0.3.0 holds one
 entry per owner: the first wait or advance-hh drops them and keeps their seen ids, and the first
-wait starts from --since 10m, as a first run does.
+wait starts 10 minutes before now, as a first run does.
 
 The wait does not start while hh-last.json holds an event whose id is not seen, that is, events
 returned and not yet advanced: it prints one line naming the "advance-hh" command and exits
 ${UNADVANCED_EXIT}. Handle the events, run advance-hh, then relaunch. This check is skipped when the
-wait advances itself (--advance or eventWait.advance). A hook-harness failure passes its own exit
-code through and is told apart by its message ("hook-harness exited N").
+wait advances itself (--advance or eventWait.advance). Auth, configuration, cursor, and sustained
+relay errors print one line and exit 1.
 
 While the stop switch is set (see: supervisor stop --help) the wait does not start: it prints one
 line and exits ${STOPPED_EXIT}. A wait in progress ends the same way when the switch appears between two
@@ -77,7 +75,17 @@ export async function runWaitCommand(args: string[], io: CliIo): Promise<number>
     await mkdir(dir, { recursive: true })
     const { eventWait } = loaded.config
     await runWait(
-      { dir, loaded, run: io.runProcess, now: io.now, write: io.stdout },
+      {
+        dir,
+        loaded,
+        env: io.env,
+        run: io.runProcess,
+        now: io.now,
+        write: io.stdout,
+        ...(io.fetch ? { fetch: io.fetch } : {}),
+        ...(io.sleep ? { sleep: io.sleep } : {}),
+        ...(io.timeoutSignal ? { timeoutSignal: io.timeoutSignal } : {}),
+      },
       {
         timeout: io.env.HH_TIMEOUT || eventWait.timeout,
         updateCheckDelay: eventWait.updateCheckDelay,
@@ -86,9 +94,6 @@ export async function runWaitCommand(args: string[], io: CliIo): Promise<number>
     )
     return 0
   } catch (error) {
-    if (error instanceof HarnessExit) {
-      return error.code
-    }
     io.stderr(`${(error as Error).message}\n`)
     if (error instanceof UnadvancedError) {
       return UNADVANCED_EXIT

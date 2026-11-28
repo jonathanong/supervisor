@@ -20,8 +20,7 @@ handle it in the order below once the status is 0 again, before relaunching the 
    is not seen refuses to start: one line naming the `advance-hh` command, exit 4, no events. It
    replays nothing: read `hh-last.json`, handle any of its events not yet
    handled (steps 1 and 2), then run `advance-hh` and relaunch. The check is skipped when the wait
-   advances itself. A hook-harness failure passes its own exit code through and is told apart by
-   its message (`hook-harness exited N`).
+   advances itself. Auth, configuration, cursor, and sustained relay errors exit 1.
 
 After a crash between steps 2 and 3, the result is still in `hh-last.json` and the next wait
 exits 4. Handle that file's events again from step 1, so handling must be idempotent.

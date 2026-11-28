@@ -73,6 +73,9 @@ describe('config validation', () => {
     expect(validateConfigData({ ...config, staleRuns: { olderThan: '2h' } })).toEqual({
       valid: true,
     })
+    expect(
+      validateConfigData({ ...config, eventWait: { hookHarness: '0.3.5', timeout: '90s' } }),
+    ).toEqual({ valid: true })
   })
 
   it('rejects loop keys of the wrong type or with unknown members', () => {

@@ -191,6 +191,9 @@ importers:
       ajv:
         specifier: ^8.20.0
         version: 8.20.0
+      hook-harness:
+        specifier: ^0.5.0
+        version: 0.5.0
       pr-shepherd:
         specifier: ^2.4.0
         version: 2.4.0
@@ -1002,6 +1005,11 @@ packages:
   hono@4.13.19:
     resolution: {integrity: sha512-KmXvQAXwcAHV+muzbIwoJ23niEB5nMoDVr9WcRkU8mvjUECm/1+7v4Jgp7P7a+H6MLFrh+vXrGonGrGS+RQfkA==}
     engines: {node: '>=16.9.0'}
+
+  hook-harness@0.5.0:
+    resolution: {integrity: sha512-GeRPZGeRtvnn/YhpsS/Mas4cqbbLDgWGPdmSXecsNR0IPwT+RoN8my0eDS5QjP8UHa/AOnwoX6UFTHWygGJuVA==}
+    engines: {node: '>=24'}
+    hasBin: true
 
   http-errors@2.0.1:
     resolution: {integrity: sha512-4FbRdAX+bSdmo4AUFuS0WNiPz8NgFt+r8ThgNWmlrjQjt1Q7ZR9+zTlce2859x4KSXrwIsaeTqDoKQmtP8pLmQ==}
@@ -2035,6 +2043,8 @@ snapshots:
       function-bind: 1.1.2
 
   hono@4.13.19: {}
+
+  hook-harness@0.5.0: {}
 
   http-errors@2.0.1:
     dependencies:

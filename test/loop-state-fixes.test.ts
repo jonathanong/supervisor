@@ -92,15 +92,18 @@ describe('a repository name with a dot in a state path', () => {
 
     const world = makeWorld({
       listing: 'example.js\tfalse\n',
-      results: [{ events: [mergeEvent('m1', 'example.js', 3, 'dependabot[bot]')] }, { events: [] }],
+      replies: [
+        { events: [mergeEvent('m1', 'example.js', 3, 'dependabot[bot]')] },
+        { events: [], timedOut: true },
+      ],
       pulls: { [`${DOTTED}#4`]: { threads: [[false]] } },
     })
-    const [summary] = lines((await loop.cli(['wait'], world.run)).stdout)
+    const [summary] = lines((await loop.cli(['wait'], world.run, undefined, world.io)).stdout)
     expect(summary).toMatchObject({
       quiet: { merges: [`${DOTTED}#3`] },
       pendingUpdateChecks: [DOTTED],
     })
-    expect(world.waits()[0]).toContain(DOTTED)
+    expect(world.requests[0]!.repos).toBe(DOTTED)
     const late = await loop.cli(['state', 'late-review', `${DOTTED}#4`], world.run)
     expect(late.stdout).toMatch(/^example-org\/example\.js#4 MERGED .+ unresolved=1 late=0\n$/)
   })
@@ -112,12 +115,12 @@ describe('listing the repositories of a user scope', () => {
   const USER_ONLY = {
     scopes: [{ owner: 'example-user', kind: 'user', repos: ['demo-repo'], mode: 'report' }],
   }
-  const listed = { listing: 'demo-repo\tfalse\n', results: [{ events: [] }] }
+  const listed = { listing: 'demo-repo\tfalse\n', replies: [{ events: [], timedOut: true }] }
 
   it('lists through user/repos when the scope owner is the signed-in user', async () => {
     const loop = await makeLoop(USER_ONLY)
     const world = makeWorld({ ...listed, login: 'Example-User' })
-    expect((await loop.cli(USER, world.run)).code).toBe(0)
+    expect((await loop.cli(USER, world.run, undefined, world.io)).code).toBe(0)
     expect(world.calls.slice(0, 2).map((call) => call.args)).toEqual([
       ['api', 'user', '--jq', '.login'],
       ['api', '--paginate', 'user/repos?affiliation=owner&per_page=100', '--jq', REPO_LIST_JQ],
@@ -125,23 +128,23 @@ describe('listing the repositories of a user scope', () => {
     expect(REPO_LIST_JQ).toBe(
       '.[] | select((.archived or .disabled) | not) | [.name, .fork] | @tsv',
     )
-    expect(world.waits()[0]).toContain('example-user/demo-repo')
+    expect(world.requests[0]!.repos).toBe('example-user/demo-repo')
   })
 
   it('keeps the public endpoint for another user, and asks nothing for an organization', async () => {
     const loop = await makeLoop(USER_ONLY)
     const other = makeWorld({ ...listed, login: 'someone-else' })
-    await loop.cli(USER, other.run)
+    await loop.cli(USER, other.run, undefined, other.io)
     expect(other.calls[1]!.args[2]).toBe('users/example-user/repos?per_page=100')
-    const org = makeWorld({ results: [{ events: [] }] })
-    await (await makeLoop(ORG_ONLY)).cli(['wait'], org.run)
+    const org = makeWorld({ replies: [{ events: [], timedOut: true }] })
+    await (await makeLoop(ORG_ONLY)).cli(['wait'], org.run, undefined, org.io)
     expect(org.calls[0]!.args[2]).toBe('orgs/example-org/repos?per_page=100')
   })
 
   it('fails the wait when the signed-in user cannot be read', async () => {
     const loop = await makeLoop(USER_ONLY)
     const world = makeWorld({ ...listed, login: 4 })
-    expect(await loop.cli(USER, world.run)).toEqual({
+    expect(await loop.cli(USER, world.run, undefined, world.io)).toEqual({
       code: 1,
       stdout: '',
       stderr: 'supervisor wait: gh api user exited 4: gh: not signed in\n',
@@ -157,8 +160,8 @@ describe('a tracked pull request is matched with its owner', () => {
     const loop = await makeLoop(ORG_ONLY)
     await loop.seed(state)
     const events = numbers.map((number) => mergeEvent(`m${number}`, 'example-repo', number))
-    const world = makeWorld({ results: [{ events }] })
-    const [, ...returned] = lines((await loop.cli(['wait'], world.run)).stdout)
+    const world = makeWorld({ replies: [{ events }] })
+    const [, ...returned] = lines((await loop.cli(['wait'], world.run, undefined, world.io)).stdout)
     return returned.filter((line) => line.tracked === true).map((line) => line.id)
   }
 
