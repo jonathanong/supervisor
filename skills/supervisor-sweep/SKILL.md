@@ -31,7 +31,10 @@ Requires `@jongleberry/supervisor` 0.4.0 or newer (`pnpm add -g @jongleberry/sup
   name and the start time). Exit 1 means another sweep holds a claim newer than two hours: do
   nothing and report `sweep skipped: another sweep is running`. Exit 3 means the stop switch is
   set: do nothing. `supervisor state sweep-done`
-  releases the claim; a claim left by a crashed sweep expires after two hours. A `--dry-run`
+  releases the claim and sets `lastSweepAt`; an interrupted sweep releases the claim with
+  `supervisor state remove sweep` instead so `lastSweepAt` stays unadvanced (see
+  [usage limits](references/usage-limits.md)). A claim left by a crashed sweep expires after two
+  hours. A `--dry-run`
   sweep writes no state, so it makes no claim and changes nothing.
 - **Per scope:** every phase runs once per entry of `scopes`, over that scope's repositories (listed
   as in supervisor-loop [Step 1](../supervisor-loop/SKILL.md#step-1---preflight)), with that scope's
@@ -54,6 +57,9 @@ Requires `@jongleberry/supervisor` 0.4.0 or newer (`pnpm add -g @jongleberry/sup
 - **Rate limits:** the search API allows 30 requests a minute. Never fan out one search per
   repository in parallel: batch by owner or space the calls. On a 403 rate-limit response, wait for
   the reset and retry once instead of failing the phase.
+- **Usage limits:** when subagents stop on a model or harness usage limit mid-sweep, follow
+  [references/usage-limits.md](references/usage-limits.md). Release the claim without advancing
+  `lastSweepAt` or incomplete cursors, then resume or rerun after the reset.
 - **Subagent briefing:** every `gh` result carries `<owner>/<repo>` in its output (use `--jq`),
   because parallel results are easy to misattribute. `--paginate --jq` runs the filter per page, so
   never aggregate (count, group) inside it.
@@ -176,22 +182,10 @@ It creates a milestone for a shared theme, never a project.
 
 ## Phase E - Journal distill
 
-Agents write journal entries with agent-blackboard's own MCP tools, against a schema registered on
-its server. This phase turns those entries into follow-ups with agent-blackboard's own distill skill
-and tools; this skill adds no wrapper and names none of them. Once per scope:
-
-1. Distill the sessions completed after `retroCursor` whose entries name that scope's repositories,
-   with the configured `distill.retroDays` and `distill.sessionDays`. Stop and ask when either is
-   missing.
-2. File the verified follow-ups through the `github-issue` skill, each in the repository it
-   concerns. A finding about a private repository stays in that repository.
-3. Archive the sessions that were distilled only when `distill.archive` is true; otherwise skip
-   archiving. Either way, remove the local snapshot the distill made.
-4. Advance `retroCursor` only after that clean-up succeeds for every scope.
-
-In a `report` scope, distill and list the follow-ups that would be filed in the summary. File
-nothing, archive nothing, and do not advance `retroCursor`; still remove the local snapshot the
-distill made.
+Follow [references/journal-distill.md](references/journal-distill.md). Once per scope, it distills
+completed sessions after `retroCursor` using agent-blackboard's own distill skill and tools
+(without wrapping them), handles distill blockers without halting other phases, and in a `report`
+scope reports structural counts with only a labeled sample verified.
 
 ## Phase F - Missed code reviews
 
