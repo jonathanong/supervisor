@@ -10,7 +10,7 @@ Everything that can differ between owners, repositories or machines is data in o
 
 ## Paths
 
-Only `mergeAuthority.policy` may be relative to the configuration file, as described under [Who may merge](#who-may-merge). `stateDir` and each scope's `checkoutRoot` expand a leading `~/` to the home directory and are used otherwise as written, so a relative value would follow the working directory: write them absolute or with `~/`. `scheduledPrompts` paths are relative to each repository.
+Only `mergeAuthority.policy` may be relative to the configuration file, as described under [Who may merge](#who-may-merge). `stateDir` and each scope's `checkoutRoot` expand a leading `~/`, or a bare `~`, to the home directory and are used otherwise as written, so a relative value would follow the working directory: write them absolute or with `~/`. `scheduledPrompts` paths are relative to each repository.
 
 ## Defaults and overrides
 
