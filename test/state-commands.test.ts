@@ -42,18 +42,19 @@ describe('supervisor state advance-hh', () => {
     ])
   })
 
-  it('replaces 0.3.0 per-owner entries with one cursor and one seen list', async () => {
+  it('replaces 0.3.0 per-owner entries, owners named seen and cursor included', async () => {
     const loop = await makeLoop()
     await loop.seed({
       hookHarness: {
         'example-org': { cursor: 'o1', seen: ['a', 'b'] },
-        'example-user': { cursor: 'u1', seen: ['b', 'c'] },
+        seen: { cursor: 'u1', seen: ['b', 'c'] },
+        cursor: { cursor: 'c1', seen: ['e'] },
         broken: 'text',
       },
     })
     await writeFile(join(loop.stateDir, 'hh-last.json'), JSON.stringify({ events: [{ id: 'd' }] }))
     expect((await loop.cli(['state', 'advance-hh'])).code).toBe(0)
-    expect((await loop.state()).hookHarness).toEqual({ seen: ['a', 'b', 'c', 'd'] })
+    expect((await loop.state()).hookHarness).toEqual({ seen: ['a', 'b', 'c', 'e', 'd'] })
   })
 
   it('takes no --owner, and needs a result file that exists and is an object', async () => {
