@@ -43,6 +43,10 @@ So the adapters:
 
 A failure marks the account exhausted until the reset it names, or for a default wait when it names none.
 
+## Interrupted sweeps
+
+When a sweep's subagents hit a usage limit partway through a pass, the supervisor treats the pass as waiting for the reset rather than failed. It releases the sweep claim with `supervisor state remove sweep` (never `sweep-done`), leaves `lastSweepAt` and incomplete phase cursors unadvanced, keeps already-recorded per-item facts so work is not duplicated, and cleans up any temporary local snapshot. After the reset it re-claims the sweep and either resumes the stopped subagents or reruns the sweep from the start (see [usage-limits.md](../skills/supervisor-sweep/references/usage-limits.md)).
+
 ## Machines
 
 Machine health is an input to dispatch and clean-up: which hosts are up, disk, memory, load. Workers remove their worktrees and large build folders once their PR closes. Heavy jobs wait while a benchmark needs a quiet machine.

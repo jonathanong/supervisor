@@ -35,6 +35,24 @@ flowchart LR
 
 A finding about a private repository stays in that repository. See [privacy.md](privacy.md).
 
+### When the distill cannot run
+
+Partitioning can refuse a session that exceeds its size bound, or snapshot export, verification, or
+an un-flushed worktree outbox can block the run. How an oversized session is partitioned belongs to
+agent-blackboard, not the supervisor, so the supervisor never splits a session group or weakens the
+partition bound. Instead it removes any local snapshot, records the reason as one summary line,
+escalates once keyed in `escalations`, leaves `retroCursor` unadvanced, and keeps the remaining
+sweep phases running.
+
+### Report mode
+
+In a `report` scope nothing is filed and nothing is archived, so inspecting every partition on every
+sweep buys only a summary. The supervisor runs structural classification (`distill classify`) and
+reports the full structural counts, then inspects and verifies only a bounded sample of the newest
+eligible retrospective or journal-only sessions, labeled as a sample in the summary (see
+[journal-distill.md](../skills/supervisor-sweep/references/journal-distill.md)). It files nothing,
+archives nothing, leaves `retroCursor` unadvanced, and still removes the local snapshot.
+
 ## Coverage
 
 A session that hit friction and wrote nothing looks the same as a clean one. So for each merged PR an agent wrote, the supervisor checks that its session left at least one entry, or an explicit "nothing observed" record. The sweep summary reports that ratio per repository.
