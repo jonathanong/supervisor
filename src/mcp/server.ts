@@ -7,6 +7,14 @@ import type { ShepherdStatus } from '../policy/facts-readiness.js'
 import type { PullCheckDeps } from '../policy/run-check.js'
 import { runProcess as defaultRunProcess, type RunProcess } from '../state/process.js'
 import { handlePolicyCheck, POLICY_CHECK_TOOL } from './policy-check.js'
+import {
+  handlePrCreate,
+  handlePrUpdate,
+  handlePrValidate,
+  PR_CREATE_TOOL,
+  PR_UPDATE_TOOL,
+  PR_VALIDATE_TOOL,
+} from './pr-tools.js'
 
 export interface McpServerDeps {
   env?: Record<string, string | undefined>
@@ -14,6 +22,8 @@ export interface McpServerDeps {
   runProcess?: RunProcess
   shepherdStatus?: ShepherdStatus
 }
+
+const TOOLS = [POLICY_CHECK_TOOL, PR_CREATE_TOOL, PR_UPDATE_TOOL, PR_VALIDATE_TOOL]
 
 function resolveDeps(deps: McpServerDeps): PullCheckDeps {
   return {
@@ -28,11 +38,21 @@ export function createMcpServer(version: string, deps: McpServerDeps = {}): McpS
   const server = new McpServer({ name: 'supervisor', version })
   server.server.registerCapabilities({ tools: {} })
   server.server.setRequestHandler(ListToolsRequestSchema, () => ({
-    tools: [POLICY_CHECK_TOOL],
+    tools: TOOLS,
   }))
   server.server.setRequestHandler(CallToolRequestSchema, async (request) => {
+    const args = request.params.arguments ?? {}
     if (request.params.name === POLICY_CHECK_TOOL.name) {
-      return await handlePolicyCheck(request.params.arguments ?? {}, resolveDeps(deps))
+      return await handlePolicyCheck(args, resolveDeps(deps))
+    }
+    if (request.params.name === PR_CREATE_TOOL.name) {
+      return await handlePrCreate(args, resolveDeps(deps))
+    }
+    if (request.params.name === PR_UPDATE_TOOL.name) {
+      return await handlePrUpdate(args, resolveDeps(deps))
+    }
+    if (request.params.name === PR_VALIDATE_TOOL.name) {
+      return await handlePrValidate(args, resolveDeps(deps))
     }
     return {
       content: [{ type: 'text', text: `Tool ${request.params.name} not found` }],

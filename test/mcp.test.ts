@@ -5,7 +5,10 @@ import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
 import { describe, expect, it } from 'vitest'
 import { getVersion } from '../src/cli/version.js'
 import { POLICY_CHECK_TOOL } from '../src/mcp/policy-check.js'
+import { PR_CREATE_TOOL, PR_UPDATE_TOOL, PR_VALIDATE_TOOL } from '../src/mcp/pr-tools.js'
 import { startMcpServer } from '../src/mcp/server.js'
+
+const ALL_TOOLS = [POLICY_CHECK_TOOL, PR_CREATE_TOOL, PR_UPDATE_TOOL, PR_VALIDATE_TOOL]
 
 function readNextJsonLine(stream: PassThrough): Promise<Record<string, unknown>> {
   return new Promise((resolve, reject) => {
@@ -30,7 +33,7 @@ function readNextJsonLine(stream: PassThrough): Promise<Record<string, unknown>>
 }
 
 describe('supervisor MCP server', () => {
-  it('lists policy_check and rejects unknown tools via MCP client', async () => {
+  it('lists all tools and rejects unknown tools via MCP client', async () => {
     const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair()
     const server = await startMcpServer(getVersion(), serverTransport)
     const client = new Client({ name: 'supervisor-test-client', version: '0.0.0' })
@@ -38,16 +41,20 @@ describe('supervisor MCP server', () => {
     try {
       await client.connect(clientTransport)
       const result = await client.listTools()
-      expect(result.tools).toEqual([POLICY_CHECK_TOOL])
+      expect(result.tools).toEqual(ALL_TOOLS)
 
       const unknown = await client.callTool({ name: 'does_not_exist', arguments: {} })
       expect(unknown.isError).toBe(true)
       expect(unknown.content).toEqual([{ type: 'text', text: 'Tool does_not_exist not found' }])
 
       // Calling with omitted arguments exercises default deps without spawning external processes.
-      const missingArgs = await client.callTool({ name: 'policy_check' })
-      expect(missingArgs.isError).toBe(true)
-      expect(missingArgs.content).toEqual([{ type: 'text', text: 'repository must be a string.' }])
+      for (const name of ['policy_check', 'pr_create', 'pr_update', 'pr_validate']) {
+        const missingArgs = await client.callTool({ name })
+        expect(missingArgs.isError, name).toBe(true)
+        expect(missingArgs.content, name).toEqual([
+          { type: 'text', text: 'repository must be a string.' },
+        ])
+      }
     } finally {
       await client.close()
       await server.close()
@@ -95,7 +102,7 @@ describe('supervisor MCP server', () => {
       )
       const listResponse = await listPromise
       expect(listResponse.id).toBe(2)
-      expect(listResponse.result).toEqual({ tools: [POLICY_CHECK_TOOL] })
+      expect(listResponse.result).toEqual({ tools: ALL_TOOLS })
     } finally {
       await server.close()
       stdin.end()

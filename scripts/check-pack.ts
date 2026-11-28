@@ -12,6 +12,7 @@ const REQUIRED_FILES = [
   'skills/supervisor-classify/SKILL.md',
   'skills/supervisor-loop/SKILL.md',
   'skills/supervisor-loop/references/config.md',
+  'skills/supervisor-pr/SKILL.md',
   'skills/supervisor-sweep/SKILL.md',
   'skills/supervisor-triage-prs/SKILL.md',
   'plugin.json',
