@@ -3,9 +3,9 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
 import { cleanupLoops, makeLoop, NOW } from './helpers/loop.js'
-import { lines, makeWorld, mergeEvent } from './helpers/wait.js'
+import { lines, makeWorld, mergeEvent, ORG_ONLY } from './helpers/wait.js'
 
-const WAIT = ['wait', '--owner', 'example-org']
+const WAIT = ['wait']
 const failure = {
   id: 'e1',
   repo: 'example-repo',
@@ -25,7 +25,7 @@ describe('supervisor wait', () => {
   afterEach(cleanupLoops)
 
   it('returns an event that needs action as a summary line and one compact line', async () => {
-    const loop = await makeLoop()
+    const loop = await makeLoop(ORG_ONLY)
     const world = makeWorld({ results: [{ events: [failure], cursor: 'c1', gap: false }] })
     const result = await loop.cli(WAIT, world.run)
     expect(result).toMatchObject({ code: 0, stderr: '' })
@@ -34,13 +34,13 @@ describe('supervisor wait', () => {
         '{"id":"e1","repo":"example-repo","event":"workflow_run","action":"completed",' +
         '"conclusion":"failure","workflow":"ci","runId":77,"sender":"example-user"}\n',
     )
-    const saved = await readFile(join(loop.stateDir, 'hh-last.example-org.json'), 'utf8')
+    const saved = await readFile(join(loop.stateDir, 'hh-last.json'), 'utf8')
     expect(JSON.parse(saved)).toEqual({ events: [failure], cursor: 'c1', gap: false })
-    expect((await loop.state()).hookHarness['example-org'].cursor).toBeUndefined()
+    expect((await loop.state()).hookHarness).toEqual({ seen: [] })
   })
 
   it('runs gh and hook-harness from argument arrays for the owner’s selected repositories', async () => {
-    const loop = await makeLoop()
+    const loop = await makeLoop(ORG_ONLY)
     const world = makeWorld({
       listing: 'zeta\tfalse\narchived-repo\tfalse\nforked\ttrue\nalpha\tfalse\n',
       results: [{ events: [failure] }],
@@ -72,18 +72,15 @@ describe('supervisor wait', () => {
   })
 
   it('lists a user’s repositories through the users endpoint and resumes from the cursor', async () => {
-    const loop = await makeLoop({ eventWait: { hookHarness: '1.2.3', timeout: '45m' } })
-    await loop.seed({
-      hookHarness: { 'example-user': { cursor: 'u9' }, 'example-org': { cursor: 'o1' } },
+    const loop = await makeLoop({
+      scopes: [{ owner: 'example-user', kind: 'user', repos: ['demo-repo'], mode: 'report' }],
+      eventWait: { hookHarness: '1.2.3', timeout: '45m' },
     })
-    const world = makeWorld({
-      listing: 'demo-repo\tfalse\nelse\tfalse\n',
-      results: [{ events: [] }],
-    })
-    const result = await loop.cli(['wait', '--owner', 'example-user'], world.run)
+    await loop.seed({ hookHarness: { cursor: 'u9' } })
+    const listing = 'demo-repo\tfalse\nelse\tfalse\n'
+    const world = makeWorld({ listing, results: [{ events: [] }] })
+    const result = await loop.cli(['wait'], world.run)
     expect(result.stdout).toBe('{"events":0}\n')
-    expect(world.calls[0]!.args).toEqual(['api', 'user', '--jq', '.login'])
-    expect(world.calls[1]!.args[2]).toBe('users/example-user/repos?per_page=100')
     const args = world.waits()[0]!
     expect(args.slice(1, 9)).toEqual([
       'hook-harness@1.2.3',
@@ -99,21 +96,21 @@ describe('supervisor wait', () => {
   })
 
   it('advances the cursor at return with --advance or eventWait.advance', async () => {
-    const loop = await makeLoop()
+    const loop = await makeLoop(ORG_ONLY)
     const world = makeWorld({ results: [{ events: [failure], cursor: 'c1' }] })
     const result = await loop.cli([...WAIT, '--advance'], world.run)
     expect(lines(result.stdout)[0]).toEqual({ events: 1, advanced: true })
-    expect((await loop.state()).hookHarness['example-org']).toEqual({ seen: ['e1'], cursor: 'c1' })
+    expect((await loop.state()).hookHarness).toEqual({ seen: ['e1'], cursor: 'c1' })
 
-    const configured = await makeLoop({ eventWait: { advance: true } })
+    const configured = await makeLoop({ ...ORG_ONLY, eventWait: { advance: true } })
     const again = makeWorld({ results: [{ events: [], cursor: 'c2', timedOut: true }] })
     const timedOut = await configured.cli(WAIT, again.run)
     expect(lines(timedOut.stdout)).toEqual([{ timedOut: true, events: 0, advanced: true }])
-    expect((await configured.state()).hookHarness['example-org'].cursor).toBe('c2')
+    expect((await configured.state()).hookHarness.cursor).toBe('c2')
   })
 
   it('logs clean merges, moves the cursor past them, and keeps waiting', async () => {
-    const loop = await makeLoop()
+    const loop = await makeLoop(ORG_ONLY)
     await loop.seed({ quietMerges: ['example-user/demo-repo#1'] })
     let clock = Date.parse(NOW)
     const world = makeWorld({
@@ -137,7 +134,14 @@ describe('supervisor wait', () => {
       {
         timedOut: true,
         events: 0,
-        quiet: { count: 2, merges: ['example-org/example-repo#4', 'example-org/other-repo#5'] },
+        quiet: {
+          count: 3,
+          merges: [
+            'example-user/demo-repo#1',
+            'example-org/example-repo#4',
+            'example-org/other-repo#5',
+          ],
+        },
         pendingUpdateChecks: ['example-org/other-repo'],
         updateCheckDue: true,
       },
@@ -146,17 +150,17 @@ describe('supervisor wait', () => {
     expect(second.slice(5, 7)).toEqual(['--after', 'c1'])
     expect(second.at(-1)).toBe('600s')
     const state = await loop.state()
-    expect(state.quietMerges).toEqual(['example-user/demo-repo#1'])
-    expect(state.hookHarness['example-org']).toEqual({ seen: ['m1', 'm2'], cursor: 'c1' })
+    expect(state.quietMerges).toEqual([])
+    expect(state.hookHarness).toEqual({ seen: ['m1', 'm2'], cursor: 'c1' })
     expect(state.pendingUpdateChecks).toEqual([
       { repo: 'example-org/other-repo', at: '2026-01-02T03:05:05Z' },
     ])
-    const saved = await readFile(join(loop.stateDir, 'hh-last.example-org.json'), 'utf8')
+    const saved = await readFile(join(loop.stateDir, 'hh-last.json'), 'utf8')
     expect(saved).toBe('{"events": [], "cursor": "c2", "timedOut": true}')
   })
 
   it('returns at the timeout without another wait, reporting watches that are complete', async () => {
-    const loop = await makeLoop()
+    const loop = await makeLoop(ORG_ONLY)
     await loop.seed({ watches: [{ id: 'w', prs: [], notify: 's', note: 'go' }, {}] })
     const world = makeWorld()
     const result = await loop.cli(WAIT, world.run)
@@ -173,7 +177,7 @@ describe('supervisor wait', () => {
   })
 
   it('exits with hook-harness’s code, and 1 when its output or the listing is unusable', async () => {
-    const loop = await makeLoop()
+    const loop = await makeLoop(ORG_ONLY)
     const exited = await loop.cli(WAIT, makeWorld({ results: [7] }).run)
     expect(exited).toEqual({ code: 7, stdout: '', stderr: '' })
     const garbled = await loop.cli(WAIT, makeWorld({ results: ['not json'] }).run)
@@ -184,7 +188,7 @@ describe('supervisor wait', () => {
     const none = await loop.cli(WAIT, makeWorld({ listing: 'archived-repo\tfalse\n' }).run)
     expect(none).toMatchObject({
       code: 1,
-      stderr: 'supervisor wait: no repositories match the configuration\n',
+      stderr: 'supervisor wait: no repositories match the configuration for example-org\n',
     })
     const denied = await loop.cli(WAIT, async () => ({
       code: 1,

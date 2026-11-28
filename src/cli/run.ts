@@ -51,7 +51,7 @@ Commands:
   prepush [--range <a>..<b>]           Scan outgoing commits for private names, emails, hostnames
   prepush install                      Install the git pre-push hook
   state <subcommand> [options]         Update the loop's state.json (see: supervisor state --help)
-  wait --owner <owner> [--advance]     Wait for one owner's events that need action
+  wait [--advance]                     Wait for events of every owner that need action
   stop [--reason <text>]               Set the stop switch: the supervisor takes no action
   stop --status                        Report the stop switch (exit 3 when it is set)
   resume                               Clear the stop switch

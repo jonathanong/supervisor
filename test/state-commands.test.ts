@@ -14,48 +14,60 @@ const AsyncFunction = Object.getPrototypeOf(async () => undefined).constructor a
 describe('supervisor state advance-hh', () => {
   afterEach(cleanupLoops)
 
-  it('stores the cursor and seen ids of one owner from that owner’s wait result', async () => {
+  it('stores the cursor and seen ids from the last wait result', async () => {
     const loop = await makeLoop()
-    await loop.seed({ hookHarness: { 'example-user': { cursor: 'u1', seen: ['x'] } } })
+    await loop.seed({ hookHarness: { cursor: 'u1', seen: ['x'] } })
     const last = { cursor: 'c2', events: [{ id: 'a' }, { id: 'b' }, { id: 'a' }, { no: 'id' }, 7] }
-    await writeFile(join(loop.stateDir, 'hh-last.example-org.json'), JSON.stringify(last))
-    const advanced = await loop.cli(['state', 'advance-hh', '--owner', 'example-org'])
+    await writeFile(join(loop.stateDir, 'hh-last.json'), JSON.stringify(last))
+    const advanced = await loop.cli(['state', 'advance-hh'])
     expect(advanced.stdout).toBe('{"events": 3, "cursorAdvanced": true}\n')
-    expect((await loop.state()).hookHarness).toEqual({
-      'example-user': { cursor: 'u1', seen: ['x'] },
-      'example-org': { seen: ['a', 'b'], cursor: 'c2' },
-    })
+    expect((await loop.state()).hookHarness).toEqual({ seen: ['x', 'a', 'b'], cursor: 'c2' })
   })
 
   it('keeps the newest 200 seen ids and the old cursor when the result has none', async () => {
     const loop = await makeLoop()
     const seen = Array.from({ length: 199 }, (_, i) => `old-${i}`)
-    await loop.seed({ hookHarness: { 'example-org': { cursor: 'c1', seen } } })
+    await loop.seed({ hookHarness: { cursor: 'c1', seen } })
     const events = [{ id: 'new-1' }, { id: 'new-2' }]
-    await writeFile(join(loop.stateDir, 'hh-last.example-org.json'), JSON.stringify({ events }))
-    const advanced = await loop.cli(['state', 'advance-hh', '--owner', 'example-org'])
+    await writeFile(join(loop.stateDir, 'hh-last.json'), JSON.stringify({ events }))
+    const advanced = await loop.cli(['state', 'advance-hh'])
     expect(advanced.stdout).toBe('{"events": 2, "cursorAdvanced": false}\n')
-    const harness = (await loop.state()).hookHarness['example-org']
-    expect(harness.cursor).toBe('c1')
-    expect(harness.seen).toHaveLength(200)
-    expect(harness.seen.slice(0, 1).concat(harness.seen.slice(-2))).toEqual([
+    const { hookHarness } = await loop.state()
+    expect(hookHarness.cursor).toBe('c1')
+    expect(hookHarness.seen).toHaveLength(200)
+    expect(hookHarness.seen.slice(0, 1).concat(hookHarness.seen.slice(-2))).toEqual([
       'old-1',
       'new-1',
       'new-2',
     ])
   })
 
-  it('needs a valid owner whose wait result exists and is an object', async () => {
+  it('replaces 0.3.0 per-owner entries with one cursor and one seen list', async () => {
     const loop = await makeLoop()
-    expect((await loop.cli(['state', 'advance-hh'])).code).toBe(2)
-    expect((await loop.cli(['state', 'advance-hh', '--owner', '../x'])).code).toBe(2)
-    const missing = await loop.cli(['state', 'advance-hh', '--owner', 'example-org'])
+    await loop.seed({
+      hookHarness: {
+        'example-org': { cursor: 'o1', seen: ['a', 'b'] },
+        'example-user': { cursor: 'u1', seen: ['b', 'c'] },
+        broken: 'text',
+      },
+    })
+    await writeFile(join(loop.stateDir, 'hh-last.json'), JSON.stringify({ events: [{ id: 'd' }] }))
+    expect((await loop.cli(['state', 'advance-hh'])).code).toBe(0)
+    expect((await loop.state()).hookHarness).toEqual({ seen: ['a', 'b', 'c', 'd'] })
+  })
+
+  it('takes no --owner, and needs a result file that exists and is an object', async () => {
+    const loop = await makeLoop()
+    const owner = await loop.cli(['state', 'advance-hh', '--owner', 'example-org'])
+    expect(owner.code).toBe(2)
+    expect(owner.stderr).toContain('advance-hh takes no options: the wait covers every owner')
+    const missing = await loop.cli(['state', 'advance-hh'])
     expect(missing).toMatchObject({ code: 1, stderr: expect.stringContaining('ENOENT') })
-    await writeFile(join(loop.stateDir, 'hh-last.example-org.json'), '{}')
-    const empty = await loop.cli(['state', 'advance-hh', '--owner', 'example-org'])
+    await writeFile(join(loop.stateDir, 'hh-last.json'), '{}')
+    const empty = await loop.cli(['state', 'advance-hh'])
     expect(empty.stdout).toBe('{"events": 0, "cursorAdvanced": false}\n')
-    await writeFile(join(loop.stateDir, 'hh-last.example-org.json'), '[1]')
-    expect((await loop.cli(['state', 'advance-hh', '--owner', 'example-org'])).code).toBe(1)
+    await writeFile(join(loop.stateDir, 'hh-last.json'), '[1]')
+    expect((await loop.cli(['state', 'advance-hh'])).code).toBe(1)
   })
 })
 

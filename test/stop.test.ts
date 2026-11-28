@@ -2,16 +2,16 @@ import { mkdir, readFile, stat, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
 import { cleanupLoops, makeLoop, NOW } from './helpers/loop.js'
-import { makeWorld, mergeEvent } from './helpers/wait.js'
+import { makeWorld, mergeEvent, ORG_ONLY } from './helpers/wait.js'
 
-const WAIT = ['wait', '--owner', 'example-org']
+const WAIT = ['wait']
 const STATUS = ['stop', '--status']
 
 describe('supervisor stop and resume', () => {
   afterEach(cleanupLoops)
 
   it('prints help without a config and is listed in the main help', async () => {
-    const loop = await makeLoop()
+    const loop = await makeLoop(ORG_ONLY)
     loop.env.SUPERVISOR_CONFIG = '/nonexistent/config.json'
     for (const args of [['stop', '--help'], ['resume', '-h'], STATUS.concat('-h')]) {
       const help = await loop.cli(args)
@@ -26,7 +26,7 @@ describe('supervisor stop and resume', () => {
   })
 
   it('creates the stop file with the time and the reason, reports it, and removes it', async () => {
-    const loop = await makeLoop()
+    const loop = await makeLoop(ORG_ONLY)
     expect(await loop.cli(STATUS)).toEqual({ code: 0, stdout: '{"stopped": false}\n', stderr: '' })
     const record = `{"at": "${NOW}", "reason": "CI is broken everywhere"}`
     expect(await loop.cli(['stop', '--reason', 'CI is broken everywhere'])).toEqual({
@@ -53,7 +53,7 @@ describe('supervisor stop and resume', () => {
   })
 
   it('records no reason when none is given, and a second stop replaces the first', async () => {
-    const loop = await makeLoop()
+    const loop = await makeLoop(ORG_ONLY)
     await loop.cli(['stop', '--reason', 'first'])
     const later = '2026-02-03T04:05:06Z'
     const second = await loop.cli(['stop'], undefined, () => new Date(later))
@@ -62,7 +62,7 @@ describe('supervisor stop and resume', () => {
   })
 
   it('treats anything a person put at the path as a stop', async () => {
-    const loop = await makeLoop()
+    const loop = await makeLoop(ORG_ONLY)
     await mkdir(loop.stateDir, { recursive: true })
     const path = join(loop.stateDir, 'stop')
     const unexplained = { code: 3, stdout: '{"stopped": true, "at": null, "reason": null}\n' }
@@ -83,7 +83,7 @@ describe('supervisor stop and resume', () => {
   })
 
   it('exits 2 with help for arguments it cannot accept', async () => {
-    const loop = await makeLoop()
+    const loop = await makeLoop(ORG_ONLY)
     for (const args of [
       [...STATUS, '--reason', 'x'],
       ['stop', '--nope'],
@@ -97,7 +97,7 @@ describe('supervisor stop and resume', () => {
   })
 
   it('needs no state lock: a held lock blocks neither a stop nor a refusal', async () => {
-    const loop = await makeLoop()
+    const loop = await makeLoop(ORG_ONLY)
     await mkdir(loop.stateDir, { recursive: true })
     await writeFile(join(loop.stateDir, 'state.lock'), `${process.pid} held-by-this-test`)
     expect((await loop.cli(['stop', '--reason', 'stuck lock'])).code).toBe(0)
@@ -113,7 +113,7 @@ describe('the stop switch in state and wait', () => {
   afterEach(cleanupLoops)
 
   it('refuses sweep-start with one line and exit 3, and still records facts', async () => {
-    const loop = await makeLoop()
+    const loop = await makeLoop(ORG_ONLY)
     await loop.cli(['state', 'sweep-start', '--id', 'earlier'])
     await loop.cli(['stop', '--reason', 'pause'])
     expect(await loop.cli(['state', 'sweep-start', '--id', 'next'])).toEqual({
@@ -136,7 +136,7 @@ describe('the stop switch in state and wait', () => {
   })
 
   it('does not start a wait while stopped: one line, exit 3, and nothing is run', async () => {
-    const loop = await makeLoop()
+    const loop = await makeLoop(ORG_ONLY)
     await loop.cli(['stop'])
     const world = makeWorld()
     expect(await loop.cli(WAIT, world.run)).toEqual({
@@ -151,7 +151,7 @@ describe('the stop switch in state and wait', () => {
   })
 
   it('ends a wait in progress when the stop appears between two rounds', async () => {
-    const loop = await makeLoop()
+    const loop = await makeLoop(ORG_ONLY)
     const quiet = { events: [mergeEvent('m1', 'example-repo', 5)], cursor: 'c1' }
     let stopping: Promise<unknown> | undefined
     const world = makeWorld({
@@ -170,11 +170,11 @@ describe('the stop switch in state and wait', () => {
     expect(world.waits()).toHaveLength(1)
     const state = await loop.state()
     expect(state.quietMerges).toEqual(['example-org/example-repo#5'])
-    expect(state.hookHarness['example-org'].cursor).toBe('c1')
+    expect(state.hookHarness.cursor).toBe('c1')
   })
 
   it('still returns the events of a round that was running when the stop appeared', async () => {
-    const loop = await makeLoop()
+    const loop = await makeLoop(ORG_ONLY)
     const failed = { id: 'e1', repo: 'example-repo', event: 'workflow_run', action: 'completed' }
     let stopping: Promise<unknown> | undefined
     const world = makeWorld({

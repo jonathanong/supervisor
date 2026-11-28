@@ -31,7 +31,7 @@ mutation.
 - Say once that the supervisor is stopped, with the recorded time and reason, and check again on the
   next tick. Do not ask a worker or another session to act instead.
 - `supervisor wait` exits 3 with one line, at the start or between two of its rounds. Do not
-  relaunch an owner's wait until the status is 0; pace the checks with the fallback job or a
+  relaunch the wait until the status is 0; pace the checks with the fallback job or a
   self-paced wake-up.
 - `supervisor state sweep-start` exits 3, so no sweep starts, and `supervisor state merge-record`
   exits 3, so no merge is recorded or made.

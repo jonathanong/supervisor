@@ -1,30 +1,29 @@
 # Handling a wait result
 
-What the supervisor does when one owner's `supervisor wait --owner <owner>` exits. Each owner has
-its own wait, its own result file `<stateDir>/hh-last.<owner>.json`, and its own cursor under
-`hookHarness.<owner>`. Handle one owner's result at a time.
+What the supervisor does when `supervisor wait` exits. There is one wait for every configured
+owner, one result file `<stateDir>/hh-last.json`, and one cursor, `hookHarness.cursor`. Each event
+carries its repository as `owner/repo`; act on it under that owner's scope.
 
 ## Order
 
 A wait that exits 3 printed no events: the [stop switch](stop-switch.md) is set. Do not relaunch it
 until `supervisor stop --status` exits 0. Before handling any other result, run that check too; on
-any exit but 0, act on nothing yet: keep the result (it is also in `hh-last.<owner>.json`) and
+any exit but 0, act on nothing yet: keep the result (it is also in `hh-last.json`) and
 handle it in the order below once the status is 0 again, before relaunching the wait.
 
-1. Read the output. The wait already drops events whose `id` is in `hookHarness.<owner>.seen`.
+1. Read the output. The wait already drops events whose `id` is in `hookHarness.seen`.
 2. Handle each event. Nothing records per-event progress: state keeps only `seen` and the cursor.
-3. Only then run `supervisor state advance-hh --owner <owner>`. It marks every id in
-   `hh-last.<owner>.json` seen and stores its cursor in one write. Launching the wait as
-   `supervisor wait --owner <owner> --advance`, or setting `eventWait.advance`, does the same at
+3. Only then run `supervisor state advance-hh`. It marks every id in `hh-last.json` seen and
+   stores its cursor in one write. Launching the wait as `supervisor wait --advance`, or setting `eventWait.advance`, does the same at
    return instead, giving up crash replay: handle each returned event before anything can fail.
-4. Relaunch that owner's wait, and never before step 3. A wait whose `hh-last.<owner>.json` holds
-   an event id that is not seen refuses to start: one line naming the `advance-hh` command, exit 4,
-   no events. It replays nothing: read `hh-last.<owner>.json`, handle any of its events not yet
+4. Relaunch the wait, and never before step 3. A wait whose `hh-last.json` holds an event id that
+   is not seen refuses to start: one line naming the `advance-hh` command, exit 4, no events. It
+   replays nothing: read `hh-last.json`, handle any of its events not yet
    handled (steps 1 and 2), then run `advance-hh` and relaunch. The check is skipped when the wait
    advances itself. A hook-harness failure passes its own exit code through and is told apart by
    its message (`hook-harness exited N`).
 
-After a crash between steps 2 and 3, the result is still in `hh-last.<owner>.json` and the next wait
+After a crash between steps 2 and 3, the result is still in `hh-last.json` and the next wait
 exits 4. Handle that file's events again from step 1, so handling must be idempotent.
 
 Every external action must be idempotent across an interruption and replay: before a worker opens a
@@ -37,16 +36,17 @@ reuse it instead of creating another.
 The first output line is a JSON summary: `gap`, `timedOut?`, `events` (the count that follow),
 `quiet?` (`{count, merges}`: clean merges handled since the last return, as `<owner>/<repo>#N`),
 `pendingUpdateChecks?` (repositories, as `<owner>/<repo>`), `updateCheckDue?`, and `advanced?`. Each
-following line is one event with only its non-empty fields, in the order `id`, `repo`, `event`,
+following line is one event with only its non-empty fields, in the order `id`, `repo` (as
+`<owner>/<repo>`), `event`,
 `action`, `prs`, `issue`, `reason`, `conclusion`, `workflow`, `runId`, `command`, `commentId`,
 `headSha`, `sender`, `merged`, and for a merge `unresolved`, `late`, `truncated`, or
 `lateReviewError`. A watch trigger is `{event: "watch", id, notify, note, prs}`.
 
-- `gap: true`: events may have been missed. Run the backstop for that owner's scopes:
+- `gap: true`: events may have been missed. Run the backstop for every scope:
   supervisor-sweep [Phase G](../../supervisor-sweep/SKILL.md#phase-g---queue-ejections-and-default-branch-failures)
   and [Phase G2](../../supervisor-sweep/SKILL.md#phase-g2---command-comments).
-- Exit 1 (auth, cursor, or relay error): report it and fall back to sweeps for that owner until it
-  is fixed. The other owners' waits keep running.
+- Exit 1 (auth, cursor, or relay error): report it and fall back to sweeps until it is
+  fixed.
 - Skip events for repositories outside the configured scopes.
 
 Event fields are `id`, `repo`, `event`, `action`, `prs`, `issue`, `headSha`, `headRef`, `reason`,
@@ -89,7 +89,7 @@ Never trust `authorAssociation`: it is wrong for private organization members.
   - A closed PR without merge that the supervisor does not track needs nothing further.
 - **`pendingUpdateChecks` or `updateCheckDue`:** after a dependency-bot PR merges, build the script
   with `supervisor state update-check-script --owner <owner> --repo <repo>[:<ecosystem>,...]` for those
-  repositories (repeat `--repo`; one script per owner), run it as in supervisor-sweep's
+  repositories (repeat `--repo`; one script per owner, from each event's owner), run it as in supervisor-sweep's
   [dependency update check](../../supervisor-sweep/references/dependency-update-check.md), then
   `supervisor state remove pendingUpdateChecks`. Do this on any return that lists them.
 - **`event: "watch"`:** message the `notify` session with `note` (see

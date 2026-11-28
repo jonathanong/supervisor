@@ -3,39 +3,45 @@ import { tmpdir } from 'node:os'
 import { afterEach, describe, expect, it } from 'vitest'
 import { runProcess } from '../src/state/process.js'
 import { cleanupLoops, makeLoop } from './helpers/loop.js'
-import { lines, makeWorld } from './helpers/wait.js'
+import { lines, makeWorld, ORG_ONLY } from './helpers/wait.js'
 
-const WAIT = ['wait', '--owner', 'example-org']
+const WAIT = ['wait']
 
 describe('supervisor wait: command line and events', () => {
   afterEach(cleanupLoops)
 
   it('prints help without a config and lists wait in the main help', async () => {
-    const loop = await makeLoop()
+    const loop = await makeLoop(ORG_ONLY)
     loop.env.SUPERVISOR_CONFIG = '/nonexistent/config.json'
     for (const flag of ['--help', '-h']) {
       const help = await loop.cli(['wait', flag])
       expect(help.code).toBe(0)
-      expect(help.stdout).toMatch(/^Usage: supervisor wait --owner <owner> \[--advance\]\n/)
+      expect(help.stdout).toMatch(/^Usage: supervisor wait \[--advance\]\n/)
+      expect(help.stdout).not.toContain('--owner <owner>')
     }
-    expect((await loop.cli(['--help'])).stdout).toContain('  wait --owner <owner> [--advance]')
+    expect((await loop.cli(['--help'])).stdout).toContain('  wait [--advance]')
   })
 
-  it('exits 2 with help for a missing or malformed owner or an unknown option', async () => {
-    const loop = await makeLoop()
-    for (const args of [[], ['--owner', 'bad/owner'], ['--owner', 'example-org', '--nope']]) {
-      const result = await loop.cli(['wait', ...args])
-      expect(result.code).toBe(2)
-      expect(result.stdout).toBe('')
-      expect(result.stderr).toMatch(/^supervisor wait: .+\nUsage: supervisor wait /)
+  it('rejects --owner in one line, and an unknown option with help, both exit 2', async () => {
+    const loop = await makeLoop(ORG_ONLY)
+    for (const args of [
+      ['--owner', 'example-org'],
+      ['--owner=example-org'],
+      ['--advance', '--owner'],
+    ]) {
+      expect(await loop.cli(['wait', ...args])).toEqual({
+        code: 2,
+        stdout: '',
+        stderr: 'supervisor wait: --owner was removed; the wait now covers every owner in scopes\n',
+      })
     }
+    const unknown = await loop.cli(['wait', '--nope'])
+    expect(unknown.code).toBe(2)
+    expect(unknown.stderr).toMatch(/^supervisor wait: .+\nUsage: supervisor wait /)
   })
 
-  it('exits 1 for an owner without a scope or a duration it cannot read', async () => {
-    const loop = await makeLoop()
-    const unknown = await loop.cli(['wait', '--owner', 'nobody'])
-    expect(unknown.code).toBe(1)
-    expect(unknown.stderr).toContain('nobody')
+  it('exits 1 for a duration it cannot read', async () => {
+    const loop = await makeLoop(ORG_ONLY)
     loop.env.HH_TIMEOUT = 'soon'
     expect(await loop.cli(WAIT)).toEqual({
       code: 1,
@@ -44,8 +50,8 @@ describe('supervisor wait: command line and events', () => {
     })
   })
 
-  it('returns at once when this owner’s oldest pending update check is due', async () => {
-    const loop = await makeLoop()
+  it('returns at once when the oldest pending update check is due', async () => {
+    const loop = await makeLoop(ORG_ONLY)
     await loop.seed({
       pendingUpdateChecks: [
         { repo: 'example-org/other-repo', at: '2026-01-02T03:00:00Z' },
@@ -58,7 +64,11 @@ describe('supervisor wait: command line and events', () => {
       {
         gap: false,
         events: 0,
-        pendingUpdateChecks: ['Example-Org/example-repo', 'example-org/other-repo'],
+        pendingUpdateChecks: [
+          'Example-Org/example-repo',
+          'example-org/other-repo',
+          'example-user/demo-repo',
+        ],
         updateCheckDue: true,
         advanced: true,
       },
@@ -67,7 +77,7 @@ describe('supervisor wait: command line and events', () => {
   })
 
   it('does not shorten the wait for a check that is due after the timeout or has no time', async () => {
-    const loop = await makeLoop()
+    const loop = await makeLoop(ORG_ONLY)
     loop.env.HH_TIMEOUT = '1m'
     await loop.seed({
       pendingUpdateChecks: [{ repo: 'example-org/other-repo', at: '2026-01-02T03:04:05Z' }],
@@ -88,7 +98,7 @@ describe('supervisor wait: command line and events', () => {
   })
 
   it('prints only the fields the loop uses, and never an empty one', async () => {
-    const loop = await makeLoop()
+    const loop = await makeLoop(ORG_ONLY)
     const events = [
       {
         id: 'a',

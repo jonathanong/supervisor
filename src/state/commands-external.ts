@@ -1,21 +1,19 @@
 import { readFile } from 'node:fs/promises'
 import { parseArgs } from 'node:util'
-import { FLAG, NAME, need, TEXT, TEXTS, UsageError, type StateContext } from './context.js'
+import { FLAG, TEXT, TEXTS, UsageError, type StateContext } from './context.js'
 import { lastWaitPath, recordEvents } from './hook-harness.js'
 import { get, isObject, type Json } from './json.js'
 import { checkLateReview, LateReviewError, lateReviewLine } from './late-review.js'
 import { expectArray, expectObject, loadState, parseJson, saveState } from './store.js'
 import { updateCheckScript } from './update-check.js'
 
-/** Store the cursor and the seen event ids from one owner's last wait result. */
+/** Store the cursor and the seen event ids from the last wait result. */
 export async function advanceHookHarness(args: string[], ctx: StateContext): Promise<void> {
-  const { values } = parseArgs({ args, options: { owner: TEXT } })
-  const owner = need(values.owner, 'owner')
-  if (!NAME.test(owner)) {
-    throw new UsageError(`--owner: '${owner}' is not a valid owner name`)
+  if (args.length > 0) {
+    throw new UsageError('advance-hh takes no options: the wait covers every owner')
   }
   const state = await loadState(ctx.dir)
-  const path = lastWaitPath(ctx.dir, owner)
+  const path = lastWaitPath(ctx.dir)
   const last = expectObject(parseJson(await readFile(path, 'utf8'), path), path)
   const ids: Json[] = []
   for (const event of expectArray(get(last, 'events') ?? [], `${path} events`)) {
@@ -24,7 +22,7 @@ export async function advanceHookHarness(args: string[], ctx: StateContext): Pro
     }
   }
   const cursor = get(last, 'cursor') ?? null
-  recordEvents(state, owner, ids, cursor)
+  recordEvents(state, ids, cursor)
   await saveState(ctx.dir, state)
   ctx.print({ events: ids.length, cursorAdvanced: Boolean(cursor) })
 }

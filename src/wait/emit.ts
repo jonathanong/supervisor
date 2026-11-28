@@ -4,7 +4,7 @@ import { join } from 'node:path'
 import { lastWaitPath, recordEvents } from '../state/hook-harness.js'
 import { dumps, get, isObject, type Json, type JsonObject } from '../state/json.js'
 import { expectArray, loadState, saveState, withStateLock } from '../state/store.js'
-import { ownedBy, type WaitContext } from './context.js'
+import type { WaitContext } from './context.js'
 
 export interface WaitResult {
   /** The hook-harness result, with `events` reduced to the ones that need action. */
@@ -17,42 +17,42 @@ export interface WaitResult {
   due: boolean
 }
 
-/** The repositories of this owner that await a dependency update check, with the time each began. */
-export function pendingChecks(state: JsonObject, owner: string): Array<{ repo: string; at: Json }> {
+/** The repositories that await a dependency update check, with the time each began. */
+export function pendingChecks(state: JsonObject): Array<{ repo: string; at: Json }> {
   const pending = expectArray(get(state, 'pendingUpdateChecks') ?? [], 'pendingUpdateChecks')
   return pending
     .filter(isObject)
-    .filter((entry) => ownedBy(owner, entry.repo))
+    .filter((entry) => typeof entry.repo === 'string')
     .map((entry) => ({ repo: entry.repo as string, at: entry.at ?? null }))
 }
 
 /**
- * Write `hh-last.<owner>.json` and print the summary line, then one compact line per event and
- * per watch trigger. This owner's quiet merges are reported once and removed from state.
+ * Write `hh-last.json` and print the summary line, then one compact line per event and per watch
+ * trigger. The quiet merges are reported once and removed from state.
  */
 export async function emit(ctx: WaitContext, result: WaitResult): Promise<void> {
   const { data, lines, triggers } = result
   const { quiet, pending } = await withStateLock(ctx.dir, async () => {
     const state = await loadState(ctx.dir)
     const log = expectArray(get(state, 'quietMerges') ?? [], 'quietMerges')
-    state.quietMerges = log.filter((entry) => !ownedBy(ctx.owner, entry))
+    state.quietMerges = log.filter((entry) => typeof entry !== 'string')
     if (result.advance) {
       const ids = expectArray(get(data, 'events'), 'events')
         .filter(isObject)
         .map((event) => event.id)
         .filter((id) => id !== undefined)
-      recordEvents(state, ctx.owner, ids, get(data, 'cursor') ?? null)
+      recordEvents(state, ids, get(data, 'cursor') ?? null)
     }
     await saveState(ctx.dir, state)
-    const repos = pendingChecks(state, ctx.owner).map((entry) => entry.repo)
+    const repos = pendingChecks(state).map((entry) => entry.repo)
     return {
-      quiet: log.filter((entry) => ownedBy(ctx.owner, entry)),
+      quiet: log.filter((entry) => typeof entry === 'string'),
       pending: [...new Set(repos)].sort(),
     }
   })
   const temporary = join(ctx.dir, `.hh-last.${randomUUID()}.json`)
   await writeFile(temporary, dumps(data), { mode: 0o600 })
-  await rename(temporary, lastWaitPath(ctx.dir, ctx.owner))
+  await rename(temporary, lastWaitPath(ctx.dir))
 
   const summary: JsonObject = {}
   for (const [key, value] of Object.entries(data)) {

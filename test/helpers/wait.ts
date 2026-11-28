@@ -58,10 +58,25 @@ export function makeWorld(options: WorldOptions = {}): World {
   }
 }
 
-/** A merged pull-request event as hook-harness reports it. */
+/** A config override with one owner, so a wait names a single owner. */
+export const ORG_ONLY = {
+  scopes: [
+    {
+      owner: 'example-org',
+      kind: 'org',
+      repos: '*',
+      excludeForks: true,
+      excludedRepos: ['archived-repo'],
+      mode: 'enforce',
+    },
+  ],
+}
+
+/** A merged pull-request event as hook-harness reports it, with its owner. */
 export function mergeEvent(id: string, repo: string, number: number, login = 'example-user') {
   return {
     id,
+    owner: repo.includes('/') ? repo.split('/')[0] : 'example-org',
     repo,
     event: 'pull_request',
     action: 'closed',

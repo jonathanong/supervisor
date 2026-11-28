@@ -3,7 +3,7 @@ import { dirname, join } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
 import { REPO_LIST_JQ } from '../src/config/repos.js'
 import { cleanupLoops, makeLoop } from './helpers/loop.js'
-import { lines, makeWorld, mergeEvent } from './helpers/wait.js'
+import { lines, makeWorld, mergeEvent, ORG_ONLY } from './helpers/wait.js'
 
 const DOTTED = 'example-org/example.js'
 const TIME = '"2026-01-01T00:00:00Z"'
@@ -12,7 +12,7 @@ describe('a repository name with a dot in a state path', () => {
   afterEach(cleanupLoops)
 
   it('addresses the key when every key is its own argument', async () => {
-    const loop = await makeLoop()
+    const loop = await makeLoop(ORG_ONLY)
     const set = await loop.cli([
       'state',
       'set',
@@ -53,7 +53,7 @@ describe('a repository name with a dot in a state path', () => {
   })
 
   it('refuses a dotted path that continues after a repository key, and writes nothing', async () => {
-    const loop = await makeLoop()
+    const loop = await makeLoop(ORG_ONLY)
     for (const path of [`lateReview.${DOTTED}.scannedThrough`, `reviewedComments.${DOTTED}`]) {
       const refused = await loop.cli(['state', 'set', path, '--json', TIME])
       expect(refused).toMatchObject({ code: 1, stdout: '' })
@@ -81,7 +81,7 @@ describe('a repository name with a dot in a state path', () => {
   })
 
   it('reads and writes the same key from reviewed, the path commands, and the wait', async () => {
-    const loop = await makeLoop()
+    const loop = await makeLoop(ORG_ONLY)
     const ids = join(dirname(loop.stateDir), 'ids.json')
     await writeFile(ids, JSON.stringify({ [DOTTED]: [11] }))
     expect((await loop.cli(['state', 'reviewed', '--file', ids])).stdout).toBe(`{"${DOTTED}": 1}\n`)
@@ -95,7 +95,7 @@ describe('a repository name with a dot in a state path', () => {
       results: [{ events: [mergeEvent('m1', 'example.js', 3, 'dependabot[bot]')] }, { events: [] }],
       pulls: { [`${DOTTED}#4`]: { threads: [[false]] } },
     })
-    const [summary] = lines((await loop.cli(['wait', '--owner', 'example-org'], world.run)).stdout)
+    const [summary] = lines((await loop.cli(['wait'], world.run)).stdout)
     expect(summary).toMatchObject({
       quiet: { merges: [`${DOTTED}#3`] },
       pendingUpdateChecks: [DOTTED],
@@ -108,11 +108,14 @@ describe('a repository name with a dot in a state path', () => {
 
 describe('listing the repositories of a user scope', () => {
   afterEach(cleanupLoops)
-  const USER = ['wait', '--owner', 'example-user']
+  const USER = ['wait']
+  const USER_ONLY = {
+    scopes: [{ owner: 'example-user', kind: 'user', repos: ['demo-repo'], mode: 'report' }],
+  }
   const listed = { listing: 'demo-repo\tfalse\n', results: [{ events: [] }] }
 
   it('lists through user/repos when the scope owner is the signed-in user', async () => {
-    const loop = await makeLoop()
+    const loop = await makeLoop(USER_ONLY)
     const world = makeWorld({ ...listed, login: 'Example-User' })
     expect((await loop.cli(USER, world.run)).code).toBe(0)
     expect(world.calls.slice(0, 2).map((call) => call.args)).toEqual([
@@ -126,17 +129,17 @@ describe('listing the repositories of a user scope', () => {
   })
 
   it('keeps the public endpoint for another user, and asks nothing for an organization', async () => {
-    const loop = await makeLoop()
+    const loop = await makeLoop(USER_ONLY)
     const other = makeWorld({ ...listed, login: 'someone-else' })
     await loop.cli(USER, other.run)
     expect(other.calls[1]!.args[2]).toBe('users/example-user/repos?per_page=100')
     const org = makeWorld({ results: [{ events: [] }] })
-    await loop.cli(['wait', '--owner', 'example-org'], org.run)
+    await (await makeLoop(ORG_ONLY)).cli(['wait'], org.run)
     expect(org.calls[0]!.args[2]).toBe('orgs/example-org/repos?per_page=100')
   })
 
   it('fails the wait when the signed-in user cannot be read', async () => {
-    const loop = await makeLoop()
+    const loop = await makeLoop(USER_ONLY)
     const world = makeWorld({ ...listed, login: 4 })
     expect(await loop.cli(USER, world.run)).toEqual({
       code: 1,
@@ -151,13 +154,11 @@ describe('a tracked pull request is matched with its owner', () => {
   afterEach(cleanupLoops)
 
   async function trackedIds(state: Record<string, unknown>, numbers: number[]): Promise<string[]> {
-    const loop = await makeLoop()
+    const loop = await makeLoop(ORG_ONLY)
     await loop.seed(state)
     const events = numbers.map((number) => mergeEvent(`m${number}`, 'example-repo', number))
     const world = makeWorld({ results: [{ events }] })
-    const [, ...returned] = lines(
-      (await loop.cli(['wait', '--owner', 'example-org'], world.run)).stdout,
-    )
+    const [, ...returned] = lines((await loop.cli(['wait'], world.run)).stdout)
     return returned.filter((line) => line.tracked === true).map((line) => line.id)
   }
 
