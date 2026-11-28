@@ -1,15 +1,15 @@
 import { afterEach, describe, expect, it } from 'vitest'
 import { cleanupLoops, makeLoop } from './helpers/loop.js'
-import { lines, makeWorld, mergeEvent } from './helpers/wait.js'
+import { lines, makeWorld, mergeEvent, ORG_ONLY } from './helpers/wait.js'
 
-const WAIT = ['wait', '--owner', 'example-org']
+const WAIT = ['wait']
 const resolved = Array.from({ length: 6 }, () => [true])
 
 describe('supervisor wait: merged pull requests', () => {
   afterEach(cleanupLoops)
 
   it('returns a merge with unresolved threads, late reviews, or more pages than it reads', async () => {
-    const loop = await makeLoop()
+    const loop = await makeLoop(ORG_ONLY)
     const late = { body: 'Please fix', submittedAt: '2026-01-01T00:00:01Z' }
     const world = makeWorld({
       results: [
@@ -27,17 +27,22 @@ describe('supervisor wait: merged pull requests', () => {
       },
     })
     const result = await loop.cli(WAIT, world.run)
-    const merge = { repo: 'example-repo', event: 'pull_request', action: 'closed', merged: true }
+    const merge = {
+      repo: 'example-org/example-repo',
+      event: 'pull_request',
+      action: 'closed',
+      merged: true,
+    }
     expect(lines(result.stdout)).toEqual([
       { events: 2, quiet: { count: 1, merges: ['example-org/example-repo#6'] } },
       { id: 'm1', ...merge, prs: [4], unresolved: 1, late: 1 },
       { id: 'm2', ...merge, prs: [5], unresolved: 0, late: 0, truncated: true },
     ])
-    expect((await loop.state()).hookHarness['example-org'].seen).toEqual(['m3'])
+    expect((await loop.state()).hookHarness.seen).toEqual(['m3'])
   })
 
   it('returns a merge it cannot check, with the error cut to 200 characters', async () => {
-    const loop = await makeLoop()
+    const loop = await makeLoop(ORG_ONLY)
     const name = `bad repo ${'x'.repeat(300)}`
     const unnumbered = {
       event: 'pull_request',
@@ -53,17 +58,17 @@ describe('supervisor wait: merged pull requests', () => {
       event: 'pull_request',
       action: 'closed',
       merged: true,
-      lateReviewError: "'example-org/#None' must look like owner/repo#N",
+      lateReviewError: "'#None' must look like owner/repo#N",
     })
     expect(world.calls.filter((call) => call.args[1] === 'graphql')).toEqual([])
   })
 
   it('returns a clean merge that a loop record names, and not one whose number only starts the same', async () => {
-    const loop = await makeLoop()
+    const loop = await makeLoop(ORG_ONLY)
     await loop.seed({
       escalations: { 'example-org/example-repo#61': {} },
       routed: [{ what: 'see Example-Repo#6, then example-repo#71' }],
-      hookHarness: { 'example-org': { cursor: 'c0' } },
+      hookHarness: { cursor: 'c0' },
     })
     const events = [mergeEvent('m1', 'example-repo', 6), mergeEvent('m2', 'example-repo', 7)]
     const world = makeWorld({ results: [{ events }] })
@@ -73,10 +78,14 @@ describe('supervisor wait: merged pull requests', () => {
   })
 
   it('skips a merge already seen and keeps one pending update check per repository', async () => {
-    const loop = await makeLoop({ dependencyBot: { author: 'app/Renovate' }, eventWait: {} })
+    const loop = await makeLoop({
+      ...ORG_ONLY,
+      dependencyBot: { author: 'app/Renovate' },
+      eventWait: {},
+    })
     const at = '2026-01-02T03:00:00Z'
     await loop.seed({
-      hookHarness: { 'example-org': { seen: ['m1'], cursor: 'c0' } },
+      hookHarness: { seen: ['m1'], cursor: 'c0' },
       pendingUpdateChecks: [{ repo: 'example-org/example-repo', at }, 'junk'],
       quietMerges: [7, 'example-org/example-repo#1'],
     })
@@ -104,7 +113,7 @@ describe('supervisor wait: merged pull requests', () => {
     })
     const state = await loop.state()
     expect(state.quietMerges).toEqual([7])
-    expect(state.hookHarness['example-org']).toEqual({ seen: ['m1', 'm2', 'm3'], cursor: 'c0' })
+    expect(state.hookHarness).toEqual({ seen: ['m1', 'm2', 'm3'], cursor: 'c0' })
     expect(state.pendingUpdateChecks).toEqual([
       { repo: 'example-org/example-repo', at },
       'junk',
@@ -113,7 +122,7 @@ describe('supervisor wait: merged pull requests', () => {
   })
 
   it('uses dependabot as the dependency bot when none is configured', async () => {
-    const loop = await makeLoop({ dependencyBot: undefined })
+    const loop = await makeLoop({ ...ORG_ONLY, dependencyBot: undefined })
     const events = [mergeEvent('m1', 'example-repo', 4, 'app/dependabot')]
     const world = makeWorld({ results: [{ events, timedOut: true }] })
     const [summary] = lines((await loop.cli(WAIT, world.run)).stdout)
@@ -121,7 +130,7 @@ describe('supervisor wait: merged pull requests', () => {
   })
 
   it('keeps waiting after quiet merges with what remains of the timeout', async () => {
-    const loop = await makeLoop()
+    const loop = await makeLoop(ORG_ONLY)
     const merged = mergeEvent('m1', 'example-repo', 4)
     const world = makeWorld({
       results: [
@@ -142,7 +151,7 @@ describe('supervisor wait: merged pull requests', () => {
   })
 
   it('reports a watch when its last pull request merges, until it is acknowledged', async () => {
-    const loop = await makeLoop()
+    const loop = await makeLoop(ORG_ONLY)
     await loop.seed({
       watches: [
         {

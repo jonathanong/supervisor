@@ -9,6 +9,11 @@ export interface ListedRepo {
 /** The `--jq` filter for the repository listing: one `name<TAB>fork` line per live repository. */
 export const REPO_LIST_JQ = '.[] | select((.archived or .disabled) | not) | [.name, .fork] | @tsv'
 
+/** Every distinct scope owner, in the order the scopes list them. */
+export function ownersOf(loaded: LoadedConfig): string[] {
+  return [...new Set(loaded.config.scopes.map((scope) => scope.owner))]
+}
+
 /** Every scope configured for one owner; an owner with none is a configuration error. */
 export function scopesForOwner(loaded: LoadedConfig, owner: string): Scope[] {
   const scopes = loaded.config.scopes.filter((scope) => scope.owner === owner)

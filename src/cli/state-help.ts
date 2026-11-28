@@ -43,8 +43,9 @@ Subcommands:
                                           Print the merge records, one JSON line each: all, or
                                           those of one repository, or those with a rule whose
                                           purpose contains <text> (takes no lock)
-  advance-hh --owner <owner>              Store the cursor and seen ids from hh-last.<owner>.json
-                                          under hookHarness.<owner>
+  advance-hh                              Store the cursor and seen ids from hh-last.json under
+                                          hookHarness (a 0.3.0 per-owner entry is dropped and its
+                                          seen ids kept)
   route --what <text> --to <text> [--evidence <text>] [--issue <text>] [--note <text>]
                                           Record where an item was routed
   annotate-route --match <text> --note <text> [--issue <text>]
@@ -79,7 +80,7 @@ bad field can be shown, does not block writes to other fields, and stays until i
 
 A <path> is its keys as separate arguments, or as one argument joined by dots:
   supervisor state set lateReview example-org/example-repo --json '{}'
-  supervisor state set hookHarness.example-org --json '{}'
+  supervisor state set hookHarness.cursor --json '"c1"'
 Separate arguments are never split, so a key given that way can contain a dot. A key that names a
 repository is <owner>/<repo>, and a repository name can contain a dot, so a dotted path that goes
 on after such a key is refused (exit 1) instead of being split in the wrong place. Give those

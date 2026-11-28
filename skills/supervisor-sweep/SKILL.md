@@ -11,7 +11,7 @@ overrides these defaults there.
 One pass of [supervisor-loop](../supervisor-loop/SKILL.md). It uses that skill's
 [configuration](../supervisor-loop/references/config.md), state file, and
 [merge authority](../supervisor-loop/references/merge-authority.md). It is the fallback and backstop
-for the loop's per-owner event waits: it re-checks what events would have reported. Run outside a
+for the loop's event wait: it re-checks what events would have reported. Run outside a
 loop, it needs an explicit user request, which covers that one pass and adds nothing to what the
 merge policy allows. Arguments, all optional: `--dry-run` reports every intended mutation and makes
 none, and `--owner <owner>`, `--repo <owner>/<repo>`, or `--phase <letter>` narrows the pass.

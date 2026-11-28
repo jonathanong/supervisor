@@ -1,11 +1,10 @@
 import type { LoadedConfig } from '../config/load.js'
 import type { RunProcess } from '../state/process.js'
 
-/** What one `supervisor wait --owner <owner>` works with. */
+/** What one `supervisor wait` works with. */
 export interface WaitContext {
   /** The state directory. */
   dir: string
-  owner: string
   loaded: LoadedConfig
   run: RunProcess
   now: () => Date
@@ -27,9 +26,4 @@ export class HarnessExit extends Error {
     super(`hook-harness exited ${code}`)
     this.code = code
   }
-}
-
-/** True for a `<owner>/...` state entry that belongs to this wait's owner. */
-export function ownedBy(owner: string, entry: unknown): entry is string {
-  return typeof entry === 'string' && entry.toLowerCase().startsWith(`${owner.toLowerCase()}/`)
 }

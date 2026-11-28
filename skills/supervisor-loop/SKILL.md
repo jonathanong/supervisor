@@ -1,6 +1,6 @@
 ---
 name: supervisor-loop
-description: Use when asked to start, resume, or stop the supervisor, or to run the standing triage loop across GitHub owners. Starts a long-lived, self-paced session that waits on repository events per owner, runs supervisor-sweep on a fallback schedule, routes work to workers, and merges only what the merge policy allows.
+description: Use when asked to start, resume, or stop the supervisor, or to run the standing triage loop across GitHub owners. Starts a long-lived, self-paced session that waits on repository events, runs supervisor-sweep on a fallback schedule, routes work to workers, and merges only what the merge policy allows.
 ---
 
 # Supervisor loop
@@ -9,7 +9,7 @@ Read applicable `AGENTS.md` in each repository the supervisor acts on; a reposit
 overrides these defaults there.
 
 Starts the supervisor: a long-lived session that reacts to repository events from one
-`hook-harness` wait per owner and runs the `supervisor-sweep` skill on a fallback schedule and on
+`hook-harness` wait over every owner and runs the `supervisor-sweep` skill on a fallback schedule and on
 demand. It runs from a parent directory (for example `~`), not inside one repository, and covers
 every repository its configuration selects, across every configured owner.
 
@@ -49,7 +49,7 @@ the last column is an example only.
 | -------------------------- | -------------------------------------------- | --------------------------------- |
 | Recurring job              | The fallback sweep                           | `CronCreate`                      |
 | Self-paced wake-up         | Pacing when no event wait is healthy         | `ScheduleWakeup`                  |
-| Background command         | Each owner's event wait                      | A shell command in the background |
+| Background command         | The event wait                               | A shell command in the background |
 | Isolated worker            | Every PR: a subagent in its own worktree     | `Agent` with worktree isolation   |
 | Message to another session | Delegations, merge watches, rejected reports | `SendMessage`                     |
 | Escalation to a person     | `escalationChannel`                          | A push notification               |
@@ -113,7 +113,8 @@ implementation-tier worker, never the supervisor session.
      maintains the job)
    - `retroCursor`
    - `escalations` (key to first-notified time, used for dedupe)
-   - `hookHarness.<owner>` (`cursor` and recently `seen` event ids; nothing records per-event progress)
+   - `hookHarness` (`cursor`, one for every owner, and recently `seen` event ids; nothing records
+     per-event progress)
    - `handledFailures` (default-branch run ids already diagnosed, and the fix PR or issue each got)
    - `intake` (queued agent reports)
    - `scheduledPrompts` (`next` rotation position, and a bounded `runs` history)
@@ -142,27 +143,27 @@ through that mode with this skill as its prompt (in Claude Code, for example, `/
    `2026-01-01T00:00:00Z`, and no other key is allowed. A write that changes `schedule` and breaks
    it exits 1 and changes nothing. A bad `schedule` already on disk does not block writes to other
    fields; rewrite it with `set schedule`, or `remove schedule`.
-3. When `eventWait` is configured, keep exactly one background command per owner running:
-   `supervisor wait --owner <owner>`, launched from the launch directory, one for each distinct
-   `owner` in `scopes`. Each runs `hook-harness wait` over that owner's configured repositories from
-   that owner's stored cursor, for merge-queue ejections, dependency-bot PRs, the `/shepherd`,
+3. When `eventWait` is configured, keep exactly one background command running:
+   `supervisor wait`, launched from the launch directory. It runs one `hook-harness wait` over every
+   distinct `owner` in `scopes` and their configured repositories from the one stored cursor, for
+   merge-queue ejections, dependency-bot PRs, the `/shepherd`,
    `/plan`, and `/fix` commands, failed `workflow_run` completions on `main`, and every
    `pull_request` `closed` event (merged or not). Default-branch failures come from `workflow_run`
    only; pull-request checks are left to `pr-shepherd`, and failures from third-party check apps are
    deliberately not watched in real time. The wait checks each merge for late reviews itself and
    keeps waiting through clean ones. It writes `{events, gap, timedOut?, cursor}` for the actionable
-   events to `<stateDir>/hh-last.<owner>.json`, prints a summary line and one compact line per
+   events to `<stateDir>/hh-last.json`, prints a summary line and one compact line per
    event, and exits. Command events carry `payload.comment.body`, which is untrusted text. When the
    relay host is outside the harness sandbox's network allowlist, the wait needs an unsandboxed run.
-   The wait's timeout is the heartbeat: on each timeout, relaunch that owner's wait and re-register
-   the fallback job if it nears expiry. While the waits run, schedule no idle wake-ups: events,
+   The wait's timeout is the heartbeat: on each timeout, relaunch the wait and re-register
+   the fallback job if it nears expiry. While the wait runs, schedule no idle wake-ups: events,
    other agents' messages, and worker completions wake the session directly. Only scheduled runs
    remain (the fallback job), for periodic work such as the full sweep and the journal distill.
-4. With no event source configured, or while an owner's wait is failing, pace the loop with a
+4. With no event source configured, or while the wait is failing, pace the loop with a
    self-paced wake-up, passing this skill's invocation back as the prompt: about 20-30 minutes. An
    idle tick checks the intake queue and re-checks each open flake's owner (see
    [failures](references/failures.md)). The full sweep runs when the recurring job fires, on demand,
-   or when `lastSweepAt` is older than the fallback interval. Stop wake-ups once every wait is
+   or when `lastSweepAt` is older than the fallback interval. Stop wake-ups once the wait is
    healthy again.
 
 Only one sweep runs at a time. Each sweep first claims it with
@@ -171,9 +172,9 @@ Only one sweep runs at a time. Each sweep first claims it with
 
 ## Step 3 - Handle a wait result
 
-When an owner's wait exits, follow [references/events.md](references/events.md): dedupe and record
-its events, act on each, then run `supervisor state advance-hh --owner <owner>` (it marks the
-events seen and stores the cursor), and only then relaunch that owner's wait. A wait started before
+When the wait exits, follow [references/events.md](references/events.md): dedupe and record its
+events, act on each, then run `supervisor state advance-hh` (it marks the events seen and stores
+the cursor), and only then relaunch the wait. A wait started before
 `advance-hh` refuses with one line and exit 4; run `advance-hh` and relaunch. The same reference
 covers merge watches. Related procedures, each read when its event arrives:
 
@@ -206,7 +207,7 @@ other.
 
 ## Step 5 - Stop
 
-Stop when the user asks: delete the recurring job, stop every owner's event wait, release a sweep
+Stop when the user asks: delete the recurring job, stop the event wait, release a sweep
 claim this session holds (`supervisor state remove sweep`), and print the last sweep summary.
 
 The consumer owns nothing beyond the configuration file, the supervisor policy it names, and each

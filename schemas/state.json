@@ -28,7 +28,14 @@
     },
     "retroCursor": { "type": "string" },
     "escalations": { "type": "object" },
-    "hookHarness": { "type": "object" },
+    "hookHarness": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "cursor": { "type": "string" },
+        "seen": { "type": "array", "items": { "type": "string" } }
+      }
+    },
     "handledFailures": { "type": "object" },
     "intake": { "type": "array" },
     "scheduledPrompts": { "type": "object" },

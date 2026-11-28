@@ -1,5 +1,6 @@
 import { tmpdir } from 'node:os'
 import {
+  ownersOf,
   parseRepoList,
   REPO_LIST_JQ,
   repoListEndpoint,
@@ -22,28 +23,70 @@ async function gh(ctx: WaitContext, args: string[], what: string): Promise<strin
 }
 
 /**
- * `<owner>/<name>` for every live repository this owner's scopes select. A user scope first asks
- * who is signed in: only that user's own listing includes private repositories. A wait that cannot
- * tell fails, rather than quietly watching the public repositories alone.
+ * Fail up front when several owners are configured and `eventWait.hookHarness` is an exact version
+ * older than 0.4.0, which waits for one owner only. A range or a tag is passed through unchecked.
  */
-export async function listRepositories(ctx: WaitContext): Promise<string[]> {
-  const scopes = scopesForOwner(ctx.loaded, ctx.owner)
-  const scope = scopes[0]!
-  const login =
-    scope.kind === 'user'
-      ? (await gh(ctx, ['api', 'user', '--jq', '.login'], 'gh api user')).trim()
-      : undefined
-  const args = ['api', '--paginate', repoListEndpoint(scope, login), '--jq', REPO_LIST_JQ]
-  const names = selectRepos(scopes, parseRepoList(await gh(ctx, args, 'gh')))
-  if (names.length === 0) {
-    throw new WaitError('no repositories match the configuration')
+export function checkHarnessVersion(ctx: WaitContext): void {
+  const version = ctx.loaded.config.eventWait.hookHarness
+  const match = /^(\d+)\.(\d+)\.\d+$/.exec(version)
+  if (
+    match !== null &&
+    ownersOf(ctx.loaded).length > 1 &&
+    match[1] === '0' &&
+    Number(match[2]) < 4
+  ) {
+    throw new WaitError(
+      `eventWait.hookHarness ${version} waits for one owner and the config has several; ` +
+        'use hook-harness 0.4.0 or newer',
+    )
   }
-  return names.map((name) => `${ctx.owner}/${name}`)
 }
 
 /**
- * Run one `hook-harness wait` for this owner from its stored cursor and return the parsed result.
- * Main-branch failures come from `workflow_run` only; pull-request checks are left to pr-shepherd.
+ * `<owner>/<name>` for every live repository the scopes select, owner by owner. A user scope first
+ * asks who is signed in: only that user's own listing includes private repositories. A wait that
+ * cannot tell fails, rather than quietly watching the public repositories alone. An owner whose
+ * scopes select no repository is skipped with a warning, so one misconfigured owner does not stop
+ * the wait for the others; the wait fails only when no owner has any.
+ */
+export async function listRepositories(ctx: WaitContext): Promise<string[]> {
+  const all: string[] = []
+  let login: string | undefined
+  for (const owner of ownersOf(ctx.loaded)) {
+    const scopes = scopesForOwner(ctx.loaded, owner)
+    const scope = scopes[0]!
+    if (scope.kind === 'user') {
+      login ??= (await gh(ctx, ['api', 'user', '--jq', '.login'], 'gh api user')).trim()
+    }
+    const args = [
+      'api',
+      '--paginate',
+      repoListEndpoint(scope, scope.kind === 'user' ? login : undefined),
+      '--jq',
+      REPO_LIST_JQ,
+    ]
+    const names = selectRepos(scopes, parseRepoList(await gh(ctx, args, 'gh')))
+    if (names.length === 0) {
+      ctx.write(`supervisor wait: skipping ${owner}: no repositories match its configuration\n`)
+      continue
+    }
+    all.push(...names.map((name) => `${owner}/${name}`))
+  }
+  if (all.length === 0) {
+    throw new WaitError('no repositories match the configuration')
+  }
+  return all
+}
+
+/** The owners of `<owner>/<name>` repositories, in order of first appearance. */
+function ownersIn(repos: string[]): string[] {
+  return [...new Set(repos.map((repo) => repo.slice(0, repo.indexOf('/'))))]
+}
+
+/**
+ * Run one `hook-harness wait` over every owner from the stored cursor and return the parsed
+ * result. Main-branch failures come from `workflow_run` only; pull-request checks are left to
+ * pr-shepherd.
  */
 export async function hookHarnessWait(
   ctx: WaitContext,
@@ -51,10 +94,10 @@ export async function hookHarnessWait(
   timeout: string,
 ): Promise<JsonObject> {
   const harness = get(await loadState(ctx.dir), 'hookHarness')
-  const mine = isObject(harness) ? get(harness, ctx.owner) : undefined
-  const after = isObject(mine) && typeof mine.cursor === 'string' ? mine.cursor : ''
+  const cursor = isObject(harness) ? get(harness, 'cursor') : undefined
+  const after = typeof cursor === 'string' ? cursor : ''
   const version = ctx.loaded.config.eventWait.hookHarness
-  const args = ['-y', `hook-harness@${version}`, 'wait', '--owner', ctx.owner]
+  const args = ['-y', `hook-harness@${version}`, 'wait', '--owner', ownersIn(repos).join(',')]
   args.push(...(after ? ['--after', after] : ['--since', '10m']))
   args.push('--repo', repos.join(','), '--on', PRESETS)
   args.push('--event', 'workflow_run', '--action', 'completed', '--conclusion', 'failure')

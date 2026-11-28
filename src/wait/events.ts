@@ -40,7 +40,7 @@ export function compact(event: JsonObject): JsonObject {
   for (const key of FIELDS) {
     const value = get(event, key)
     if (!isEmpty(value)) {
-      line[key] = value!
+      line[key] = key === 'repo' && typeof value === 'string' ? fullRepo(event) : value!
     }
   }
   const sender = get(event, 'sender')
@@ -60,12 +60,18 @@ export function isMerge(event: JsonObject): boolean {
   )
 }
 
-/** `owner/repo#N` for a merge event; the wait's owner fills in a bare repository name. */
-export function refOf(event: JsonObject, owner: string): string {
+/** The event's repository as `owner/repo`; the event's own owner fills in a bare name. */
+function fullRepo(event: JsonObject): string {
+  const repo = typeof event.repo === 'string' ? event.repo : ''
+  const owner = typeof event.owner === 'string' ? event.owner : ''
+  return repo.includes('/') || owner === '' ? repo : `${owner}/${repo}`
+}
+
+/** `owner/repo#N` for a merge event. */
+export function refOf(event: JsonObject): string {
   const prs = get(event, 'prs')
   const number = pullOf(event)!.number || (Array.isArray(prs) ? prs[0] : undefined)
-  const repo = typeof event.repo === 'string' ? event.repo : ''
-  return `${repo.includes('/') ? repo : `${owner}/${repo}`}#${String(number ?? 'None')}`
+  return `${fullRepo(event)}#${String(number ?? 'None')}`
 }
 
 function login(name: Json | undefined): string {

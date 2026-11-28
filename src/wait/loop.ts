@@ -4,7 +4,7 @@ import { refuseWhenStopped } from '../state/stop.js'
 import { loadState, saveState, withStateLock } from '../state/store.js'
 import { WaitError, type WaitContext } from './context.js'
 import { emit, pendingChecks } from './emit.js'
-import { hookHarnessWait, listRepositories } from './harness.js'
+import { checkHarnessVersion, hookHarnessWait, listRepositories } from './harness.js'
 import { sweep } from './merges.js'
 import { refuseUnadvanced } from './unadvanced.js'
 import { watchTriggers } from './watches.js'
@@ -27,9 +27,9 @@ function seconds(text: string): number {
   return Number(match[1]) * UNITS[match[2]!]!
 }
 
-/** Seconds until this owner's oldest pending update check is due; undefined when none is. */
+/** Seconds until the oldest pending update check is due; undefined when none is. */
 async function pendingDeadline(ctx: WaitContext, delay: number): Promise<number | undefined> {
-  const pending = pendingChecks(await loadState(ctx.dir), ctx.owner)
+  const pending = pendingChecks(await loadState(ctx.dir))
   if (pending.length === 0) {
     return undefined
   }
@@ -38,7 +38,7 @@ async function pendingDeadline(ctx: WaitContext, delay: number): Promise<number 
 }
 
 /**
- * Wait for this owner's events until one needs action. A merged pull request is checked for
+ * Wait for events of every configured owner until one needs action. A merged pull request is checked for
  * unresolved or late review findings; a clean one is logged, the cursor moves past it, and the
  * wait continues. The wait returns on any other event, a merge with findings, a completed watch,
  * a due dependency update check, a gap, or the timeout. It throws `StoppedError` when the stop
@@ -49,6 +49,7 @@ export async function runWait(ctx: WaitContext, settings: WaitSettings): Promise
   const total = seconds(settings.timeout)
   const delay = seconds(settings.updateCheckDelay)
   const { advance } = settings
+  checkHarnessVersion(ctx)
   const started = ctx.now().getTime()
   const idle = { events: [], gap: false }
   let repos: string[] | undefined
@@ -89,7 +90,7 @@ export async function runWait(ctx: WaitContext, settings: WaitSettings): Promise
     }
     await withStateLock(ctx.dir, async () => {
       const state = await loadState(ctx.dir)
-      recordEvents(state, ctx.owner, [], get(data, 'cursor') ?? null)
+      recordEvents(state, [], get(data, 'cursor') ?? null)
       await saveState(ctx.dir, state)
     })
   }

@@ -1,10 +1,9 @@
-import { recordEvents } from '../state/hook-harness.js'
+import { recordEvents, seenIds } from '../state/hook-harness.js'
 import { dumps, get, isObject, type Json, type JsonObject } from '../state/json.js'
 import { checkLateReview } from '../state/late-review.js'
 import { arrayField, loadState, saveState, timestamp, withStateLock } from '../state/store.js'
 import type { WaitContext } from './context.js'
 import { compact, isDependencyBot, isMerge, refOf } from './events.js'
-import { seenIds } from './unadvanced.js'
 import { updateWatches } from './watches.js'
 
 /** How many clean merges state keeps until a wait reports them. */
@@ -79,7 +78,7 @@ function tracked(state: JsonObject, ref: string): boolean {
  */
 export async function sweep(events: Json[], ctx: WaitContext): Promise<Sweep> {
   const before = await loadState(ctx.dir)
-  const seen = seenIds(before, ctx.owner)
+  const seen = seenIds(before)
   const author = ctx.loaded.config.dependencyBot?.author ?? DEFAULT_BOT
   const lines: JsonObject[] = []
   const raw: JsonObject[] = []
@@ -96,7 +95,7 @@ export async function sweep(events: Json[], ctx: WaitContext): Promise<Sweep> {
       raw.push(event)
       continue
     }
-    const ref = refOf(event, ctx.owner)
+    const ref = refOf(event)
     let line = await findings(ctx, event, ref)
     if (line === undefined && tracked(before, ref)) {
       line = { ...compact(event), tracked: true }
@@ -127,7 +126,6 @@ export async function sweep(events: Json[], ctx: WaitContext): Promise<Sweep> {
     const found = updateWatches(state, merged)
     recordEvents(
       state,
-      ctx.owner,
       quietIds.filter((id) => Boolean(id)),
       null,
     )
